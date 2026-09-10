@@ -1,6 +1,6 @@
 # Paseo 개발 환경 검증
 
-Worknaru 전용 Daemon의 시작·SDK 연결·상태 조회·종료와 [Paseo Adapter](../../packages/paseo-adapter/README.md)의 연동을 검증하는 개발용 프로그램이다. 제품용 Worknaru CLI는 별도 구현 대상이다. 환경 구성의 근거는 [Issue #1](https://github.com/NaruForge/worknaru-dev/issues/1), 상태 조회 구현의 근거는 [Issue #2](https://github.com/NaruForge/worknaru-dev/issues/2)에서 관리한다.
+Worknaru 전용 Daemon의 시작·SDK 연결·상태 조회·종료와 [Paseo Adapter](../../packages/paseo-adapter/README.md), [Worknaru CLI](../cli/README.md)의 연동을 검증하는 개발용 프로그램이다. 환경 구성의 근거는 [Issue #1](https://github.com/NaruForge/worknaru-dev/issues/1), Adapter 상태 조회는 [Issue #2](https://github.com/NaruForge/worknaru-dev/issues/2), Core·CLI 연결은 [Issue #4](https://github.com/NaruForge/worknaru-dev/issues/4)에서 관리한다.
 
 ## 실행
 
@@ -32,8 +32,8 @@ CLI·SDK·Daemon은 `0.8.0-beta.1`로 고정했다. 현재 PC에서 조사한 Pa
 2. 전용 supervisor를 숨겨진 자식 프로세스로 시작한다. Agent를 만들거나 AI 요청을 보내지 않는다.
 3. SDK handshake의 서버 ID를 전용 `server-id` 파일과 비교하고, PID 파일이 이번에 시작한 프로세스를 가리키는지 확인한다.
 4. 서버 버전·릴레이 상태와 빈 Agent 목록을 조회한다. 클라이언트를 닫고 다시 연결해 같은 Daemon이 유지되는지도 확인한다.
-5. Adapter로 상태 조회와 서버 ID 불일치 처리를 확인하고, Daemon의 PID·시작 시각과 빈 Agent 목록이 유지되는지 확인한다.
-6. 검증 프로그램이 확인한 연결로 Daemon 종료를 요청한다. 프로세스 종료와 리스너·PID 잠금 정리를 확인하고, Adapter가 종료 후 접속 실패를 반환하는지 확인한 뒤 JSON 결과를 출력한다.
+5. Adapter와 실제 Worknaru CLI 프로세스로 상태 조회와 서버 ID 불일치 처리를 확인하고, Daemon의 PID·시작 시각과 빈 Agent 목록이 유지되는지 확인한다. CLI는 Core API를 거쳐 조회한다.
+6. 검증 프로그램이 확인한 연결로 Daemon 종료를 요청한다. 프로세스 종료와 리스너·PID 잠금 정리를 확인하고, Adapter와 CLI가 종료 후 접속 실패를 반환하는지 확인한 뒤 JSON 결과를 출력한다.
 
 실패하면 종료 코드 `1`을 반환한다. 시작한 프로세스가 남아 있으면 이번 실행이 생성한 프로세스 트리만 정리한다. 데이터와 로그는 진단을 위해 남긴다. `.local/`과 프로젝트 의존성·pnpm store는 Git 추적에서 제외한다.
 

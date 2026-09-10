@@ -4,6 +4,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 import { WebSocketServer } from 'ws';
 import { createPaseoRuntime, SUPPORTED_PASEO_VERSION } from '../dist/index.js';
+import { createStatusWebSocket } from '../dist/status-websocket.js';
+import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
 
 const serverId = 'srv_test_worknaru';
 const secret = 'test-only-password';
@@ -153,6 +155,23 @@ test('silent handshake and silent status are bounded and cleaned up', async t =>
       assert.ok(Date.now() - start < 1500, 'Probe ignored its time budget');
       assert.equal(context.connectionCount, 1, 'Status probe must not reconnect automatically');
     });
+  });
+});
+
+test('SDK-owned connect timeout closes the probe socket without relying on the outer deadline', async () => {
+  await withDaemon({ silentConnect: true }, async ({ endpoint, commands }) => {
+    const client = new DaemonClient({
+      url: endpoint, clientId: 'timeout-regression', clientType: 'cli',
+      appVersion: SUPPORTED_PASEO_VERSION, connectTimeoutMs: 100,
+      reconnect: { enabled: false }, webSocketFactory: createStatusWebSocket,
+      logger: { debug() {}, info() {}, warn() {}, error() {} },
+    });
+    try {
+      await assert.rejects(client.connect(), /Connection timed out/);
+      assert.deepEqual(commands, []);
+    } finally {
+      await client.close();
+    }
   });
 });
 

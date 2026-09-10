@@ -51,6 +51,8 @@ if (status.outcome === 'available') {
 
 `@getpaseo/client`는 `0.8.0-beta.1`로 고정했다. 이 버전의 공개 facade에는 Daemon 식별 정보와 상태 API가 없어 내부 `DaemonClient.getLastServerInfoMessage()`와 `getDaemonStatus()`를 사용한다. SDK 버전 변경 시 내부 경로와 오류 변환을 다시 검증해야 한다. Adapter는 Paseo CLI·서버 패키지·로컬 프로세스 조회에 의존하지 않는다.
 
+같은 SDK의 연결 시간 초과 처리에서 사용하는 WebSocket 종료 코드 `1001`은 Node의 표준 WebSocket이 거부한다. [조회용 WebSocket factory](src/status-websocket.ts)는 해당 코드만 `1000`으로 바꿔 연결이 남는 문제를 막는다. 조회용 소켓에만 적용하며 전역 WebSocket이나 SDK 파일을 수정하지 않는다. SDK 자체 연결 타이머가 먼저 만료되는 경로도 별도 회귀 테스트로 검사한다. 이 수정의 근거는 [Issue #4](https://github.com/NaruForge/worknaru-dev/issues/4)에 연결한다.
+
 저장소 루트의 `pnpm test`는 TypeScript 빌드 후 실제 SDK와 loopback WebSocket 응답 서버로 오류 변환·조회 전용 RPC·연결 정리를 검증한다. `pnpm paseo:verify`는 전용 Paseo Daemon을 사용해 정상 조회·ID 불일치·종료 후 연결 실패와 조회 전후 프로세스·세션 유지를 확인한다. [개발 환경 안내](../../apps/paseo-dev/README.md)를 참고한다.
 
 작업 범위와 검증 근거는 [Issue #2](https://github.com/NaruForge/worknaru-dev/issues/2)에서 관리한다.

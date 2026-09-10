@@ -9,6 +9,7 @@
   "dependencies": {
     "@getpaseo/cli": "0.8.0-beta.1",
     "@getpaseo/client": "0.8.0-beta.1",
+    "@worknaru/cli": "workspace:*",
     "@worknaru/paseo-adapter": "workspace:*"
   }
 }

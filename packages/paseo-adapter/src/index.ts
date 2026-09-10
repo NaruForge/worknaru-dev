@@ -5,6 +5,7 @@ import type {
 } from '@worknaru/runtime';
 // Version-pinned internal dependency, confined to this adapter.
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
+import { createStatusWebSocket } from './status-websocket.js';
 
 export const SUPPORTED_PASEO_VERSION = '0.8.0-beta.1';
 
@@ -124,6 +125,7 @@ export function createPaseoRuntime(options: PaseoAdapterOptions): Runtime {
           url: target.endpoint, clientId: `worknaru-status-${randomUUID()}`, clientType: 'cli',
           appVersion: SUPPORTED_PASEO_VERSION, connectTimeoutMs: timeoutMs,
           reconnect: { enabled: false }, logger: silentLogger,
+          webSocketFactory: createStatusWebSocket,
           ...(password === undefined ? {} : { password }),
         });
         await beforeDeadline(client.connect(), deadline);

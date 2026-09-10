@@ -11,9 +11,21 @@ importers:
       '@types/node':
         specifier: 24.13.4
         version: 24.13.4
+      '@worknaru/cli':
+        specifier: workspace:*
+        version: link:apps/cli
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+
+  apps/cli:
+    dependencies:
+      '@worknaru/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@worknaru/paseo-adapter':
+        specifier: workspace:*
+        version: link:../../packages/paseo-adapter
 
   apps/paseo-dev:
     dependencies:
@@ -23,9 +35,18 @@ importers:
       '@getpaseo/client':
         specifier: 0.8.0-beta.1
         version: 0.8.0-beta.1
+      '@worknaru/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@worknaru/paseo-adapter':
         specifier: workspace:*
         version: link:../../packages/paseo-adapter
+
+  packages/core:
+    dependencies:
+      '@worknaru/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/paseo-adapter:
     dependencies:
