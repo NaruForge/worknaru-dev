@@ -1,0 +1,65 @@
+name: 작업
+description: 승인된 범위에서 하나의 검증 가능한 결과를 만드는 작업을 기록합니다.
+labels: [work]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        사용자나 담당자가 승인한 범위를 기록합니다. 이 Form 선택 자체는 승인이 아닙니다.
+        아직 승인되지 않은 제안은 아이디어 Form을 사용하세요. 진행 상태는 Project의 Status에서 관리합니다.
+  - type: textarea
+    id: context
+    attributes:
+      label: 문제와 배경
+      description: 이 작업이 필요한 이유를 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 원하는 결과
+      description: 이번 작업으로 만들거나 확인할 하나의 결과를 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: approval
+    attributes:
+      label: 승인 근거
+      description: 사용자 지시나 담당자의 승인 범위를 요약하고 가능한 근거 링크를 남겨 주세요. 비공개 대화 원문은 게시하지 않습니다.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위
+      description: 이번 작업에 포함되는 변경이나 검증 대상을 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: 제외 범위
+      description: 이번 작업에 포함하지 않는 것을 적어 주세요. 없으면 없음으로 표시합니다.
+    validations:
+      required: true
+  - type: textarea
+    id: completion
+    attributes:
+      label: 검증 가능한 완료 조건
+      description: 완료를 판단할 관찰 가능한 결과와 확인 방법을 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies_risks
+    attributes:
+      label: 의존성과 위험
+      description: 전제와 외부 제약을 적어 주세요. 없음과 미확인을 구분합니다. 이슈 간 선행 관계는 생성 후 Relationships에 설정합니다.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 관련 근거
+      description: 관련 Issue, ADR, PR, 문서나 조사 결과의 링크를 적어 주세요. 없으면 없음으로 표시합니다.
+    validations:
+      required: true
