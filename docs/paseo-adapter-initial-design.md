@@ -109,7 +109,7 @@ Paseo SDK는 요청 접수와 작업 결과 대기를 구분하고, 시간 초�
 
 ## SDK 대응 경로와 확인이 필요한 부분
 
-다음은 2026-09-10에 열람한 공개 문서의 대응 후보다. 개발 검증 환경은 CLI·SDK·Daemon 모두 `0.8.0-beta.1`을 사용한다. 기능별 연동 검증은 별도로 수행하며, 메서드 존재만으로 성공을 판단하지 않는다. [SDK API 문서](https://paseo.sh/docs/sdk/reference.md)
+다음은 2026-09-10에 열람한 공개 문서의 대응 후보다. 현재 개발 검증 환경은 CLI·SDK·Daemon 모두 정식 버전 `0.8.0`을 사용한다. 버전 전환 시 검증한 상태 조회 범위는 [Issue #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 둔다. 아래 다른 기능의 연동 검증은 별도로 수행하며, 메서드 존재만으로 성공을 판단하지 않는다. [SDK API 문서](https://paseo.sh/docs/sdk/reference.md)
 
 | 기능 | 문서에서 확인한 경로 또는 추가 확인 사항 |
 | --- | --- |

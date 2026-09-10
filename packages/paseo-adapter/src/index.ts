@@ -6,7 +6,7 @@ import type {
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
 import { createStatusWebSocket } from './status-websocket.js';
 
-export const SUPPORTED_PASEO_VERSION = '0.8.0-beta.1';
+export const SUPPORTED_PASEO_VERSION = '0.8.0';
 
 export interface PaseoAdapterOptions {
   readonly targetId: string;

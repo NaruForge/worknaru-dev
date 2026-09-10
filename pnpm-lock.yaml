@@ -5,9 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@getpaseo/relay@0.8.0-beta.1':
-    hash: 1e989718d7d70914ec9e314b72fc7053ff207fa0926be15910e38bef64ccd5fa
-    path: packages/paseo-adapter/patches/@getpaseo__relay@0.8.0-beta.1.patch
+  '@getpaseo/relay@0.8.0':
+    hash: 06e02bb7abadb2db6fa4f235f442bd0475a12cab8d50c122ef6d52ab09005b02
+    path: packages/paseo-adapter/patches/@getpaseo__relay@0.8.0.patch
 
 importers:
 
@@ -35,11 +35,11 @@ importers:
   apps/paseo-dev:
     dependencies:
       '@getpaseo/cli':
-        specifier: 0.8.0-beta.1
-        version: 0.8.0-beta.1(react@19.1.9)
+        specifier: 0.8.0
+        version: 0.8.0(react@19.1.9)
       '@getpaseo/client':
-        specifier: 0.8.0-beta.1
-        version: 0.8.0-beta.1
+        specifier: 0.8.0
+        version: 0.8.0
       '@worknaru/cli':
         specifier: workspace:*
         version: link:../cli
@@ -69,8 +69,8 @@ importers:
   packages/paseo-adapter:
     dependencies:
       '@getpaseo/client':
-        specifier: 0.8.0-beta.1
-        version: 0.8.0-beta.1
+        specifier: 0.8.0
+        version: 0.8.0
       '@worknaru/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -350,21 +350,21 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@getpaseo/cli@0.8.0-beta.1':
-    resolution: {integrity: sha512-3/wiJKw6hZykc0IYtQXZhyln4cSHWKpPxuJuBw2mX2su2iPxLhpeUzNkIUkMZbJCzFLLXw+5/A5wseAd+rSKhw==}
+  '@getpaseo/cli@0.8.0':
+    resolution: {integrity: sha512-duiAhPc0LVWTdYlKHxEY0CFjDnK0tQOCms+PRwvJrVT4dsmQAnXyr8I9M7tQi5x/6C3njaAaG0ypE+7AnFw/Bw==}
     hasBin: true
 
-  '@getpaseo/client@0.8.0-beta.1':
-    resolution: {integrity: sha512-+JHqeg4eCWYa3TqMNN1FLaDWpoXM6PrPArOpzfV/Qm+2Mhw/bA07QS+zjMzDpVz7QZ+z6eN/96qAbQ1eFOD6Zg==}
+  '@getpaseo/client@0.8.0':
+    resolution: {integrity: sha512-sX0PPR47a9MoK4cUpZXo4vrZLSfP39/l9jlxYslQTGTiXE/9g6EDr6XlRQZVlTkgZZ47xGRVJZ/wxhE37nLWkw==}
 
-  '@getpaseo/highlight@0.8.0-beta.1':
-    resolution: {integrity: sha512-HmAihGyB4aLitkv/PP6AiGCAfpkP5SxiYrclZl8uXMmS8cOkRpq6ch58q7Y23c8bVpKIIvrAQu5zVFv+KawpPw==}
+  '@getpaseo/highlight@0.8.0':
+    resolution: {integrity: sha512-4ix5Oy830QU2WMgbx4T68lJT3PSm+iVqCZcP5dBRDV2jmW2ntfvOajQYvDuyRtUWqdNYk1dsnnngJUZucA1Eag==}
 
-  '@getpaseo/plugin@0.8.0-beta.1':
-    resolution: {integrity: sha512-7/4cAfd3+GNB8rEYytFbp+Z8x/QfXlLIGMa8pcdn2YgrQUuO8Hjc3L9CGan3IoAYva/ttQn9biCOvvVWcDmMoQ==}
+  '@getpaseo/plugin@0.8.0':
+    resolution: {integrity: sha512-VWdqMuYhv6oVrbNr+phDkSkMd4qfjb55UkFB0S4u4sHgo66UtJwvn8U9bwp1zU5wktW2LdXEa4OpcEGFDSkdVw==}
     peerDependencies:
-      '@getpaseo/client': 0.8.0-beta.1
-      '@getpaseo/protocol': 0.8.0-beta.1
+      '@getpaseo/client': 0.8.0
+      '@getpaseo/protocol': 0.8.0
       react: ~19.1.0
       react-native: '>=0.81.5'
       zod: ^4.4.3
@@ -372,14 +372,14 @@ packages:
       react-native:
         optional: true
 
-  '@getpaseo/protocol@0.8.0-beta.1':
-    resolution: {integrity: sha512-7GQfNTe8cGgWPQDvY4F6CwEe75HdtPB7d+XQ+SZYRWM4IGkQhgXPM6hGFaDqut9LAweKNYllttA2FaDAJmmo+g==}
+  '@getpaseo/protocol@0.8.0':
+    resolution: {integrity: sha512-SytigneLVG61useJ9yU400WFVWlqluwwUeWF/giRs0+ZOmgMSBZvYduqPAJdTRMAvJlrj62T/uVBH8gzMuHYLw==}
 
-  '@getpaseo/relay@0.8.0-beta.1':
-    resolution: {integrity: sha512-aZGmgbQEU/DgPCW/zOdKce//nWiuMU1N5ikMG1q0z2acRQNPwdAok9fQO3iuNIcTENF/32azpWqgsr/qeMp5gA==}
+  '@getpaseo/relay@0.8.0':
+    resolution: {integrity: sha512-YBCMAI3WOx7HgEToryyB94Mnugb7o2opuxN6ZycVK+K2wk2T25aV0sG3enzlKVM1oyiFVoJxJrAZyGDWfWpxpQ==}
 
-  '@getpaseo/server@0.8.0-beta.1':
-    resolution: {integrity: sha512-xwxM5EisWIr6dtU0Ot1F9EatcZ4wTpnmifwF6IyOCmb8AgXiyLnGg4bbKw89yt9OHiqslitZVvM+VHk5CoeTwg==}
+  '@getpaseo/server@0.8.0':
+    resolution: {integrity: sha512-Ij8SshaGmX3wCOiF3h14sZTwpTL7PVpo2OhJyixBLEmjvEm1fUycVwtMMCCE1DYqG9mpu3PTqU8CUGNtLpJvQg==}
 
   '@hono/node-server@1.19.17':
     resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
@@ -1559,12 +1559,12 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
-  '@getpaseo/cli@0.8.0-beta.1(react@19.1.9)':
+  '@getpaseo/cli@0.8.0(react@19.1.9)':
     dependencies:
       '@clack/prompts': 1.8.0
-      '@getpaseo/client': 0.8.0-beta.1
-      '@getpaseo/protocol': 0.8.0-beta.1
-      '@getpaseo/server': 0.8.0-beta.1(react@19.1.9)
+      '@getpaseo/client': 0.8.0
+      '@getpaseo/protocol': 0.8.0
+      '@getpaseo/server': 0.8.0(react@19.1.9)
       chalk: 5.6.2
       commander: 12.1.0
       mime-types: 2.1.35
@@ -1583,16 +1583,16 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@getpaseo/client@0.8.0-beta.1':
+  '@getpaseo/client@0.8.0':
     dependencies:
-      '@getpaseo/protocol': 0.8.0-beta.1
-      '@getpaseo/relay': 0.8.0-beta.1(patch_hash=1e989718d7d70914ec9e314b72fc7053ff207fa0926be15910e38bef64ccd5fa)
+      '@getpaseo/protocol': 0.8.0
+      '@getpaseo/relay': 0.8.0(patch_hash=06e02bb7abadb2db6fa4f235f442bd0475a12cab8d50c122ef6d52ab09005b02)
       zod: 4.6.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@getpaseo/highlight@0.8.0-beta.1':
+  '@getpaseo/highlight@0.8.0':
     dependencies:
       '@codemirror/language': 6.12.4
       '@codemirror/legacy-modes': 6.5.4
@@ -1614,21 +1614,21 @@ snapshots:
       '@lezer/yaml': 1.0.4
       lezer-elixir: 1.1.3
 
-  '@getpaseo/plugin@0.8.0-beta.1(@getpaseo/client@0.8.0-beta.1)(@getpaseo/protocol@0.8.0-beta.1)(react@19.1.9)(zod@4.6.1)':
+  '@getpaseo/plugin@0.8.0(@getpaseo/client@0.8.0)(@getpaseo/protocol@0.8.0)(react@19.1.9)(zod@4.6.1)':
     dependencies:
       '@agentclientprotocol/sdk': 1.4.0(zod@4.6.1)
-      '@getpaseo/client': 0.8.0-beta.1
-      '@getpaseo/protocol': 0.8.0-beta.1
+      '@getpaseo/client': 0.8.0
+      '@getpaseo/protocol': 0.8.0
       react: 19.1.9
       use-sync-external-store: 1.7.0(react@19.1.9)
       zod: 4.6.1
 
-  '@getpaseo/protocol@0.8.0-beta.1':
+  '@getpaseo/protocol@0.8.0':
     dependencies:
       semver: 7.8.5
       zod: 4.6.1
 
-  '@getpaseo/relay@0.8.0-beta.1(patch_hash=1e989718d7d70914ec9e314b72fc7053ff207fa0926be15910e38bef64ccd5fa)':
+  '@getpaseo/relay@0.8.0(patch_hash=06e02bb7abadb2db6fa4f235f442bd0475a12cab8d50c122ef6d52ab09005b02)':
     dependencies:
       base64-js: 1.5.1
       tweetnacl: 1.0.3
@@ -1637,16 +1637,16 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@getpaseo/server@0.8.0-beta.1(react@19.1.9)':
+  '@getpaseo/server@0.8.0(react@19.1.9)':
     dependencies:
       '@agentclientprotocol/sdk': 0.17.1(zod@4.6.1)
       '@anthropic-ai/claude-agent-sdk': 0.3.246(@anthropic-ai/sdk@0.104.2(zod@4.6.1))(@modelcontextprotocol/sdk@1.29.0(zod@4.6.1))(zod@4.6.1)
       '@anthropic-ai/sdk': 0.104.2(zod@4.6.1)
-      '@getpaseo/client': 0.8.0-beta.1
-      '@getpaseo/highlight': 0.8.0-beta.1
-      '@getpaseo/plugin': 0.8.0-beta.1(@getpaseo/client@0.8.0-beta.1)(@getpaseo/protocol@0.8.0-beta.1)(react@19.1.9)(zod@4.6.1)
-      '@getpaseo/protocol': 0.8.0-beta.1
-      '@getpaseo/relay': 0.8.0-beta.1(patch_hash=1e989718d7d70914ec9e314b72fc7053ff207fa0926be15910e38bef64ccd5fa)
+      '@getpaseo/client': 0.8.0
+      '@getpaseo/highlight': 0.8.0
+      '@getpaseo/plugin': 0.8.0(@getpaseo/client@0.8.0)(@getpaseo/protocol@0.8.0)(react@19.1.9)(zod@4.6.1)
+      '@getpaseo/protocol': 0.8.0
+      '@getpaseo/relay': 0.8.0(patch_hash=06e02bb7abadb2db6fa4f235f442bd0475a12cab8d50c122ef6d52ab09005b02)
       '@isaacs/ttlcache': 2.1.5
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.6.1)
       '@opencode-ai/sdk': 1.14.46

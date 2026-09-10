@@ -39,7 +39,7 @@ if (status.outcome === 'available') {
 | `authentication_required` / `authentication_failed` | Daemon이 비밀번호 필요 또는 거절 응답을 보냄 |
 | `timeout` | 조회 예산 또는 SDK의 연결·응답 대기 제한 시간을 초과함 |
 | `target_mismatch` | handshake 또는 상태 응답의 서버 ID가 확인 대상과 다름 |
-| `unsupported_version` | 확인된 버전이 검증한 `0.8.0-beta.1`과 다르거나 버전을 확인할 수 없음 |
+| `unsupported_version` | 확인된 버전이 검증한 `0.8.0`과 다르거나 버전을 확인할 수 없음 |
 | `invalid_response` | SDK의 응답 스키마 검증 실패 또는 handshake와 상태 응답의 버전 불일치 |
 | `request_failed` | Daemon이 상태 요청에 RPC 오류를 반환함 |
 | `cleanup_failed` | 조회용 SDK 클라이언트 정리 중 오류가 발생함 |
@@ -51,14 +51,16 @@ if (status.outcome === 'available') {
 
 ## 구현과 검증
 
-`@getpaseo/client`는 `0.8.0-beta.1`로 고정했다. 이 버전의 공개 facade에는 Daemon 식별 정보와 상태 API가 없어 내부 `DaemonClient.getLastServerInfoMessage()`와 `getDaemonStatus()`를 사용한다. SDK 버전 변경 시 내부 경로와 오류 변환을 다시 검증해야 한다. Adapter는 Paseo CLI·서버 패키지·로컬 프로세스 조회에 의존하지 않는다.
+`@getpaseo/client`는 정식 버전 `0.8.0`으로 고정했다. 이 버전의 공개 facade에는 Daemon 식별 정보와 상태 API가 없어 내부 `DaemonClient.getLastServerInfoMessage()`와 `getDaemonStatus()`를 사용한다. SDK 버전 변경 시 내부 경로와 오류 변환을 다시 검증해야 한다. Adapter는 Paseo CLI·서버 패키지·로컬 프로세스 조회에 의존하지 않는다.
 
 같은 SDK의 연결 시간 초과 처리에서 사용하는 WebSocket 종료 코드 `1001`은 Node의 표준 WebSocket이 거부한다. [조회용 WebSocket factory](src/status-websocket.ts)는 해당 코드만 `1000`으로 바꿔 연결이 남는 문제를 막는다. 조회용 소켓에만 적용하며 전역 WebSocket이나 SDK 파일을 수정하지 않는다. SDK 자체 연결 타이머가 먼저 만료되는 경로도 별도 회귀 테스트로 검사한다. 이 수정의 근거는 [Issue #4](https://github.com/NaruForge/worknaru-dev/issues/4)에 연결한다.
 
-고정된 `@getpaseo/relay@0.8.0-beta.1`의 `./e2ee` export는 브라우저 빌드 시 배포에 없는 `src/e2ee.ts`를 가리킨다. [pnpm 패치](patches/@getpaseo__relay@0.8.0-beta.1.patch)는 이 경로의 `import`·`default`만 실제 배포된 `dist/e2ee.js`로 변경한다. Node 경로와 라이브러리 코드는 유지한다. [pnpm workspace](../../pnpm-workspace.yaml)와 lockfile이 패치를 적용하므로 브라우저 앱에 Paseo 전용 경로 alias가 필요하지 않다. 버전 업데이트 시 이 패치의 필요성을 다시 확인한다.
+고정된 `@getpaseo/relay@0.8.0`의 `./e2ee` export는 브라우저 빌드 시 배포에 없는 `src/e2ee.ts`를 가리킨다. [pnpm 패치](patches/@getpaseo__relay@0.8.0.patch)는 이 경로의 `import`·`default`만 실제 배포된 `dist/e2ee.js`로 변경한다. Node 경로와 라이브러리 코드는 유지한다. [pnpm workspace](../../pnpm-workspace.yaml)와 lockfile이 패치를 적용하므로 브라우저 앱에 Paseo 전용 경로 alias가 필요하지 않다. 버전 업데이트 시 이 패치의 필요성을 다시 확인한다.
 
 저장소 루트의 `pnpm test`는 TypeScript 빌드 후 실제 SDK와 loopback WebSocket 응답 서버로 오류 변환·조회 전용 RPC·연결 정리를 검증한다. `pnpm paseo:verify`는 전용 Paseo Daemon을 사용해 정상 조회·ID 불일치·종료 후 연결 실패와 조회 전후 프로세스·세션 유지를 확인한다. [개발 환경 안내](../../apps/paseo-dev/README.md)를 참고한다.
 
 작업 범위와 검증 근거는 [Issue #2](https://github.com/NaruForge/worknaru-dev/issues/2)에서 관리한다.
 
 브라우저 적용과 실제 Web UI 조회·오류·시간 초과·소켓 정리 검증은 [Issue #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 연결한다. 실행 방법은 [Web UI 안내](../../apps/web/README.md)를 참고한다.
+
+정식 버전 전환과 위 두 호환 대응의 유지 근거·재검증은 [Issue #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 연결한다.

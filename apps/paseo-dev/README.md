@@ -13,7 +13,7 @@ pnpm paseo:verify
 
 `paseo:verify`는 필요한 패키지를 빌드하고 전용 Daemon을 시작해 검증한 뒤 종료한다. 이미 설정된 전용 대상에 상태 조회만 하려면 `pnpm paseo:status`를 실행한다. 이 명령은 Daemon을 자동 시작하지 않는다. `outcome: available`이면 종료 코드 0, 조회 실패나 설정 누락이면 1을 반환한다. 따라서 검증 종료 직후에는 `connection_failed`가 예상 결과다.
 
-CLI·SDK·Daemon은 `0.8.0-beta.1`로 고정했다. 현재 PC에서 조사한 Paseo와 버전을 맞춘 개발 검증용 선택이며, 이후 버전 변경 시 이 검증을 다시 수행한다. 프로젝트의 npm 패키지를 사용하므로 개인용 Paseo Desktop 설치나 전역 `paseo` 명령이 필요하지 않다. `esbuild`와 `node-pty`의 설치 스크립트는 pnpm workspace 설정에서 허용한다.
+CLI·SDK·Daemon은 정식 버전 `0.8.0`으로 고정했다. 베타에서 정식 버전으로 전환한 근거와 연동 검증은 [Issue #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 둔다. 이후 버전 변경 시 이 검증을 다시 수행한다. 프로젝트의 npm 패키지를 사용하므로 개인용 Paseo Desktop 설치나 전역 `paseo` 명령이 필요하지 않다. `esbuild`와 `node-pty`의 설치 스크립트는 pnpm workspace 설정에서 허용한다.
 
 ## Web UI 수동 테스트
 

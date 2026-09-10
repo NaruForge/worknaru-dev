@@ -10,10 +10,16 @@ AI Agent와 사용자가 Worknaru Core API를 호출하는 프로그램이다. �
 pnpm install --frozen-lockfile --store-dir .pnpm-store
 pnpm build
 pnpm exec worknaru --help
-pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id srv_example --json
 ```
 
-`srv_example`을 별도로 확인한 대상의 실제 서버 ID로 바꾼다. 개발 검증 환경에서는 `.local/paseo-dev/server-id`가 그 값을 보관한다. CLI가 접속 응답을 보고 예상 ID를 자동 등록하지는 않는다.
+상태 조회에는 실행 중인 Daemon이 필요하다. 전용 개발 환경을 계속 켜 두려면 다른 터미널의 저장소 루트에서 `pnpm web:dev`를 실행하고 준비 완료 주소가 출력될 때까지 기다린다. 그런 다음 원래 터미널에서 전용 서버 ID를 읽어 조회한다.
+
+```powershell
+$serverId = (Get-Content -Raw .local/paseo-dev/server-id).Trim()
+pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id $serverId --json
+```
+
+다른 Daemon을 조회할 때는 주소와 예상 서버 ID를 별도로 확인해 전달한다. CLI가 접속 응답을 보고 예상 ID를 자동 등록하지는 않는다. 수동 테스트를 마치면 `web:dev` 터미널에 `stop`을 입력해 전용 Daemon을 종료한다.
 
 루트의 `pnpm --silent worknaru ...` 또는 `node apps/cli/bin/worknaru.mjs ...`로도 실행할 수 있다. JSON을 파싱하는 Agent는 pnpm의 스크립트 실행 로그가 섞이지 않도록 `pnpm exec worknaru ... --json`이나 직접 Node 실행을 사용한다. 코드 변경 후에는 다시 빌드한다. 현재 workspace 내부에서 실행하며 전역 설치는 필요하지 않다.
 

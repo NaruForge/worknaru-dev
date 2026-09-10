@@ -14,7 +14,7 @@ export const root = fileURLToPath(new URL('../../', import.meta.url));
 export const dataHome = path.join(root, '.local', 'paseo-dev');
 export const listen = '127.0.0.1:6868';
 export const endpoint = `ws://${listen}/ws`;
-export const version = '0.8.0-beta.1';
+export const version = '0.8.0';
 const logger = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(key => [key, () => {}]));
 const require = createRequire(import.meta.url);
 const cliPackage = require.resolve('@getpaseo/cli/package.json');

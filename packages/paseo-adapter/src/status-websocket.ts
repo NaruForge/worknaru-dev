@@ -5,7 +5,7 @@ import type { WebSocketFactory } from '@getpaseo/client/internal/daemon-client-t
 export const createStatusWebSocket: WebSocketFactory = (url, options) => {
   const socket = defaultWebSocketFactory(url, options);
   const close = socket.close.bind(socket);
-  // Paseo 0.8.0-beta.1 disposes a timed-out transport with 1001, which Node's
+  // Paseo 0.8.0 disposes a timed-out transport with 1001, which Node's
   // browser-compatible WebSocket rejects. The SDK swallows that exception and
   // drops the transport reference, leaving the socket alive. Use an allowed
   // normal close for this probe's socket; never change the global WebSocket.
