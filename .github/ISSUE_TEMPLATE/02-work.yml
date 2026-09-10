@@ -1,4 +1,4 @@
-name: 작업
+name: 작업 등록
 description: 승인된 범위에서 하나의 검증 가능한 결과를 만드는 작업을 기록합니다.
 labels: [work]
 body:
