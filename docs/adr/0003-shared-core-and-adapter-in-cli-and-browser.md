@@ -3,9 +3,9 @@
 - 날짜: 2026-09-10
 - 상태: Accepted
 - 승인 근거: CLI와 Web UI가 Core·Adapter를 공통으로 사용하고 브라우저에서 Paseo Daemon에 연결하는 구조 및 호환 작업을 설명한 대화에서, 사용자가 “좋습니다. web ui를 고려한 아키텍쳐 문서 업데이트가 필요하겠네요”라고 요청했다.
-- 관련 Work Item: [Web UI를 고려한 아키텍처 문서 업데이트 #7](https://github.com/NaruForge/worknaru-dev/issues/7).
+- 관련 Work Item: [Web UI를 고려한 아키텍처 문서 업데이트 #7](https://github.com/NaruForge/worknaru-dev/issues/7), [첫 웹 상태 조회 구현 #9](https://github.com/NaruForge/worknaru-dev/issues/9).
 - 관련 결정: [ADR 0001](0001-runtime-interface-and-paseo-adapter.md)의 Runtime 의존 경계를 유지하며 앱의 실행 위치를 정한다.
-- 현재 구현 링크: [Core](../../packages/core/src/index.ts), [Runtime](../../packages/runtime/src/index.ts), [Paseo Adapter](../../packages/paseo-adapter/src/index.ts), [CLI 시작 코드](../../apps/cli/src/bootstrap.ts). Web UI와 브라우저 호환 코드는 후속 구현 범위다.
+- 현재 구현 링크: [Core](../../packages/core/src/index.ts), [Runtime](../../packages/runtime/src/index.ts), [Paseo Adapter](../../packages/paseo-adapter/src/index.ts), [CLI 시작 코드](../../apps/cli/src/bootstrap.ts), [웹 시작 코드](../../apps/web/src/bootstrap.ts).
 
 ## Context
 
@@ -13,7 +13,7 @@
 
 Web UI를 추가하려면 Core·Adapter를 웹 서버에서 실행하고 화면이 HTTP API로 호출할지, 브라우저 안에서 실행하고 Daemon에 직접 연결할지 실행 위치를 정해야 한다. 기존 Core·Runtime 경계는 특정 실행 위치를 요구하지 않는다.
 
-Paseo 자체도 CLI와 웹이 같은 Client를 사용하고 환경에 맞는 WebSocket 구현을 선택한다. 이 구조를 활용하면 Worknaru의 공통 API와 실행 기반 연동을 유지하면서 웹 화면을 추가할 수 있다. 현재 Adapter와 고정한 의존 패키지에는 브라우저 적용을 위한 조정·검증이 남아 있다.
+Paseo 자체도 CLI와 웹이 같은 Client를 사용하고 환경에 맞는 WebSocket 구현을 선택한다. 이 구조를 활용하면 Worknaru의 공통 API와 실행 기반 연동을 유지하면서 웹 화면을 추가할 수 있다. 결정 당시 Adapter와 고정한 의존 패키지에는 브라우저 적용을 위한 조정·검증이 남아 있었다.
 
 ## Decision
 

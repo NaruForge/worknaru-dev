@@ -7,7 +7,8 @@
     "build": "pnpm -r --if-present build",
     "test": "pnpm build && pnpm -r --if-present test",
     "paseo:verify": "pnpm build && pnpm --filter @worknaru/paseo-dev verify",
-    "paseo:status": "pnpm build && pnpm --filter @worknaru/paseo-dev status"
+    "paseo:status": "pnpm build && pnpm --filter @worknaru/paseo-dev status",
+    "web:dev": "pnpm build && pnpm --filter @worknaru/paseo-dev web"
   },
   "devDependencies": {
     "@worknaru/cli": "workspace:*",

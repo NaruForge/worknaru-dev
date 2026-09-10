@@ -2,7 +2,7 @@
 
 Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것들을 하나의 Workspace에서 조합·실행할 수 있게 하는 플랫폼이다. 사용자가 플랫폼 안에서 AI Agent와 함께 Module을 개발하는 것이 핵심 목표다.
 
-이 문서는 현재 코드의 구조와 Web UI를 추가할 때 따를 실행 구조를 설명한다. 현재 구현은 전용 CLI에서 실행 기반의 상태를 확인하는 첫 기능이다. Web UI는 같은 Core와 Paseo Adapter를 브라우저에서 사용하는 방향이며, 웹 앱과 브라우저 호환 작업은 아직 구현하지 않았다.
+이 문서는 현재 코드의 구성요소와 실행 구조를 설명한다. CLI와 Web UI는 같은 Core와 Paseo Adapter를 사용해 전용 Daemon의 상태를 확인한다. 웹 앱은 브라우저 안에서 실행하며, 현재 제품 기능은 일회성 상태 조회에 한정한다.
 
 의존 경계의 결정 근거는 [ADR 0001](adr/0001-runtime-interface-and-paseo-adapter.md), CLI·브라우저의 실행 구조를 선택한 근거는 [ADR 0003](adr/0003-shared-core-and-adapter-in-cli-and-browser.md)에 둔다. 작업 범위와 검증 증거는 관련 GitHub Issue에서 관리한다.
 
@@ -20,7 +20,7 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 
 ## 구성과 연결
 
-아래는 현재 CLI와 앞으로 추가할 Web UI를 함께 나타낸 구조다. 두 앱은 같은 라이브러리 코드를 사용하고, 각각의 실행 환경 안에서 Core·Adapter·Paseo Client 인스턴스를 만든다.
+아래는 CLI와 Web UI의 상태 조회 구조다. 두 앱은 같은 라이브러리 코드를 사용하고, 각각의 실행 환경 안에서 Core·Adapter·Paseo Client 인스턴스를 만든다.
 
 ```mermaid
 flowchart LR
@@ -30,7 +30,7 @@ flowchart LR
         cliAdapter --> cliClient["Paseo Client"]
     end
 
-    subgraph browser["브라우저 · Web UI 추가 시"]
+    subgraph browser["브라우저 · Web UI"]
         web["Web UI 화면 처리"] -->|Core API| webCore["Worknaru Core"]
         webCore -->|Runtime 호출| webAdapter["Paseo Adapter"]
         webAdapter --> webClient["Paseo Client"]
@@ -51,7 +51,7 @@ Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에
 | 구성요소 | 책임과 구현 범위 | 코드·사용 안내 |
 | --- | --- | --- |
 | CLI | 명령·옵션·환경 변수 해석, Core API 호출, 일반 텍스트·JSON 출력과 종료 코드 결정 | [apps/cli](../apps/cli/README.md) |
-| Web UI | 사용자 입력·화면 표시, 접속 설정 전달과 Core API 호출. 앞으로 추가할 앱 | 실제 구현 시 `apps/` 아래에 배치 |
+| Web UI | 상태 확인 버튼·결과 표시, 개발용 접속 설정 전달과 Core API 호출 | [apps/web](../apps/web/README.md) |
 | Core | 앱이 호출할 Worknaru API 제공. 현재 `getDaemonStatus()`를 주입된 Runtime으로 전달 | [packages/core](../packages/core/README.md) |
 | Runtime | 실행 기반에 요청할 기능과 Worknaru가 이해할 결과·오류 타입 정의 | [packages/runtime](../packages/runtime/README.md) |
 | Paseo Adapter | 지정한 Daemon에 접속해 식별자·버전·상태를 확인하고, SDK 응답·오류를 Runtime 계약으로 변환 | [packages/paseo-adapter](../packages/paseo-adapter/README.md) |
@@ -70,13 +70,13 @@ Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제
 
 CLI의 주 사용자는 AI Agent이며 사람이 직접 실행할 수도 있다. CLI를 호출하는 Agent와 Daemon이 관리하는 Agent 세션은 서로 다른 개념이다. 현재 상태 조회 명령은 호출자를 위한 새 Agent 세션을 만들지 않는다.
 
-Web UI도 앱 시작 코드에서 Adapter를 생성하고 Core에 주입한다. 화면은 Core API를 호출하고 Worknaru의 결과·오류를 표시한다. 접속 주소·예상 서버 ID·인증 값은 웹 앱이 확보해 시작 코드에 전달한다. CLI의 `WORKNARU_*` 환경 변수를 브라우저에서 직접 읽는 구조는 사용하지 않으며, 웹의 설정 입력·보관 방식은 구현할 때 정한다.
+Web UI의 [시작 코드](../apps/web/src/bootstrap.ts)도 Adapter를 생성하고 Core에 주입한다. [화면 코드](../apps/web/src/main.ts)는 Core API를 호출하고 Worknaru의 결과·오류를 표시한다. 개발 실행 프로그램이 확인한 대상 ID·예상 서버 ID를 `connection.json`으로 전달하고, 브라우저는 페이지와 같은 호스트의 `/ws`로 접속한다. CLI의 환경 변수를 브라우저에서 직접 읽지 않는다. 현재 웹 앱에는 인증 입력·대상 선택·설정 저장 UI가 없다.
 
 Web UI의 HTML·JavaScript 같은 정적 파일은 Paseo Daemon 자체가 브라우저에 제공할 수 있다. 별도 정적 호스팅을 사용할 수도 있으며, 파일을 제공하는 위치와 Core·Adapter가 실행되는 위치는 구분한다. 어느 경우든 전달된 코드의 Core 호출과 Daemon 통신은 브라우저 안에서 수행하므로 이 경로에 별도 Worknaru API 서버를 필수 구성요소로 두지 않는다.
 
-예를 들어 Web UI·Core·Adapter·Paseo Client를 포함한 브라우저용 빌드 결과물을 `dist`에 만들고, Paseo Daemon이 그 디렉터리를 제공하도록 구성할 수 있다. 브라우저는 Daemon에서 파일을 받아 실행한 뒤, 그 안의 Client로 같은 Daemon에 WebSocket 연결을 맺는다. 현재 고정한 Paseo 버전은 웹 UI를 활성화한 상태에서 `PASEO_WEB_UI_DIST_DIR` 또는 `features.webUi.distDir`로 제공할 디렉터리를 지정할 수 있다. [Daemon 웹 UI 제공 안내](https://paseo.sh/docs/web-ui.md), [디렉터리 설정 소스](https://github.com/getpaseo/paseo/blob/7bcf167862ce9bb040007d1469c77c00928a84c8/packages/server/src/server/config.ts)
+현재 `pnpm web:dev`는 Web UI·Core·Adapter·Paseo Client를 포함한 브라우저용 빌드 결과물을 `apps/web/dist`에 만들고, 전용 Paseo Daemon이 그 디렉터리를 제공하도록 실행한다. 브라우저는 Daemon에서 파일을 받아 실행한 뒤, 그 안의 Client로 같은 Daemon에 WebSocket 연결을 맺는다. 현재 고정한 Paseo 버전은 웹 UI를 활성화한 상태에서 `PASEO_WEB_UI_DIST_DIR` 또는 `features.webUi.distDir`로 제공할 디렉터리를 지정할 수 있다. 개발 명령은 자식 환경에만 전자를 전달해 기존 Daemon 설정 파일을 보존한다. [Daemon 웹 UI 제공 안내](https://paseo.sh/docs/web-ui.md), [디렉터리 설정 소스](https://github.com/getpaseo/paseo/blob/7bcf167862ce9bb040007d1469c77c00928a84c8/packages/server/src/server/config.ts)
 
-이 방식도 위 구성도와 같은 실행 구조다. 커스텀 Web UI에는 접속 주소·인증·예상 서버 ID를 Core·Adapter에 전달하는 시작 구성이 필요하며, 정적 파일 제공만으로 연결 로직이 자동 구현되지는 않는다. 실제 호스팅 방식과 Daemon의 원격 접속 구성은 후속 배포 설계에서 정한다.
+정적 파일 제공과 접속 설정 전달은 별개의 책임이다. 현재는 같은 PC의 loopback 주소에서 개발용 화면을 제공한다. 원격 접속·인증과 실제 제품의 호스팅 구성은 후속 배포 설계에서 정한다.
 
 ## 상태 조회 한 번의 흐름
 
@@ -101,16 +101,15 @@ Web UI의 첫 상태 조회도 같은 Core API와 Runtime 결과를 사용한다
 
 Paseo Client는 환경에 맞는 WebSocket 연결 구현을 전달받을 수 있다. Paseo의 [CLI 연결 코드](https://github.com/getpaseo/paseo/blob/7bcf167862ce9bb040007d1469c77c00928a84c8/packages/cli/src/utils/client.ts)는 Node.js용 `ws`를 제공하고, [웹 연결 코드](https://github.com/getpaseo/paseo/blob/7bcf167862ce9bb040007d1469c77c00928a84c8/packages/app/src/runtime/websocket-factory.web.ts)는 브라우저 WebSocket을 사용하는 Client 기본 기능을 선택한다. Worknaru는 이 Client를 Adapter 안에서 재사용한다.
 
-현재 Core·Runtime의 책임과 상태 조회 계약은 유지한다. 브라우저 적용에는 다음 조정과 확인이 필요하다.
+Core·Runtime의 책임과 상태 조회 계약을 유지하면서 다음과 같이 브라우저 실행을 지원한다.
 
-| 부분 | 후속 구현·검증 범위 |
+| 부분 | 현재 적용 내용 |
 | --- | --- |
-| 환경에 의존하는 Adapter 코드 | 현재 `node:crypto`를 사용하는 연결 ID 생성을 양쪽 환경에서 동작하도록 조정한다. SDK에 전달하는 `clientType` 등 앱 식별 정보도 CLI·웹 사용에 맞게 확인한다. |
-| 의존 패키지와 빌드 | 고정한 Paseo 의존 패키지의 브라우저용 파일 경로 문제를 해결하고, Core·Adapter·Client를 브라우저용으로 함께 빌드한다. |
-| 실제 브라우저 연동 | 전용 Daemon에 대한 접속·인증·서버 ID·버전·상태 조회, 연결 실패·시간 초과와 조회용 소켓 정리를 검증한다. 웹의 제공 주소와 Daemon 접속 주소 조합도 확인한다. |
-| 기존 CLI 동작 | 공통 코드 조정 후 CLI 상태 조회와 기존 오류·종료 동작이 유지되는지 확인한다. |
+| Adapter | 연결 ID는 공통 Web Crypto로 생성하고 표준 WebSocket으로 접속한다. 앱 시작 코드가 `clientType`을 `'cli'` 또는 `'browser'`로 전달한다. |
+| 의존 패키지와 빌드 | 버전에 한정한 pnpm 패치로 Paseo relay의 브라우저 파일 경로를 조정한다. 웹 빌드는 Core·Adapter·Client를 함께 포함한다. 세부 사항은 [Adapter 안내](../packages/paseo-adapter/README.md)를 따른다. |
+| 검증 경계 | Windows의 브라우저에서 전용 Daemon의 정상 조회·종료 후 실패를 확인한다. 인증 오류·대상 불일치·시간 초과는 loopback 응답 서버로 검증한다. 기존 CLI 동작은 공통 테스트와 전용 Daemon 검증으로 확인한다. |
 
-Web UI와 실제 브라우저 연동은 아직 구현·검증하지 않았다. 브라우저용 빌드 성공만으로 실행 호환성이 검증되었다고 판단하지 않는다. 현재 확인한 제약과 조사 근거는 [Web UI 아키텍처 작업 #7](https://github.com/NaruForge/worknaru-dev/issues/7)에 연결한다.
+검증한 범위는 현재 상태 조회 기능이다. 다른 브라우저·원격 배포·로그인·지속 연결의 호환성을 포괄적으로 보장하는 것은 아니다. 설계 조사 근거는 [아키텍처 작업 #7](https://github.com/NaruForge/worknaru-dev/issues/7), 구현과 실제 실행 검증은 [웹 상태 조회 #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 연결한다.
 
 ## 실행 환경과 데이터 경계
 
@@ -122,18 +121,21 @@ Worknaru 전용 Paseo는 현재 PC의 개인용 Paseo와 실행 인스턴스, Da
 | --- | --- |
 | Git 저장소 | 소스, 문서, 패키지 의존성과 개발 환경 재현 절차 |
 | CLI 프로세스 | 호출에 전달된 설정과 조회 중인 클라이언트·결과. Core와 Adapter에 별도 업무 상태 저장소는 없음 |
+| 브라우저 | 내려받은 웹 코드·대상 설정과 조회 중인 클라이언트·화면 결과. 업무 데이터 저장·동기화 기능은 없음 |
 | 전용 Daemon 데이터 디렉터리 | Daemon 식별 정보, 설정·로그 등 실행 데이터. 개발 환경의 `.local/` 아래에 두며 Git 추적에서 제외 |
 | 기존 사용자 환경 | 공유하여 사용할 수 있는 Provider 설정과 인증 정보 |
 
 구체적인 경로·버전·접속 주소와 실행 절차는 [Paseo 개발 환경 안내](../apps/paseo-dev/README.md)에서 관리한다. Git 커밋이나 태그로 보존하는 코드와 Daemon의 실행 데이터는 보존 범위가 다르다.
 
-Web UI를 추가하면 브라우저는 화면과 클라이언트 연결을 담당하고, Provider 실행·파일 접근·Agent 세션 관리는 접속 대상 Daemon 쪽에서 이루어진다. 다른 기기에서 Web UI를 여는 경우에도 작업 디렉터리는 대상 Daemon의 파일 시스템을 기준으로 해석한다. 브라우저 탭이나 연결을 닫는 동작이 Daemon의 Agent 작업을 종료하는 의미가 되지 않도록 후속 세션 기능을 설계한다.
+브라우저는 화면과 클라이언트 연결을 담당하고, Provider 실행·파일 접근·Agent 세션 관리는 접속 대상 Daemon 쪽에서 이루어진다. 이후 다른 기기에서 Web UI를 여는 경우에도 작업 디렉터리는 대상 Daemon의 파일 시스템을 기준으로 해석한다. 브라우저 탭이나 연결을 닫는 동작이 Daemon의 Agent 작업을 종료하는 의미가 되지 않도록 후속 세션 기능을 설계한다.
 
 ## 개발 검증 도구의 위치
 
 [apps/paseo-dev](../apps/paseo-dev/README.md)는 개발자가 전용 Daemon과 제품 코드의 연결을 확인하는 검증 프로그램이다. `pnpm paseo:verify`는 자신이 시작한 전용 Daemon을 대상으로 SDK·Adapter·실제 Worknaru CLI를 확인하고, 마지막에 그 Daemon을 종료한다.
 
 이 도구는 비교 기준을 얻고 테스트 환경을 제어하기 위해 SDK와 Daemon 시작·종료 기능을 직접 사용한다. 제품 사용자의 상태 조회 경로는 위의 CLI → Core → Adapter 흐름을 따른다. `pnpm paseo:status`는 Adapter를 직접 확인하는 개발용 조회 명령이다.
+
+`pnpm web:dev`는 같은 전용 환경에서 웹 파일 제공을 켜고 수동 테스트가 끝날 때까지 실행을 유지한다. 브라우저의 상태 조회는 Web UI → Core → Adapter 흐름을 따른다. 두 개발 명령의 Daemon 생성·소유권 확인·정리는 [공통 실행 코드](../apps/paseo-dev/daemon.mjs)에 모은다.
 
 검증 코드는 [CLI 테스트](../apps/cli/test/cli.test.mjs), [Adapter 테스트](../packages/paseo-adapter/test/status.test.mjs), [실제 Daemon 연동 검증](../apps/paseo-dev/verify.mjs)에 있다. 검증 증거는 [전용 환경 #1](https://github.com/NaruForge/worknaru-dev/issues/1), [Runtime·Adapter #2](https://github.com/NaruForge/worknaru-dev/issues/2), [Core·CLI #4](https://github.com/NaruForge/worknaru-dev/issues/4)에 연결한다.
 

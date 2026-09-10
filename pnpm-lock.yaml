@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@getpaseo/relay@0.8.0-beta.1':
+    hash: 1e989718d7d70914ec9e314b72fc7053ff207fa0926be15910e38bef64ccd5fa
+    path: packages/paseo-adapter/patches/@getpaseo__relay@0.8.0-beta.1.patch
+
 importers:
 
   .:
@@ -41,6 +46,19 @@ importers:
       '@worknaru/paseo-adapter':
         specifier: workspace:*
         version: link:../../packages/paseo-adapter
+
+  apps/web:
+    dependencies:
+      '@worknaru/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@worknaru/paseo-adapter':
+        specifier: workspace:*
+        version: link:../../packages/paseo-adapter
+    devDependencies:
+      esbuild:
+        specifier: 0.25.12
+        version: 0.25.12
 
   packages/core:
     dependencies:
@@ -1568,7 +1586,7 @@ snapshots:
   '@getpaseo/client@0.8.0-beta.1':
     dependencies:
       '@getpaseo/protocol': 0.8.0-beta.1
-      '@getpaseo/relay': 0.8.0-beta.1
+      '@getpaseo/relay': 0.8.0-beta.1(patch_hash=1e989718d7d70914ec9e314b72fc7053ff207fa0926be15910e38bef64ccd5fa)
       zod: 4.6.1
     transitivePeerDependencies:
       - bufferutil
@@ -1610,7 +1628,7 @@ snapshots:
       semver: 7.8.5
       zod: 4.6.1
 
-  '@getpaseo/relay@0.8.0-beta.1':
+  '@getpaseo/relay@0.8.0-beta.1(patch_hash=1e989718d7d70914ec9e314b72fc7053ff207fa0926be15910e38bef64ccd5fa)':
     dependencies:
       base64-js: 1.5.1
       tweetnacl: 1.0.3
@@ -1628,7 +1646,7 @@ snapshots:
       '@getpaseo/highlight': 0.8.0-beta.1
       '@getpaseo/plugin': 0.8.0-beta.1(@getpaseo/client@0.8.0-beta.1)(@getpaseo/protocol@0.8.0-beta.1)(react@19.1.9)(zod@4.6.1)
       '@getpaseo/protocol': 0.8.0-beta.1
-      '@getpaseo/relay': 0.8.0-beta.1
+      '@getpaseo/relay': 0.8.0-beta.1(patch_hash=1e989718d7d70914ec9e314b72fc7053ff207fa0926be15910e38bef64ccd5fa)
       '@isaacs/ttlcache': 2.1.5
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.6.1)
       '@opencode-ai/sdk': 1.14.46

@@ -1,0 +1,15 @@
+diff --git a/package.json b/package.json
+index 4805058da4b327368c29f24c621fb50a6c80b572..464ab0fd8a78f886b1b9602f94ee552b0dae26d5 100644
+--- a/package.json
++++ b/package.json
+@@ -18,8 +18,8 @@
+     "./e2ee": {
+       "types": "./dist/e2ee.d.ts",
+       "node": "./dist/e2ee.js",
+-      "import": "./src/e2ee.ts",
+-      "default": "./src/e2ee.ts"
++      "import": "./dist/e2ee.js",
++      "default": "./dist/e2ee.js"
+     },
+     "./cloudflare": {
+       "types": "./dist/cloudflare-adapter.d.ts",
