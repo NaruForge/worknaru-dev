@@ -3,12 +3,14 @@
   "private": true,
   "packageManager": "pnpm@10.34.1",
   "scripts": {
+    "worknaru": "node apps/cli/bin/worknaru.mjs",
     "build": "pnpm -r --if-present build",
     "test": "pnpm build && pnpm -r --if-present test",
     "paseo:verify": "pnpm build && pnpm --filter @worknaru/paseo-dev verify",
     "paseo:status": "pnpm build && pnpm --filter @worknaru/paseo-dev status"
   },
   "devDependencies": {
+    "@worknaru/cli": "workspace:*",
     "@types/node": "24.13.4",
     "typescript": "5.9.3"
   }

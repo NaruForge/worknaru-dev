@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createPaseoRuntime } from '@worknaru/paseo-adapter';
 
-// Development probe only. Product CLI composition will go through Worknaru Core.
+// Direct adapter probe for development. Product commands use apps/cli and Core.
 try {
   const expectedServerId = (await readFile(new URL('../../.local/paseo-dev/server-id', import.meta.url), 'utf8')).trim();
   const runtime = createPaseoRuntime({

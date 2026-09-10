@@ -1,0 +1,14 @@
+{
+  "name": "@worknaru/cli",
+  "private": true,
+  "type": "module",
+  "bin": { "worknaru": "./bin/worknaru.mjs" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@worknaru/core": "workspace:*",
+    "@worknaru/paseo-adapter": "workspace:*"
+  }
+}
