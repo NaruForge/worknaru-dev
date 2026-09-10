@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type {
   DaemonInfo, DaemonStatus, Runtime, RuntimeConnectionState,
   RuntimeFailure, RuntimeFailureCode, RuntimeTarget,
@@ -13,6 +12,8 @@ export interface PaseoAdapterOptions {
   readonly targetId: string;
   readonly endpoint: string;
   readonly expectedServerId: string;
+  /** App identity sent to Paseo; connection behavior is shared between both callers. */
+  readonly clientType?: 'cli' | 'browser';
   /** Kept out of result objects and logs. Supply separately from the endpoint. */
   readonly password?: string;
   /** Total connect + status budget, in milliseconds (default 5 seconds). */
@@ -87,6 +88,8 @@ export function createPaseoRuntime(options: PaseoAdapterOptions): Runtime {
   requiredText(options.targetId, 'An explicit target ID');
   requiredText(options.endpoint, 'An explicit daemon endpoint');
   requiredText(options.expectedServerId, 'An expected server ID');
+  const clientType = options.clientType ?? 'cli';
+  if (clientType !== 'cli' && clientType !== 'browser') throw new TypeError('Unsupported client type.');
   let endpoint: URL;
   try { endpoint = new URL(options.endpoint); }
   catch { throw new TypeError('The daemon endpoint must be an absolute WebSocket URL.'); }
@@ -122,7 +125,7 @@ export function createPaseoRuntime(options: PaseoAdapterOptions): Runtime {
       });
       try {
         client = new DaemonClient({
-          url: target.endpoint, clientId: `worknaru-status-${randomUUID()}`, clientType: 'cli',
+          url: target.endpoint, clientId: `worknaru-status-${globalThis.crypto.randomUUID()}`, clientType,
           appVersion: SUPPORTED_PASEO_VERSION, connectTimeoutMs: timeoutMs,
           reconnect: { enabled: false }, logger: silentLogger,
           webSocketFactory: createStatusWebSocket,
