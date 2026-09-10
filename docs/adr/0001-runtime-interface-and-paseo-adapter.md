@@ -3,8 +3,8 @@
 - 날짜: 2026-09-10
 - 상태: Accepted
 - 승인 근거: 이 결정의 배경·결정·결과를 제안한 대화에서 사용자가 "승인함"으로 명시적으로 승인했다.
-- 관련 Work Item: 없음.
-- 구현 링크: 없음.
+- 관련 Work Item: [Daemon 상태 조회 구현 #2](https://github.com/NaruForge/worknaru-dev/issues/2).
+- 구현 링크: [Runtime 계약](../../packages/runtime/src/index.ts), [Paseo Adapter](../../packages/paseo-adapter/src/index.ts).
 
 ## Context
 

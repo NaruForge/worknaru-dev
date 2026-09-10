@@ -1,5 +1,15 @@
 {
   "name": "worknaru-dev",
   "private": true,
-  "packageManager": "pnpm@10.34.1"
+  "packageManager": "pnpm@10.34.1",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm build && pnpm -r --if-present test",
+    "paseo:verify": "pnpm build && pnpm --filter @worknaru/paseo-dev verify",
+    "paseo:status": "pnpm build && pnpm --filter @worknaru/paseo-dev status"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.4",
+    "typescript": "5.9.3"
+  }
 }
