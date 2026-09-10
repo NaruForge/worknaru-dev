@@ -2,7 +2,9 @@
 
 Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것들을 하나의 Workspace에서 조합·실행할 수 있게 하는 플랫폼이다. 사용자가 플랫폼 안에서 AI Agent와 함께 Module을 개발하는 것이 핵심 목표다.
 
-이 문서는 함께 버전 관리되는 코드의 구조를 설명한다. 현재 구현은 전용 CLI에서 실행 기반의 상태를 확인하는 첫 기능이며, 그 경로를 중심으로 구성요소와 책임을 정리한다. 장기적인 의존 경계의 결정 근거는 [ADR 0001](adr/0001-runtime-interface-and-paseo-adapter.md), 작업 범위와 검증 증거는 관련 GitHub Issue에서 관리한다.
+이 문서는 현재 코드의 구조와 Web UI를 추가할 때 따를 실행 구조를 설명한다. 현재 구현은 전용 CLI에서 실행 기반의 상태를 확인하는 첫 기능이다. Web UI는 같은 Core와 Paseo Adapter를 브라우저에서 사용하는 방향이며, 웹 앱과 브라우저 호환 작업은 아직 구현하지 않았다.
+
+의존 경계의 결정 근거는 [ADR 0001](adr/0001-runtime-interface-and-paseo-adapter.md), CLI·브라우저의 실행 구조를 선택한 근거는 [ADR 0003](adr/0003-shared-core-and-adapter-in-cli-and-browser.md)에 둔다. 작업 범위와 검증 증거는 관련 GitHub Issue에서 관리한다.
 
 ## 제품 개념과 현재 구현의 관계
 
@@ -18,46 +20,63 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 
 ## 구성과 연결
 
+아래는 현재 CLI와 앞으로 추가할 Web UI를 함께 나타낸 구조다. 두 앱은 같은 라이브러리 코드를 사용하고, 각각의 실행 환경 안에서 Core·Adapter·Paseo Client 인스턴스를 만든다.
+
 ```mermaid
 flowchart LR
-    caller["사용자 / AI Agent"] --> cli
-
-    subgraph cliProcess["Worknaru CLI 프로세스"]
-        cli["CLI 명령 처리"] -->|Core API| core["Worknaru Core"]
-        core -->|주입된 Runtime 호출| adapter["Paseo Adapter<br/>SDK 연동 · 결과 변환"]
+    subgraph cliProcess["CLI 프로세스 · 현재 구현"]
+        cli["CLI 명령 처리"] -->|Core API| cliCore["Worknaru Core"]
+        cliCore -->|Runtime 호출| cliAdapter["Paseo Adapter"]
+        cliAdapter --> cliClient["Paseo Client"]
     end
 
-    contract["Runtime 인터페이스<br/>Worknaru의 실행 계약"]
-    core -.->|타입 의존| contract
-    adapter -.->|구현| contract
-    adapter -->|WebSocket| daemon["Worknaru 전용 Paseo Daemon<br/>별도 프로세스에서 실행"]
+    subgraph browser["브라우저 · Web UI 추가 시"]
+        web["Web UI 화면 처리"] -->|Core API| webCore["Worknaru Core"]
+        webCore -->|Runtime 호출| webAdapter["Paseo Adapter"]
+        webAdapter --> webClient["Paseo Client"]
+    end
+
+    cliClient -->|WebSocket| daemon["Worknaru 전용 Paseo Daemon<br/>별도 프로세스에서 실행"]
+    webClient -->|WebSocket| daemon
 ```
 
-실선은 호출·통신 흐름이고 점선은 인터페이스에 대한 의존·구현 관계다. **Runtime은 Core와 Adapter 사이의 계약이다. 별도 서버나 추가 실행 단계가 아니다.** Core가 주입받은 Runtime의 메서드를 호출하면 현재 구성에서는 Paseo Adapter의 구현이 실행된다.
+화살표는 호출·통신 흐름이다. **Runtime은 Core와 Adapter 사이의 계약이다. 별도 서버나 추가 실행 단계가 아니다.** Core가 주입받은 Runtime의 메서드를 호출하면 현재 구성에서는 Paseo Adapter의 구현이 실행된다.
 
-CLI, Core와 Adapter는 하나의 CLI 프로세스 안에서 동작한다. 현재 Core API는 TypeScript 라이브러리 API이며 HTTP 서버가 아니다. Paseo Daemon은 CLI와 독립적으로 살아 있는 실행 서비스다.
+Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에서는 CLI 프로세스 안에서, Web UI에서는 브라우저 안에서 실행한다. Paseo Client도 Adapter가 사용하는 라이브러리이며 같은 환경 안에서 동작한다. 실제 통신 대상인 Paseo Daemon은 별도 프로세스로 실행된다.
+
+여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Module·Workspace 데이터를 앱 사이에서 공유할 저장 구조는 후속 설계 대상이다.
 
 ## 구성요소의 책임
 
-| 구성요소 | 현재 책임 | 코드·사용 안내 |
+| 구성요소 | 책임과 구현 범위 | 코드·사용 안내 |
 | --- | --- | --- |
 | CLI | 명령·옵션·환경 변수 해석, Core API 호출, 일반 텍스트·JSON 출력과 종료 코드 결정 | [apps/cli](../apps/cli/README.md) |
+| Web UI | 사용자 입력·화면 표시, 접속 설정 전달과 Core API 호출. 앞으로 추가할 앱 | 실제 구현 시 `apps/` 아래에 배치 |
 | Core | 앱이 호출할 Worknaru API 제공. 현재 `getDaemonStatus()`를 주입된 Runtime으로 전달 | [packages/core](../packages/core/README.md) |
 | Runtime | 실행 기반에 요청할 기능과 Worknaru가 이해할 결과·오류 타입 정의 | [packages/runtime](../packages/runtime/README.md) |
 | Paseo Adapter | 지정한 Daemon에 접속해 식별자·버전·상태를 확인하고, SDK 응답·오류를 Runtime 계약으로 변환 | [packages/paseo-adapter](../packages/paseo-adapter/README.md) |
+| Paseo Client | Adapter 내부에서 사용하는 Paseo SDK. Daemon 연결과 메시지 송수신 처리 | [Paseo SDK 안내](https://paseo.sh/docs/sdk.md) |
 | Paseo Daemon | 접속을 받아 상태를 제공하는 실행 서비스. Paseo가 가진 Agent 실행·세션 관리 기능은 이후 필요한 범위에서 연결 | [전용 개발 환경](../apps/paseo-dev/README.md) |
 
-Core는 구체적인 Paseo SDK나 CLI 출력 형식을 알지 못한다. 현재 Core는 상태 조회를 전달하는 얇은 API다. Module·Workspace의 업무 정책과 관계를 담당할 경계는 Core에 두며, 해당 업무 로직은 별도 구현 범위로 남아 있다.
+Core는 구체적인 Paseo SDK, CLI 출력 형식이나 웹 화면을 알지 못한다. 현재 Core는 상태 조회를 전달하는 얇은 API다. Module·Workspace의 업무 정책과 관계를 담당할 경계는 Core에 두며, 해당 업무 로직은 별도 구현 범위로 남아 있다.
 
 Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제품 코드에서 Adapter 내부에 모은다. 다른 실행 기반을 도입할 때도 Core가 사용하는 Runtime 계약을 기준으로 연결할 수 있다.
 
-## CLI 시작과 명령 처리
+## 앱 시작과 기능 호출
 
 [CLI 시작 코드](../apps/cli/src/bootstrap.ts)는 설정으로 Paseo Adapter를 만들고, 그 Runtime을 Core에 주입한다. 이 단계에서 사용할 구현을 선택한다.
 
 그 뒤 [명령 처리 코드](../apps/cli/src/cli.ts)는 Core API만 호출한다. 시작 코드가 Adapter의 생성 함수를 가져오는 것과 명령이 실행 기반의 기능을 직접 호출하는 것은 역할이 다르다. 실제 Daemon 작업은 Core와 Runtime 계약을 거쳐 Adapter가 수행한다.
 
 CLI의 주 사용자는 AI Agent이며 사람이 직접 실행할 수도 있다. CLI를 호출하는 Agent와 Daemon이 관리하는 Agent 세션은 서로 다른 개념이다. 현재 상태 조회 명령은 호출자를 위한 새 Agent 세션을 만들지 않는다.
+
+Web UI도 앱 시작 코드에서 Adapter를 생성하고 Core에 주입한다. 화면은 Core API를 호출하고 Worknaru의 결과·오류를 표시한다. 접속 주소·예상 서버 ID·인증 값은 웹 앱이 확보해 시작 코드에 전달한다. CLI의 `WORKNARU_*` 환경 변수를 브라우저에서 직접 읽는 구조는 사용하지 않으며, 웹의 설정 입력·보관 방식은 구현할 때 정한다.
+
+Web UI의 HTML·JavaScript 같은 정적 파일은 Paseo Daemon 자체가 브라우저에 제공할 수 있다. 별도 정적 호스팅을 사용할 수도 있으며, 파일을 제공하는 위치와 Core·Adapter가 실행되는 위치는 구분한다. 어느 경우든 전달된 코드의 Core 호출과 Daemon 통신은 브라우저 안에서 수행하므로 이 경로에 별도 Worknaru API 서버를 필수 구성요소로 두지 않는다.
+
+예를 들어 Web UI·Core·Adapter·Paseo Client를 포함한 브라우저용 빌드 결과물을 `dist`에 만들고, Paseo Daemon이 그 디렉터리를 제공하도록 구성할 수 있다. 브라우저는 Daemon에서 파일을 받아 실행한 뒤, 그 안의 Client로 같은 Daemon에 WebSocket 연결을 맺는다. 현재 고정한 Paseo 버전은 웹 UI를 활성화한 상태에서 `PASEO_WEB_UI_DIST_DIR` 또는 `features.webUi.distDir`로 제공할 디렉터리를 지정할 수 있다. [Daemon 웹 UI 제공 안내](https://paseo.sh/docs/web-ui.md), [디렉터리 설정 소스](https://github.com/getpaseo/paseo/blob/7bcf167862ce9bb040007d1469c77c00928a84c8/packages/server/src/server/config.ts)
+
+이 방식도 위 구성도와 같은 실행 구조다. 커스텀 Web UI에는 접속 주소·인증·예상 서버 ID를 Core·Adapter에 전달하는 시작 구성이 필요하며, 정적 파일 제공만으로 연결 로직이 자동 구현되지는 않는다. 실제 호스팅 방식과 Daemon의 원격 접속 구성은 후속 배포 설계에서 정한다.
 
 ## 상태 조회 한 번의 흐름
 
@@ -74,6 +93,25 @@ CLI의 주 사용자는 AI Agent이며 사람이 직접 실행할 수도 있다.
 
 조회는 Daemon이나 Agent를 시작·중단·보관하지 않는다. 명령이 끝날 때 정리하는 것은 조회용 연결이다. 명령 문법·인증 전달·출력 형식·종료 코드의 상세 정의는 [CLI 사용 안내](../apps/cli/README.md), 결과 타입의 의미는 [Runtime 계약](../packages/runtime/README.md)을 따른다.
 
+Web UI의 첫 상태 조회도 같은 Core API와 Runtime 결과를 사용한다. 입력과 결과 표현을 웹 화면이 맡고, 대상 확인·상태 조회·오류 변환·조회용 연결 정리는 공통 Adapter가 맡는다. 지속 연결, 이벤트 구독과 재접속 정책은 현재의 일회성 상태 조회와 별도로 설계한다.
+
+## 브라우저 호환 범위
+
+브라우저 호환은 Core·Adapter의 공통 코드를 CLI의 Node.js 환경과 브라우저 양쪽에서 실행할 수 있도록 조정하고 검증하는 작업이다. 웹 화면을 만드는 작업과 구분한다.
+
+Paseo Client는 환경에 맞는 WebSocket 연결 구현을 전달받을 수 있다. Paseo의 [CLI 연결 코드](https://github.com/getpaseo/paseo/blob/7bcf167862ce9bb040007d1469c77c00928a84c8/packages/cli/src/utils/client.ts)는 Node.js용 `ws`를 제공하고, [웹 연결 코드](https://github.com/getpaseo/paseo/blob/7bcf167862ce9bb040007d1469c77c00928a84c8/packages/app/src/runtime/websocket-factory.web.ts)는 브라우저 WebSocket을 사용하는 Client 기본 기능을 선택한다. Worknaru는 이 Client를 Adapter 안에서 재사용한다.
+
+현재 Core·Runtime의 책임과 상태 조회 계약은 유지한다. 브라우저 적용에는 다음 조정과 확인이 필요하다.
+
+| 부분 | 후속 구현·검증 범위 |
+| --- | --- |
+| 환경에 의존하는 Adapter 코드 | 현재 `node:crypto`를 사용하는 연결 ID 생성을 양쪽 환경에서 동작하도록 조정한다. SDK에 전달하는 `clientType` 등 앱 식별 정보도 CLI·웹 사용에 맞게 확인한다. |
+| 의존 패키지와 빌드 | 고정한 Paseo 의존 패키지의 브라우저용 파일 경로 문제를 해결하고, Core·Adapter·Client를 브라우저용으로 함께 빌드한다. |
+| 실제 브라우저 연동 | 전용 Daemon에 대한 접속·인증·서버 ID·버전·상태 조회, 연결 실패·시간 초과와 조회용 소켓 정리를 검증한다. 웹의 제공 주소와 Daemon 접속 주소 조합도 확인한다. |
+| 기존 CLI 동작 | 공통 코드 조정 후 CLI 상태 조회와 기존 오류·종료 동작이 유지되는지 확인한다. |
+
+Web UI와 실제 브라우저 연동은 아직 구현·검증하지 않았다. 브라우저용 빌드 성공만으로 실행 호환성이 검증되었다고 판단하지 않는다. 현재 확인한 제약과 조사 근거는 [Web UI 아키텍처 작업 #7](https://github.com/NaruForge/worknaru-dev/issues/7)에 연결한다.
+
 ## 실행 환경과 데이터 경계
 
 Worknaru 전용 Paseo는 현재 PC의 개인용 Paseo와 실행 인스턴스, Daemon 데이터 디렉터리와 접속 주소를 분리한다. Adapter는 지정한 대상의 서버 ID를 확인하며, 접속에 실패해도 다른 Paseo로 대체 접속하지 않는다.
@@ -88,6 +126,8 @@ Worknaru 전용 Paseo는 현재 PC의 개인용 Paseo와 실행 인스턴스, Da
 | 기존 사용자 환경 | 공유하여 사용할 수 있는 Provider 설정과 인증 정보 |
 
 구체적인 경로·버전·접속 주소와 실행 절차는 [Paseo 개발 환경 안내](../apps/paseo-dev/README.md)에서 관리한다. Git 커밋이나 태그로 보존하는 코드와 Daemon의 실행 데이터는 보존 범위가 다르다.
+
+Web UI를 추가하면 브라우저는 화면과 클라이언트 연결을 담당하고, Provider 실행·파일 접근·Agent 세션 관리는 접속 대상 Daemon 쪽에서 이루어진다. 다른 기기에서 Web UI를 여는 경우에도 작업 디렉터리는 대상 Daemon의 파일 시스템을 기준으로 해석한다. 브라우저 탭이나 연결을 닫는 동작이 Daemon의 Agent 작업을 종료하는 의미가 되지 않도록 후속 세션 기능을 설계한다.
 
 ## 개발 검증 도구의 위치
 
