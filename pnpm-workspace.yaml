@@ -5,4 +5,4 @@ onlyBuiltDependencies:
   - esbuild
   - node-pty
 patchedDependencies:
-  '@getpaseo/relay@0.8.0-beta.1': packages/paseo-adapter/patches/@getpaseo__relay@0.8.0-beta.1.patch
+  '@getpaseo/relay@0.8.0': packages/paseo-adapter/patches/@getpaseo__relay@0.8.0.patch

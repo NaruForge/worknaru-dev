@@ -109,7 +109,7 @@ Core·Runtime의 책임과 상태 조회 계약을 유지하면서 다음과 같
 | 의존 패키지와 빌드 | 버전에 한정한 pnpm 패치로 Paseo relay의 브라우저 파일 경로를 조정한다. 웹 빌드는 Core·Adapter·Client를 함께 포함한다. 세부 사항은 [Adapter 안내](../packages/paseo-adapter/README.md)를 따른다. |
 | 검증 경계 | Windows의 브라우저에서 전용 Daemon의 정상 조회·종료 후 실패를 확인한다. 인증 오류·대상 불일치·시간 초과는 loopback 응답 서버로 검증한다. 기존 CLI 동작은 공통 테스트와 전용 Daemon 검증으로 확인한다. |
 
-검증한 범위는 현재 상태 조회 기능이다. 다른 브라우저·원격 배포·로그인·지속 연결의 호환성을 포괄적으로 보장하는 것은 아니다. 설계 조사 근거는 [아키텍처 작업 #7](https://github.com/NaruForge/worknaru-dev/issues/7), 구현과 실제 실행 검증은 [웹 상태 조회 #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 연결한다.
+검증한 범위는 현재 상태 조회 기능이다. 다른 브라우저·원격 배포·로그인·지속 연결의 호환성을 포괄적으로 보장하는 것은 아니다. 설계 조사 근거는 [아키텍처 작업 #7](https://github.com/NaruForge/worknaru-dev/issues/7), 최초 구현과 실제 실행 검증은 [웹 상태 조회 #9](https://github.com/NaruForge/worknaru-dev/issues/9), Paseo 정식 버전 전환 후 재검증은 [0.8.0 전환 #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 연결한다.
 
 ## 실행 환경과 데이터 경계
 

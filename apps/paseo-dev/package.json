@@ -8,8 +8,8 @@
     "web": "node web.mjs"
   },
   "dependencies": {
-    "@getpaseo/cli": "0.8.0-beta.1",
-    "@getpaseo/client": "0.8.0-beta.1",
+    "@getpaseo/cli": "0.8.0",
+    "@getpaseo/client": "0.8.0",
     "@worknaru/cli": "workspace:*",
     "@worknaru/paseo-adapter": "workspace:*"
   }

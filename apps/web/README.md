@@ -15,7 +15,7 @@ pnpm web:dev
 
 가장 작은 확인 순서는 다음과 같다.
 
-1. 버튼을 눌러 **연결 성공**, 서버 ID와 `0.8.0-beta.1` 버전 표시를 확인한다.
+1. 버튼을 눌러 **연결 성공**, 서버 ID와 `0.8.0` 버전 표시를 확인한다.
 2. 브라우저 탭을 유지한 채 실행 터미널에서 `stop`을 입력한다.
 3. 열린 화면의 버튼을 다시 눌러 **연결 실패**와 서버 정보가 비워지는 것을 확인한다. Daemon이 웹 파일도 제공하므로 이 단계에서는 페이지를 새로고침하지 않는다.
 4. 다시 `pnpm web:dev`를 실행하면 같은 탭에서 정상 조회를 재시도할 수 있다.
@@ -36,4 +36,4 @@ pnpm web:dev
 
 `pnpm test`는 웹 타입 검사·브라우저 빌드와 기존 CLI·Adapter 테스트를 수행한다. `pnpm paseo:verify`는 실제 전용 Daemon의 SDK·Adapter·CLI 연동을 확인한다. 브라우저 확인은 위 실행 절차로 수행하며 자동 브라우저 테스트가 `pnpm test`에 포함되는 것은 아니다.
 
-실제 브라우저의 정상 조회·종료 후 실패·소켓 정리와 loopback 응답 서버를 사용한 인증 오류·대상 불일치·시간 초과 검증의 근거는 [Issue #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 둔다.
+실제 브라우저의 정상 조회·종료 후 실패·소켓 정리와 loopback 응답 서버를 사용한 인증 오류·대상 불일치·시간 초과 검증의 근거는 [Issue #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 둔다. Paseo `0.8.0` 전환 후 같은 경로를 재검증한 근거는 [Issue #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 연결한다.
