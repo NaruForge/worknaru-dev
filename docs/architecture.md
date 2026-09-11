@@ -67,6 +67,8 @@ Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제
 
 앱의 표시 계층은 [공통 브랜드 패키지](../packages/branding/README.md)가 빌드 시 생성한 이름·자산·색상·링크를 사용한다. Core·Runtime·Adapter는 브랜드에 의존하지 않는다. 저장 위치는 개발 실행기의 [공통 경로 해석](../apps/paseo-dev/paths.mjs)이 시작 시 결정하며, 브랜드에서 데이터 경로·서버 ID를 유도하지 않는다. 근거는 [ADR 0004](adr/0004-build-time-branding-and-data-root.md)에 둔다.
 
+초기 입력 계약은 표시 이름의 한글·일반 공백을 허용하되 이미지 파일명은 고정하고 링크 입력은 ASCII로 제한한다. 데이터 루트의 폴더명은 영문·숫자·`-_.`만 받으며 기본 경로도 검증한다. 상세 규칙과 대체 루트 안내는 [저장 위치 설정](../apps/paseo-dev/README.md#저장-위치-설정)을 따른다. 이 검증은 표시·개발 실행 계층이 맡으며 외부 프로젝트나 사용자 홈 전체의 경로 호환성을 보장하지 않는다.
+
 [CLI 시작 코드](../apps/cli/src/bootstrap.ts)는 설정으로 Paseo Adapter를 만들고, 그 Runtime을 Core에 주입한다. 이 단계에서 사용할 구현을 선택한다.
 
 그 뒤 [명령 처리 코드](../apps/cli/src/cli.ts)는 Core API만 호출한다. 시작 코드가 Adapter의 생성 함수를 가져오는 것과 명령이 실행 기반의 기능을 직접 호출하는 것은 역할이 다르다. 실제 Daemon 작업은 Core와 Runtime 계약을 거쳐 Adapter가 수행한다.

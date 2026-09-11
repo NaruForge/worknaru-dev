@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -11,7 +12,7 @@ const testRoot = path.join(root, '.local', 'path-tests');
 
 test('one absolute root owns all paths; unrelated environment cannot select it', () => {
   assert.equal(resolveDataPaths({ PASEO_HOME: 'elsewhere', TEAM_DATA_DIR: 'elsewhere' }).dataHome, path.join(root, '.local', 'paseo-dev'));
-  const dataHome = path.join(testRoot, '우리 팀 데이터');
+  const dataHome = path.join(testRoot, 'team-data_2.0');
   const paths = resolveDataPaths({ WORKNARU_DATA_DIR: dataHome });
   assert.equal(paths.source, 'WORKNARU_DATA_DIR');
   for (const [key, value] of Object.entries(paths)) {
@@ -33,11 +34,39 @@ test('one absolute root owns all paths; unrelated environment cannot select it',
   assert.ok(describeDataPaths(paths).includes('WORKNARU_DATA_DIR'));
 });
 
+test('explicit and default roots reject unsupported folder names before filesystem access', () => {
+  const supported = path.join(testRoot, 'team-data');
+  for (const name of ['우리팀', 'team data', 'team\u00a0data', 'team&data', 'team(data)', 'team\n', 'team\u007f']) {
+    const unsupported = path.join(testRoot, name);
+    assert.throws(() => resolveDataPaths({ WORKNARU_DATA_DIR: unsupported }), /Data root \(WORKNARU_DATA_DIR\).*ASCII/);
+    assert.throws(() => resolveDataPaths({}, unsupported), /Data root \(default\).*Set WORKNARU_DATA_DIR/);
+    assert.equal(resolveDataPaths({ WORKNARU_DATA_DIR: supported }, unsupported).dataHome, supported);
+    assert.equal(existsSync(unsupported), false);
+  }
+  const hiddenComponent = `${testRoot}${path.sep}우리팀${path.sep}..${path.sep}data`;
+  assert.throws(() => resolveDataPaths({ WORKNARU_DATA_DIR: hiddenComponent }), /ASCII/);
+});
+
+test('all launcher entrypoints reject unsupported explicit roots without output or created data', () => {
+  for (const entry of ['status.mjs', 'verify.mjs', 'web.mjs']) {
+    const dataHome = path.join(testRoot, '미지원 경로');
+    const result = spawnSync(process.execPath, [path.join(root, 'apps', 'paseo-dev', entry)], {
+      cwd: root, env: { ...process.env, WORKNARU_DATA_DIR: dataHome }, encoding: 'utf8',
+      windowsHide: true, timeout: 10000,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, 1, entry);
+    assert.equal(result.stdout, '', entry);
+    assert.match(result.stderr, /Data root \(WORKNARU_DATA_DIR\).*ASCII/);
+    assert.equal(existsSync(dataHome), false);
+  }
+});
+
 test('invalid directory cannot fall back; preparation preserves identity and config', async () => {
   await mkdir(testRoot, { recursive: true });
-  const directory = await mkdtemp(path.join(testRoot, '경로 검증-'));
+  const directory = await mkdtemp(path.join(testRoot, 'path-check-'));
   try {
-    const paths = resolveDataPaths({ WORKNARU_DATA_DIR: path.join(directory, '자료') });
+    const paths = resolveDataPaths({ WORKNARU_DATA_DIR: path.join(directory, 'data') });
     await prepareDataDirectories(paths);
     await writeFile(paths.serverId, 'test-server-id');
     await writeFile(paths.config, 'test-config-with-secret');

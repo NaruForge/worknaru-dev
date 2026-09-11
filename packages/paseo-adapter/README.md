@@ -25,6 +25,8 @@ if (status.outcome === 'available') {
 
 `configuredServerId`는 별도로 확인해 설정한 대상 식별자다. 개발 실행기는 [선택한 데이터 루트](../../apps/paseo-dev/README.md#저장-위치-설정)의 `server-id`를 읽어 전달한다. 기본 위치는 `.local/paseo-dev/server-id`다. Adapter는 브랜드·경로 설정, 파일이나 전역 Paseo 환경 변수를 읽지 않으며 기본 주소로 대체 접속하지 않는다. 조회된 서버 ID가 예상값과 다르면 상태 RPC 전에 반환한다.
 
+개발 실행기는 기본값을 포함한 데이터 루트의 폴더명을 영문·숫자·`-_.`로 제한한다. 브랜드 링크의 ASCII 입력 제한도 앱의 빌드 계약이며 Adapter의 접속 주소·식별자 계약을 변경하지 않는다.
+
 `targetId`, `endpoint`, `expectedServerId`는 필수다. 주소는 `ws:` 또는 `wss:`의 절대 URL이며 사용자 정보, query, fragment를 허용하지 않는다. 비밀번호는 별도 `password` 옵션으로 전달한다. 잘못된 설정은 접속 전에 고정된 설명의 `TypeError` 또는 `RangeError`로 거절한다.
 
 `clientType`은 `'cli'` 또는 `'browser'`이며 기본값은 `'cli'`다. 웹 앱의 시작 코드가 `'browser'`를 전달한다. 연결 ID 생성에는 Node.js와 브라우저의 `globalThis.crypto.randomUUID()`를 사용하고, 통신에는 각 환경의 표준 WebSocket을 사용한다. 브라우저 실행은 localhost 또는 HTTPS 환경을 전제로 한다.

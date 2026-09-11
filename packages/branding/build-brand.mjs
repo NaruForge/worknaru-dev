@@ -12,8 +12,8 @@ export function validateBrand(input) {
   object(input, 'brand', ['displayName', 'accentColor', 'logo', 'favicon', 'links']);
   const displayName = input.displayName;
   if (typeof displayName !== 'string' || !displayName.trim() || displayName !== displayName.trim()
-    || [...displayName].length > 80 || /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(displayName)) {
-    throw new Error('brand.displayName must be 1..80 characters of single-line text without surrounding whitespace.');
+    || displayName.length > 80 || !/^[A-Za-z0-9가-힣 ._&()-]+$/.test(displayName)) {
+    throw new Error('brand.displayName must be 1..80 characters using Hangul syllables, ASCII letters/digits, ordinary spaces and - _ . & ( ), without surrounding whitespace.');
   }
   const accentColor = input.accentColor === undefined ? '#225c9e' : input.accentColor;
   if (typeof accentColor !== 'string' || !/^#[\da-f]{6}$/i.test(accentColor)) {
@@ -32,16 +32,16 @@ export function validateBrand(input) {
       let url;
       try { url = new URL(value); } catch { /* Report the field, never a credential-bearing value. */ }
       if (typeof value !== 'string' || !url || !['http:', 'https:'].includes(url.protocol)
-        || url.username || url.password || /[\s\p{Cc}\p{Cf}]/u.test(value)) {
-        throw new Error(`brand.links.${key} must be an HTTP(S) URL without credentials or whitespace.`);
+        || url.username || url.password || /[^\x21-\x7e]/.test(value)) {
+        throw new Error(`brand.links.${key} must be an ASCII HTTP(S) URL without credentials or whitespace; encode international domains with Punycode and paths with percent encoding.`);
       }
       links[key] = url.href;
     }
   }
   for (const key of ['logo', 'favicon']) {
-    if (input[key] !== undefined && (typeof input[key] !== 'string' || !/^assets\/[\p{L}\p{N}_. -]+\.(png|ico)$/u.test(input[key])
-      || (key === 'logo' && !input[key].endsWith('.png')))) {
-      throw new Error(`brand.${key} must name a file directly under assets/ (logo: PNG; favicon: PNG or ICO).`);
+    const allowed = key === 'logo' ? ['assets/logo.png'] : ['assets/favicon.png', 'assets/favicon.ico'];
+    if (input[key] !== undefined && !allowed.includes(input[key])) {
+      throw new Error(`brand.${key} must be ${allowed.join(' or ')}.`);
     }
   }
   return { displayName, accentColor, onAccentColor, links };

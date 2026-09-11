@@ -5,16 +5,25 @@ import { randomUUID } from 'node:crypto';
 
 export const root = fileURLToPath(new URL('../../', import.meta.url));
 
+function validateDataPath(value, source) {
+  const windows = process.platform === 'win32';
+  const unsupported = windows ? /[^A-Za-z0-9_.\\/-]/ : /[^A-Za-z0-9_./-]/;
+  if (typeof value !== 'string' || !path.isAbsolute(value)
+    || unsupported.test(windows ? value.replace(/^[A-Za-z]:/, '') : value)
+    || (windows && !/^(?:[a-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/i.test(value))) {
+    throw new Error(`Data root (${source}) must be a fully qualified absolute directory with only ASCII letters, digits, -, _ and . in folder names (no spaces). Set WORKNARU_DATA_DIR to a supported path, for example C:\\WorknaruData on Windows or /var/tmp/worknaru-data on Unix.`);
+  }
+}
+
 export function resolveDataPaths(env = process.env, repositoryRoot = root) {
   const value = env.WORKNARU_DATA_DIR;
-  if (value !== undefined && (typeof value !== 'string' || !value.trim() || value !== value.trim()
-    || !path.isAbsolute(value) || /[\x00-\x1f]/.test(value)
-    || (process.platform === 'win32' && !/^(?:[a-z]:[\\/]|\\\\[^\\]+\\[^\\]+)/i.test(value)))) {
-    throw new Error('WORKNARU_DATA_DIR must be a fully qualified absolute directory without surrounding whitespace.');
-  }
+  const source = value === undefined ? 'default' : 'WORKNARU_DATA_DIR';
+  // Check explicit input before normalization so unsupported components cannot disappear via '..'.
+  if (value !== undefined) validateDataPath(value, source);
   const dataHome = value === undefined ? path.join(repositoryRoot, '.local', 'paseo-dev') : path.resolve(value);
+  validateDataPath(dataHome, source);
   return Object.freeze({
-    dataHome, source: value === undefined ? 'default' : 'WORKNARU_DATA_DIR',
+    dataHome, source,
     config: path.join(dataHome, 'config.json'), serverId: path.join(dataHome, 'server-id'),
     pid: path.join(dataHome, 'paseo.pid'), log: path.join(dataHome, 'daemon.log'),
     launcherLog: path.join(dataHome, 'launcher.log'), worktrees: path.join(dataHome, 'worktrees'),
