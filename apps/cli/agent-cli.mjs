@@ -84,8 +84,7 @@ export async function runAgents(args, env, output) {
     } else if (command === 'send' || command === 'wait') {
       expect(command === 'send' ? 4 : 3); const selected = await select(p[2]);
       let request;
-      if (command === 'send') request = await agents.send({ agent: selected, id: o['--id'] ?? crypto.randomUUID(), text: p[3],
-        ...(o['--queue'] ? { mode: 'queue' } : o['--steer'] ? { mode: 'steer' } : {}) });
+      if (command === 'send') request = await agents.send({ agent: selected, id: o['--id'] ?? crypto.randomUUID(), text: p[3] });
       else { const list = await agents.requests({ agent: selected }); request = o['--request'] ? list.requests.find(r => r.id === o['--request']) : list.requests.at(-1); }
       if (!request) throw Object.assign(Error('확인할 요청이 없습니다.'), { code: 'not_found' });
       if (o['--no-wait']) { emit(request); return ['failed', 'uncertain'].includes(request.state) ? 1 : 0; }

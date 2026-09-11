@@ -28,13 +28,14 @@ async function screen(t, states) {
     settings: async () => ({ sendMode: 'queue', revision: 0 }), history: async () => ({ epoch: 'a', cursor: null, entries: [] }),
     requests: async () => ({ requests: recorded ? [recorded] : [], paused: false }), resume: async () => ({ resumed: true }),
     send: async input => {
+      assert.equal(Object.hasOwn(input, 'mode'), false, 'Send uses the shared server setting');
       sent.push({ ...input }); const state = states.shift();
       if (state instanceof Error) throw state;
       recorded = { ...input, state }; return recorded;
     },
   } });
   await el('create-form').onsubmit({ preventDefault() {} });
-  el('message').value = 'Please continue'; el('send-mode').value = 'queue';
+  el('message').value = 'Please continue';
   return { el, sent, submit: () => el('send-form').onsubmit({ preventDefault() {} }),
     async refreshAs(state) { recorded.state = state; document.hidden = false; await el('resume-queue').onclick(); } };
 }

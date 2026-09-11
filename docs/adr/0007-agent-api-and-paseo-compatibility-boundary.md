@@ -1,7 +1,8 @@
 # 0007. Agent 공개 API와 Paseo 호환성 계층의 경계
 
 - 날짜: 2026-09-11
-- 상태: Accepted
+- 상태: Superseded
+- 대체 결정: [ADR 0008](0008-native-paseo-send-settings.md). protocol/server 패치 유지 결정을 대체하며 명시적인 Agent API와 도메인 경계는 유지한다. 아래 내용은 당시 결정의 기록이다.
 - 관련 Work Item: [#17](https://github.com/NaruForge/worknaru-dev/issues/17), [PR #18](https://github.com/NaruForge/worknaru-dev/pull/18)
 - 승인 근거: 사용자가 독립 리뷰·지적 대응·병합을 지시했고, 서버·프로토콜 패치의 기술부채와 범용 Agent RPC의 도메인 확장 위험을 추가로 지적했다. 승인된 기능을 유지하면서 공개 API와 호환성 책임을 제한한다.
 - 구현: [AgentAPI](../../packages/runtime/src/agents.ts), [RPC Adapter](../../packages/paseo-adapter/src/agent-rpc.ts), [서버 바인딩](../../apps/agent-service/index.server.ts)

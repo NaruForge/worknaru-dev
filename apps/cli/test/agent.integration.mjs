@@ -28,8 +28,8 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
   const id = (await readFile(path.join(data, 'server-id'), 'utf8')).trim();
   const create = ['agent', 'create', '--name', 'Integration Agent', '--cwd', project, '--id', 'integration-create'];
   const agent = await success(...create); assert.equal((await success(...create)).id, agent.id);
-  await success('agent', 'send', agent.id, 'Remember ORCHID as our test word. Reply only ORCHID. Do not use tools.', '--id', 'integration-first', '--queue', '--no-wait');
-  const second = await success('agent', 'send', agent.id, 'What test word did I tell you? Reply only that word followed by FOLLOWUP. Do not use tools.', '--id', 'integration-second', '--queue', '--no-wait');
+  await success('agent', 'send', agent.id, 'Remember ORCHID as our test word. Reply only ORCHID. Do not use tools.', '--id', 'integration-first', '--no-wait');
+  const second = await success('agent', 'send', agent.id, 'What test word did I tell you? Reply only that word followed by FOLLOWUP. Do not use tools.', '--id', 'integration-second', '--no-wait');
   assert.equal(second.state, 'queued');
   const done = await success('agent', 'wait', agent.id, '--request', 'integration-second', '--wait-timeout', '90');
   assert.equal(done.request.state, 'completed'); assert.match(done.entries.map(e => e.text).join(''), /ORCHID.*FOLLOWUP/s);
@@ -41,7 +41,7 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
   assert.equal((await success('settings', 'get', 'send-mode')).sendMode, 'steer');
   assert.equal((await success('agent', 'queue', 'list', agent.id)).requests.length, 2);
   const prompt = 'Permission test: use your shell tool with sandbox_permissions=require_escalated and justification "Allow printing PERMISSION-17 for the test?" to run only Write-Output PERMISSION-17. Do not run other commands. Wait for approval, then reply PERMISSION-17.';
-  const waiting = await cli('agent', 'send', agent.id, prompt, '--id', 'integration-permission', '--queue', '--wait-timeout', '90');
+  const waiting = await cli('agent', 'send', agent.id, prompt, '--id', 'integration-permission', '--wait-timeout', '90');
   assert.equal(waiting.code, 1); assert.equal(waiting.data.outcome, 'permission_pending');
   const permission = waiting.data.permissions[0]; assert.equal(permission.kind, 'tool');
   await success('agent', 'permission', 'respond', agent.id, permission.id, '--allow');

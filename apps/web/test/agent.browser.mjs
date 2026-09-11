@@ -3,6 +3,11 @@
 async page => {
   const name = `Browser check ${Date.now()}`;
   await page.goto('http://127.0.0.1:6868/');
+  if (await page.locator('#send-mode').count()) throw Error('Per-message mode selector must be absent');
+  await page.getByRole('button', { name: '전송 설정', exact: true }).click();
+  await page.locator('#default-mode').selectOption('queue');
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await page.locator('#current-send-mode').filter({ hasText: '대기열' }).waitFor();
   await page.getByRole('button', { name: '새 Agent', exact: true }).click();
   await page.getByLabel('이름', { exact: true }).fill(name);
   await page.getByRole('button', { name: '만들기', exact: true }).click();

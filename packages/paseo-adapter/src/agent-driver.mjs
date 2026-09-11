@@ -4,14 +4,6 @@ import path from 'node:path';
 import { createStatusWebSocket } from '../dist/status-websocket.js';
 
 const logger = { debug() {}, info() {}, warn() {}, error() {} };
-const guardedErrors = {
-  WORKNARU_AGENT_ARCHIVED: ['archived', '보관된 Agent에는 메시지를 보낼 수 없습니다.'],
-  WORKNARU_PERMISSION_PENDING: ['permission_pending', '먼저 권한 요청에 응답해 주세요.'],
-  WORKNARU_AGENT_BUSY: ['busy', 'Agent가 다른 요청을 처리 중입니다.'],
-  WORKNARU_STEER_UNAVAILABLE: ['steer_unavailable', '추가 지시를 적용할 수 없습니다. 대기열 전송을 선택해 주세요.'],
-  WORKNARU_TURN_CHANGED: ['turn_changed', '실행 중인 요청이 끝났습니다. 상태를 확인한 뒤 다시 보내 주세요.'],
-  'Active turn changed before steering could be delivered': ['turn_changed', '실행 중인 요청이 끝났습니다. 상태를 확인한 뒤 다시 보내 주세요.'],
-};
 const agent = value => ({
   id: value.id, name: value.title || value.id.slice(0, 8), cwd: value.cwd, model: value.model,
   status: value.status, turnId: value.activeTurn?.turnId ?? null, archivedAt: value.archivedAt ?? null,
@@ -37,10 +29,7 @@ export async function connectAgentDriver({ endpoint, serverId, defaultCwd }) {
   const safe = async fn => {
     if (!connected()) throw new AgentError('runtime_unconfirmed', 'Daemon 연결을 확인할 수 없습니다. 잠시 후 다시 확인해 주세요.');
     try { return await fn(); }
-    catch (error) {
-      for (const [match, [code, message]] of Object.entries(guardedErrors)) {
-        if (error instanceof Error && error.message.includes(match)) throw new AgentError(code, message);
-      }
+    catch {
       throw new AgentError('runtime_unconfirmed', 'Daemon 작업 결과를 확정할 수 없습니다. 상태를 다시 확인해 주세요.');
     }
   };
@@ -92,7 +81,7 @@ export async function connectAgentDriver({ endpoint, serverId, defaultCwd }) {
       listeners.set(id, listener);
       try { await subscription.ready; } catch (error) { watches.delete(id); listeners.delete(id); subscription(); throw error; }
     },
-    send(id, text, messageId, mode) { return safe(() => client.sendAgentMessage(id, text, { messageId, activeTurnBehavior: mode === 'steer' ? 'steer_only' : 'idle_only' })); },
+    send(id, text, messageId, mode) { return safe(() => client.sendAgentMessage(id, text, { messageId, activeTurnBehavior: mode === 'steer' ? 'steer' : 'interrupt' })); },
     async permission(id, input) {
       const response = input.behavior === 'allow'
         ? { behavior: 'allow', ...(input.answers ? { updatedInput: input.answers } : {}), ...(input.actionId ? { selectedActionId: input.actionId } : {}) }

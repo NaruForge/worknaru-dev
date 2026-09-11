@@ -10,6 +10,8 @@ RPC envelope는 Adapter와 이 앱의 통신 구현에 한정한다. `operation`
 
 `agent-state.sqlite`와 WAL은 선택한 `WORKNARU_DATA_DIR` 아래에 있다. 단일 상태 문서에 전송 기본값/revision, 요청·전송 결과, 대기열 정지 상태, 생성 요청 ID를 저장한다. `synchronous=FULL` 트랜잭션과 revision 비교로 오래된 두 번째 Worker의 덮어쓰기를 거부한다. DB 쓰기 실패 시 새 실행을 멈춘다. Agent 세션·대화·파일의 원본은 Paseo/Provider이며 이를 DB에 복제하지 않는다. SQLite에 저장하는 메시지 내용도 로컬 실행 데이터이므로 공개 웹 자산과 Git에 포함하지 않는다.
 
+전송 방식은 공유 설정에서만 선택하고 새 접수부터 적용한다. 기존 접수의 방식·요청 ID·대기는 재작성하지 않는다.
+
 재시작 시 실행 전 대기는 보존한다. 이미 전송했으나 결과를 확인하지 못한 요청은 `uncertain`으로 멈추고 자동 재전송하지 않는다. 사용자 기록 확인 후 `queue discard`/`queue resume`으로 남은 대기를 처리한다. 보관은 기록과 작업 파일을 남기며 해당 Agent와 하위 Agent의 실행을 정리한다.
 
-`pnpm test`는 Core 정책·SQLite 재열기·중복 Worker 거부·실제 설치된 전송 guard를 검사한다. 실제 Provider와 브라우저 검증은 별도 실행하며 사용량이 발생한다. Node.js 24의 내장 SQLite를 사용하고 Paseo SDK·서버·플러그인 계약은 0.8.0에 고정한다. 결정 근거는 [ADR 0006](../../docs/adr/0006-agent-lifecycle-and-durable-queue.md), 실제 증거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 있다.
+`pnpm test`는 Core 정책·SQLite 재열기·중복 Worker 거부·Paseo 기본 전송 계약를 검사한다. 실제 Provider와 브라우저 검증은 별도 실행하며 사용량이 발생한다. Node.js 24의 내장 SQLite를 사용하고 Paseo SDK·서버·플러그인 계약은 0.8.0에 고정한다. 결정 근거는 [ADR 0008](../../docs/adr/0008-native-paseo-send-settings.md), 실제 증거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 있다.

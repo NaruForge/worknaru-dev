@@ -55,14 +55,17 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
           save();
         }
         if (['turn_completed', 'turn_failed', 'turn_canceled'].includes(event.type)) {
-          for (const r of requests(id).filter(r => ['sending', 'running'].includes(r.state) && !r.turnId)) {
+          const knownTurn = requests(id).some(r => ['sending', 'running'].includes(r.state) && r.turnId === event.turnId);
+          for (const r of requests(id).filter(r => !knownTurn && ['sending', 'running'].includes(r.state) && !r.turnId)) {
             r.state = 'uncertain'; r.error = '완료 이벤트와 요청의 턴을 연결하지 못했습니다. 기록을 확인해 주세요.'; state.paused[id] = true;
           }
           for (const r of requests(id).filter(r => !terminal.has(r.state) && r.state !== 'queued' && r.turnId === event.turnId)) {
             r.state = event.type === 'turn_completed' ? 'completed' : event.type === 'turn_failed' ? 'failed' : 'canceled';
             r.error = r.state === 'completed' ? null : '작업이 완료되지 않았습니다. 기록을 확인해 주세요.';
           }
-          if (event.type !== 'turn_completed') state.paused[id] = true;
+          // Native steer may cancel the old turn and start the newly accepted request.
+          const replacementRunning = requests(id).some(r => ['sending', 'running'].includes(r.state) && r.turnId !== event.turnId);
+          if (event.type !== 'turn_completed' && !replacementRunning) state.paused[id] = true;
           save();
           if (event.type === 'turn_completed') schedule(id);
         }
@@ -88,11 +91,8 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
       const after = await get(current.id);
       request.turnId ??= after.turnId;
       request.state = 'running'; save();
-    } catch (error) {
-      if (error.code === 'busy' && request.mode === 'queue') request.state = 'queued';
-      else if (['archived', 'permission_pending', 'steer_unavailable', 'turn_changed'].includes(error.code)) {
-        request.state = 'failed'; request.error = error.message;
-      } else { request.state = 'uncertain'; request.error = '전송 결과를 확인할 수 없습니다. 자동으로 재전송하지 않습니다.'; state.paused[current.id] = true; }
+    } catch {
+      request.state = 'uncertain'; request.error = '전송 결과를 확인할 수 없습니다. 자동으로 재전송하지 않습니다.'; state.paused[current.id] = true;
       save();
     }
   }
@@ -164,12 +164,14 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
       if (current.archivedAt) fail('archived', '보관된 Agent는 기록만 조회할 수 있습니다.');
       if (operation === 'send') {
         if (archiving.has(current.id)) fail('archiving', '보관 중인 Agent에는 전송할 수 없습니다.');
-        key(input.id); text(input.text, '메시지'); const chosen = input.mode === undefined ? state.settings.sendMode : mode(input.mode);
+        key(input.id); text(input.text, '메시지');
+        if (Object.hasOwn(input, 'mode')) fail('invalid_input', '전송 방식은 공통 설정에서 변경해 주세요. settings set send-mode queue 또는 steer');
         const prior = state.requests.find(r => r.id === input.id);
-        if (prior) { if (prior.agentId !== current.id || prior.text !== input.text || (input.mode && (prior.requestedMode ?? prior.mode) !== chosen)) fail('id_conflict', '같은 요청 ID에 다른 내용이 전달됐습니다.'); return { ...prior }; }
-        if (chosen === 'steer' && (current.permissions.length || state.paused[current.id] || requests(current.id).some(r => r.state === 'queued'))) fail('steer_blocked', '권한 요청이나 앞선 대기열을 먼저 처리하거나 queue로 보내 주세요.');
+        if (prior) { if (prior.agentId !== current.id || prior.text !== input.text) fail('id_conflict', '같은 요청 ID에 다른 내용이 전달됐습니다.'); return { ...prior }; }
+        const chosen = state.settings.sendMode;
+        if (chosen === 'steer' && (current.permissions.length || state.paused[current.id] || requests(current.id).some(r => r.state === 'queued'))) fail('steer_blocked', '권한 요청이나 앞선 대기열을 먼저 처리하거나 공통 전송 설정을 queue로 변경해 주세요.');
         const effective = chosen === 'steer' && !current.turnId && current.status !== 'running' ? 'queue' : chosen;
-        const request = { id: input.id, agentId: current.id, text: input.text, mode: effective, requestedMode: chosen, state: 'queued', turnId: null, createdAt: now(), error: null };
+        const request = { id: input.id, agentId: current.id, text: input.text, mode: effective, state: 'queued', turnId: null, createdAt: now(), error: null };
         state.requests.push(request); save(); await observe(current.id);
         if (effective === 'steer') await transmit(current, request); else schedule(current.id);
         return { ...request };
