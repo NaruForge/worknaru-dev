@@ -2,7 +2,7 @@
 
 - 작성일: 2026-09-10.
 - 문서 성격: 초기 지원 범위와 동작을 검토하기 위한 설계 초안.
-- 관련 자료: [Paseo CLI 기능 참고](paseo-cli-capabilities.md), [Runtime 의존 경계 ADR](adr/0001-runtime-interface-and-paseo-adapter.md).
+- 관련 자료: [Paseo CLI 기능 참고](paseo-cli-capabilities.md), [Runtime 의존 경계 ADR](adr/0005-local-development-cli-boundary.md).
 
 이 문서는 구현 전 검토할 기술 설계다. 구현 작업의 범위·진행 상태·검증 증거는 [프로젝트 기록 규약](project-records.md)에 따라 관리한다.
 

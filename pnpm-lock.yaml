@@ -31,15 +31,15 @@ importers:
       '@worknaru/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@worknaru/dev-environment':
+        specifier: workspace:*
+        version: link:../../packages/dev-environment
       '@worknaru/paseo-adapter':
         specifier: workspace:*
         version: link:../../packages/paseo-adapter
 
   apps/paseo-dev:
     dependencies:
-      '@getpaseo/cli':
-        specifier: 0.8.0
-        version: 0.8.0(react@19.1.9)
       '@getpaseo/client':
         specifier: 0.8.0
         version: 0.8.0
@@ -49,6 +49,9 @@ importers:
       '@worknaru/cli':
         specifier: workspace:*
         version: link:../cli
+      '@worknaru/dev-environment':
+        specifier: workspace:*
+        version: link:../../packages/dev-environment
       '@worknaru/paseo-adapter':
         specifier: workspace:*
         version: link:../../packages/paseo-adapter
@@ -76,6 +79,15 @@ importers:
       '@worknaru/runtime':
         specifier: workspace:*
         version: link:../runtime
+
+  packages/dev-environment:
+    dependencies:
+      '@getpaseo/cli':
+        specifier: 0.8.0
+        version: 0.8.0(react@19.1.9)
+      '@getpaseo/client':
+        specifier: 0.8.0
+        version: 0.8.0
 
   packages/paseo-adapter:
     dependencies:

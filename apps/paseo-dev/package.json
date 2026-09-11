@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@worknaru/branding": "workspace:*",
-    "@getpaseo/cli": "0.8.0",
+    "@worknaru/dev-environment": "workspace:*",
     "@getpaseo/client": "0.8.0",
     "@worknaru/cli": "workspace:*",
     "@worknaru/paseo-adapter": "workspace:*"

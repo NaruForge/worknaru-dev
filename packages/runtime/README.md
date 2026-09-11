@@ -1,6 +1,6 @@
 # Worknaru Runtime 계약
 
-Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. 현재 기능은 `Runtime.getDaemonStatus()`이며 외부 SDK 의존성이 없다. [ADR 0001](../../docs/adr/0001-runtime-interface-and-paseo-adapter.md)의 Runtime 경계에 해당한다.
+Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. 현재 기능은 `Runtime.getDaemonStatus()`이며 외부 SDK 의존성이 없다. [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)의 Runtime 경계에 해당한다.
 
 ## Daemon 상태 조회
 

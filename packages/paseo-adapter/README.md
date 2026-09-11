@@ -1,6 +1,6 @@
 # Paseo Adapter
 
-`@worknaru/runtime`의 `Runtime.getDaemonStatus()`를 구현한다. Paseo SDK의 타입·응답·오류는 이 패키지 내부에서 처리한다. Core에는 factory가 반환한 `Runtime`을 전달하며, 제품 CLI와 Web UI는 [ADR 0001](../../docs/adr/0001-runtime-interface-and-paseo-adapter.md)에 따라 Core를 호출한다.
+`@worknaru/runtime`의 `Runtime.getDaemonStatus()`를 구현한다. Paseo SDK의 타입·응답·오류는 이 패키지 내부에서 처리한다. Core에는 factory가 반환한 `Runtime`을 전달하며, 제품 CLI와 Web UI는 [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)에 따라 Core를 호출한다.
 
 ## 사용
 

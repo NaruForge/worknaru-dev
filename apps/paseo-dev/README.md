@@ -4,6 +4,8 @@ Worknaru 전용 Daemon의 시작·SDK 연결·상태 조회·종료와 [Paseo Ad
 
 ## 실행
 
+일상 개발은 [CLI](../cli/README.md)의 `pnpm exec worknaru doctor`, `dev start`, `status`, `dev stop`을 사용한다. 아래 명령은 SDK·Adapter·명시적 CLI의 저수준 연동 검증용이며, 실행 전에 관리형 개발 환경을 `dev stop`으로 종료한다. 새 관리 명령의 실제 검증은 `pnpm dev:verify`다.
+
 저장소 루트에서 실행한다. 검증 환경은 Windows, Node.js `24.18.0`, 루트 `packageManager`의 pnpm이다.
 
 ```powershell
@@ -21,13 +23,13 @@ CLI·SDK·Daemon은 정식 버전 `0.8.0`으로 고정했다. 베타에서 정�
 
 루트에서 `pnpm web:dev`를 실행하면 웹 앱까지 빌드하고 전용 Daemon을 계속 실행한다. 출력된 `http://127.0.0.1:6868/`를 같은 PC의 브라우저에서 열어 상태를 조회한다. 터미널에 `stop`을 입력하고 Enter를 누르거나 Ctrl+C를 누르면 이번 실행이 시작한 전용 Daemon을 종료한다. 상세 확인 순서는 [Web UI 안내](../web/README.md)를 따른다.
 
-[공통 실행 코드](daemon.mjs)는 검증과 웹 실행에서 같은 버전·설정·포트·소유권 확인을 사용한다. [웹 실행 코드](web.mjs)는 웹 UI 활성화와 `PASEO_WEB_UI_DIST_DIR`를 자식 프로세스에만 전달한다. 기존 `config.json`의 웹 UI 비활성 설정은 보존한다. [웹 파일 준비](web-files.mjs)는 데이터 루트의 `tmp/web-*`에 허용된 공개 빌드 자산만 복사한다. 접속 대상과 예상 서버 ID는 소유권 확인 후 이 폴더의 `connection.json`에 기록한다. 인증 값·Daemon 설정·로그는 제공하지 않고, 임시 웹 폴더는 해당 실행 종료 시 정리한다.
+[공통 실행 코드](../../packages/dev-environment/daemon.mjs)는 검증과 웹 실행에서 같은 버전·설정·포트·소유권 확인을 사용한다. [웹 실행 코드](web.mjs)는 웹 UI 활성화와 `PASEO_WEB_UI_DIST_DIR`를 자식 프로세스에만 전달한다. 기존 `config.json`의 웹 UI 비활성 설정은 보존한다. [웹 파일 준비](../../packages/dev-environment/web-files.mjs)는 데이터 루트의 `tmp/web-*`에 허용된 공개 빌드 자산만 복사한다. 접속 대상과 예상 서버 ID는 소유권 확인 후 이 폴더의 `connection.json`에 기록한다. 인증 값·Daemon 설정·로그는 제공하지 않고, 임시 웹 폴더는 해당 실행 종료 시 정리한다.
 
-`web:dev`와 `paseo:verify`는 같은 포트를 사용하므로 데이터 루트가 달라도 동시에 실행하지 않는다. 웹 테스트를 마치고 전용 Daemon이 종료된 뒤 기존 검증을 실행한다.
+`dev start`, `web:dev`, `paseo:verify`는 같은 포트를 사용하므로 데이터 루트가 달라도 동시에 실행하지 않는다. 웹 테스트를 마치고 전용 Daemon이 종료된 뒤 기존 검증을 실행한다.
 
 ## 저장 위치 설정
 
-`WORKNARU_DATA_DIR`로 루트 하나를 지정한다. 미설정 시 저장소의 `.local/paseo-dev/`를 사용한다. 실행기·상태 조회·검증은 [공통 경로 해석](paths.mjs)을 사용하며 실행 시작 시 적용 루트·주요 경로와 출처를 stderr에 출력한다. 조회 결과 JSON은 stdout에 둔다.
+`WORKNARU_DATA_DIR`로 루트 하나를 지정한다. 미설정 시 저장소의 `.local/paseo-dev/`를 사용한다. 실행기·상태 조회·검증은 [공통 경로 해석](../../packages/dev-environment/paths.mjs)을 사용하며 실행 시작 시 적용 루트·주요 경로와 출처를 stderr에 출력한다. 조회 결과 JSON은 stdout에 둔다.
 
 ```powershell
 $env:WORKNARU_DATA_DIR = Join-Path (Get-Location).Path '.local/team-data'
@@ -43,7 +45,7 @@ Remove-Item Env:WORKNARU_DATA_DIR
 
 잘못된 값을 기본 폴더로 대체하지 않는다. 새 디렉터리는 생성할 수 있지만 기존 데이터·설정·ID를 자동 탐색·이전·덮어쓰기하지 않는다. 기존 한글·공백 경로는 새 규칙에서 거부되며 원본 파일은 보존한다. 다른 루트는 별도 데이터이므로 기존 인스턴스가 자동 승계되지 않는다.
 
-설정·서버 ID·PID·로그·worktree·임시 파일과 웹 접속 설정을 관리한다. 소스·의존 패키지·정적 빌드 산출물, 외부 프로젝트와 AI 도구 자체 저장소·인증은 대상이 아니다. 저장소 안에서 지정할 때는 Git에서 제외된 `.local/` 아래를 사용한다. 개별 경로 지정·다중 인스턴스·포트 자동 선택·기존 데이터 자동 이전은 지원하지 않는다. `paseo:verify`는 빈 Agent 목록을 전제로 하므로 사용 데이터가 있는 루트에서 실행하지 않는다.
+설정·서버 ID·PID·로그·worktree·임시 파일과 웹 접속 설정을 관리한다. CLI 관리형 실행은 같은 루트에 `dev-instance.json`, `dev-operation.lock`, `dev-runner.log`, `build.log`도 둔다. 저장소별 빌드 잠금 `.local/dev-build.lock`은 소스 빌드용이며 Daemon 데이터가 아니다. 소스·의존 패키지·정적 빌드 산출물, 외부 프로젝트와 AI 도구 자체 저장소·인증은 대상이 아니다. 저장소 안에서 지정할 때는 Git에서 제외된 `.local/` 아래를 사용한다. 개별 경로 지정·다중 인스턴스·포트 자동 선택·기존 데이터 자동 이전은 지원하지 않는다. `paseo:verify`는 빈 Agent 목록을 전제로 하므로 사용 데이터가 있는 루트에서 실행하지 않는다.
 
 ## 동작과 운영 분리
 
@@ -78,6 +80,6 @@ Remove-Item Env:WORKNARU_DATA_DIR
 
 공개 `createPaseoApi(driver).agents.list()`로 세션 목록을 조회한다. 이 버전의 공개 `createPaseoClient()`는 서버 식별 정보·Daemon 상태·종료 API를 제공하지 않아 검증 코드에서 `@getpaseo/client/internal/daemon-client`의 `getLastServerInfoMessage()`, `getDaemonStatus()`, `shutdownServer()`를 사용한다. 서버 패키지의 supervisor 파일 경로도 내부 진입점이다. 이 내부 의존성들은 버전 변경 시 재확인이 필요하다.
 
-제품 Adapter에는 [초기 설계](../../docs/paseo-adapter-initial-design.md)와 [ADR 0001](../../docs/adr/0001-runtime-interface-and-paseo-adapter.md)의 의존 경계를 적용한다. Daemon 생성·종료와 원시 SDK 비교 조회는 검증 프로그램의 역할이며, Adapter는 조회용 클라이언트만 생성·정리한다. Agent 생성, 작업 중단, 권한 요청과 실제 Provider 인증은 별도 검증 대상이다.
+제품 Adapter에는 [초기 설계](../../docs/paseo-adapter-initial-design.md)와 [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)의 의존 경계를 적용한다. Daemon 생성·종료는 CLI의 로컬 개발 환경 관리와 이 검증 프로그램이 공통 라이브러리로 수행하며, 원시 SDK 비교 조회는 검증 프로그램의 역할이다. Adapter는 조회용 클라이언트만 생성·정리한다. Agent 생성, 작업 중단, 권한 요청과 실제 Provider 인증은 별도 검증 대상이다.
 
 기존 개인용 Paseo의 비교 확인은 이 프로그램의 접속 대상에 포함하지 않는다. 함께 실행 중인 Paseo가 있다면 읽기 전용 상태 조회로 검증 전후의 서버 ID·PID·시작 시각·접속 주소와 응답 상태를 비교한다. 개인용 식별 정보와 로컬 로그는 공개 Issue에 올리지 않는다.
