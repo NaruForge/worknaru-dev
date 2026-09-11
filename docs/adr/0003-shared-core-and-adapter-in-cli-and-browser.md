@@ -1,7 +1,8 @@
 # 0003. CLI와 브라우저에서 Core·Adapter 공통 사용
 
 - 날짜: 2026-09-10
-- 상태: Accepted
+- 상태: Superseded
+- 대체 결정: [ADR 0005](0005-local-development-cli-boundary.md). 2026-09-11에 제품 기능 호출과 로컬 개발 환경 관리의 경계를 구분했다. 아래 본문은 당시 결정을 보존한다.
 - 승인 근거: CLI와 Web UI가 Core·Adapter를 공통으로 사용하고 브라우저에서 Paseo Daemon에 연결하는 구조 및 호환 작업을 설명한 대화에서, 사용자가 “좋습니다. web ui를 고려한 아키텍쳐 문서 업데이트가 필요하겠네요”라고 요청했다.
 - 관련 Work Item: [Web UI를 고려한 아키텍처 문서 업데이트 #7](https://github.com/NaruForge/worknaru-dev/issues/7), [첫 웹 상태 조회 구현 #9](https://github.com/NaruForge/worknaru-dev/issues/9).
 - 관련 결정: [ADR 0001](0001-runtime-interface-and-paseo-adapter.md)의 Runtime 의존 경계를 유지하며 앱의 실행 위치를 정한다.

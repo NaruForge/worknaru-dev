@@ -1,0 +1,14 @@
+{
+  "name": "@worknaru/dev-environment",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./daemon": "./daemon.mjs",
+    "./paths": "./paths.mjs",
+    "./web-files": "./web-files.mjs"
+  },
+  "dependencies": {
+    "@getpaseo/cli": "0.8.0",
+    "@getpaseo/client": "0.8.0"
+  }
+}

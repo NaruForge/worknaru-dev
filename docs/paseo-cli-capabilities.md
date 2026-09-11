@@ -2,7 +2,7 @@
 
 ## 목적과 사용 범위
 
-Worknaru에서 필요한 실행 기능을 고를 때 참고할 Paseo CLI 기능 목록이다. [ADR 0001](adr/0001-runtime-interface-and-paseo-adapter.md)에 따라 실제로 필요한 기능부터 Runtime 계약을 정의하고 Paseo Adapter에 추가한다.
+Worknaru에서 필요한 실행 기능을 고를 때 참고할 Paseo CLI 기능 목록이다. [ADR 0005](adr/0005-local-development-cli-boundary.md)에 따라 실제로 필요한 기능부터 Runtime 계약을 정의하고 Paseo Adapter에 추가한다.
 
 초기에 필요한 기능과 동작의 제안은 [Paseo Adapter 초기 설계 초안](paseo-adapter-initial-design.md)을 참고한다.
 
@@ -98,7 +98,7 @@ Worknaru에서 필요한 실행 기능을 고를 때 참고할 Paseo CLI 기능 
 1. 해당 기능이 필요한 Worknaru의 사용 사례와 원하는 결과를 정한다.
 2. `@getpaseo/client`에서 제공하는 호출·타입·이벤트를 확인하고, 필요한 경우 daemon API와 구현을 조사한다.
 3. 입력·결과·상태·오류·이벤트의 의미를 Worknaru Runtime 계약으로 정의한다. 권한 요청, 비동기 작업, 재연결 등 해당 기능에 필요한 동작도 확인한다.
-4. Paseo Adapter가 그 계약을 구현하고, Core와 CLI는 [ADR 0001](adr/0001-runtime-interface-and-paseo-adapter.md)의 의존 경계를 따른다.
+4. Paseo Adapter가 그 계약을 구현하고, Core와 CLI는 [ADR 0005](adr/0005-local-development-cli-boundary.md)의 의존 경계를 따른다.
 5. 선택한 기능의 정상·실패 동작을 실제 사용할 버전 조합에서 검증한다.
 
 기능 목록에 있다는 이유로 빈 인터페이스·패키지·구현을 미리 추가하지 않는다. 새로운 사용 사례에서 필요한 기능을 선택할 때 이 참고 목록을 다시 활용한다.

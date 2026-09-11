@@ -14,4 +14,4 @@
 - 독립된 책임이나 의존 경계가 필요할 때 패키지로 분리한다.
 - 디렉터리와 패키지는 실제 코드를 추가할 때 생성한다. 미래의 구성을 예상해 빈 폴더를 만들지 않는다.
 
-Core·Runtime·Paseo Adapter의 의존 경계는 [ADR 0001](adr/0001-runtime-interface-and-paseo-adapter.md)을 따른다.
+Core·Runtime·Paseo Adapter의 의존 경계는 [ADR 0005](adr/0005-local-development-cli-boundary.md)을 따른다.

@@ -181,7 +181,7 @@ test('real executable provides help and JSON input failures', async () => {
   assert.equal(help.code, 0);
   assert.ok(help.stdout.startsWith(`${brand.displayName} CLI\n`));
   assert.equal(help.stderr, '');
-  const invalid = await runProcess(['status', '--json']);
+  const invalid = await runProcess(['status', '--endpoint', endpoint, '--json']);
   assert.equal(invalid.code, 2);
   assert.equal(JSON.parse(invalid.stdout).error.code, 'invalid_configuration');
   assert.equal(invalid.stderr, '');

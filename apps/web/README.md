@@ -11,20 +11,20 @@
 저장소 루트에서 실행한다.
 
 ```powershell
-pnpm install --frozen-lockfile --store-dir .pnpm-store
-pnpm web:dev
+pnpm install --frozen-lockfile
+pnpm exec worknaru dev start
 ```
 
-실행 명령이 `<표시 이름> Web UI: http://127.0.0.1:6868/`를 출력하면 같은 PC의 브라우저에서 해당 주소를 연다. 기본 표시 이름은 Worknaru다. 터미널은 실행한 채로 두고 **상태 확인**을 누른다. 종료하려면 그 터미널에서 `stop`을 입력하고 Enter를 누르거나 Ctrl+C를 누른다.
+준비가 끝나고 명령이 반환되면 같은 PC의 브라우저에서 `http://127.0.0.1:6868/`를 열어 **상태 확인**을 누른다. 터미널을 닫아도 실행은 유지된다. 종료는 `pnpm exec worknaru dev stop`으로 한다. 문제 진단은 `pnpm exec worknaru doctor`, CLI 조회는 `pnpm exec worknaru status`를 사용한다.
 
 가장 작은 확인 순서는 다음과 같다.
 
 1. 버튼을 눌러 **연결 성공**, 서버 ID와 `0.8.0` 버전 표시를 확인한다.
-2. 브라우저 탭을 유지한 채 실행 터미널에서 `stop`을 입력한다.
+2. 브라우저 탭을 유지한 채 터미널에서 `pnpm exec worknaru dev stop`을 실행한다.
 3. 열린 화면의 버튼을 다시 눌러 **연결 실패**와 서버 정보가 비워지는 것을 확인한다. Daemon이 웹 파일도 제공하므로 이 단계에서는 페이지를 새로고침하지 않는다.
-4. 다시 `pnpm web:dev`를 실행하면 같은 탭에서 정상 조회를 재시도할 수 있다.
+4. 다시 `pnpm exec worknaru dev start`를 실행하면 같은 탭에서 정상 조회를 재시도할 수 있다.
 
-포트나 전용 Daemon이 이미 사용 중이면 새 실행을 거부한다. `paseo:verify`와 `web:dev`는 같은 전용 환경을 사용하므로 동시에 실행하지 않는다. 오류·로그 위치와 운영 분리 기준은 [개발 환경 안내](../paseo-dev/README.md)를 따른다.
+정상 관리 인스턴스가 실행 중이면 재사용한다. 다른 실행기가 포트를 점유하거나 소유권을 확인할 수 없으면 실행을 거부한다. 기존 `pnpm web:dev`는 터미널에 연결된 수동 검증용으로 유지하며 `stop` 또는 Ctrl+C로 종료한다. `dev start`, `paseo:verify`, `web:dev`는 같은 포트를 사용하므로 함께 실행하지 않는다. 오류·로그 위치와 운영 분리 기준은 [개발 환경 안내](../paseo-dev/README.md)를 따른다.
 
 ## 실행 구조
 
