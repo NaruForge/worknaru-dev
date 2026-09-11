@@ -25,6 +25,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@worknaru/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       '@worknaru/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -40,6 +43,9 @@ importers:
       '@getpaseo/client':
         specifier: 0.8.0
         version: 0.8.0
+      '@worknaru/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       '@worknaru/cli':
         specifier: workspace:*
         version: link:../cli
@@ -49,6 +55,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@worknaru/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       '@worknaru/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -59,6 +68,8 @@ importers:
       esbuild:
         specifier: 0.25.12
         version: 0.25.12
+
+  packages/branding: {}
 
   packages/core:
     dependencies:

@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import { createPaseoApi } from '@getpaseo/client';
 import { createPaseoRuntime } from '@worknaru/paseo-adapter';
 import {
-  childEnvironment, connectOwned, dataHome, endpoint as url, portOpen, root,
+  childEnvironment, connectOwned, endpoint as url, portOpen, root,
   startDedicatedDaemon, timeout, version,
 } from './daemon.mjs';
 
@@ -15,8 +15,8 @@ const require = createRequire(import.meta.url);
 const worknaruEntry = path.join(path.dirname(require.resolve('@worknaru/cli/package.json')), 'bin', 'worknaru.mjs');
 const exec = promisify(execFile);
 
-async function worknaruStatus(serverId, expectedExitCode) {
-  const env = childEnvironment();
+async function worknaruStatus(serverId, expectedExitCode, paths) {
+  const env = childEnvironment(paths);
   for (const key of Object.keys(env)) if (/^WORKNARU_/i.test(key)) delete env[key];
   let result;
   try {
@@ -38,6 +38,7 @@ async function worknaruStatus(serverId, expectedExitCode) {
 
 async function main() {
   const daemon = await startDedicatedDaemon();
+  const { paths } = daemon;
   const { child, exited } = daemon;
   let connection = daemon.connection;
   let report;
@@ -58,10 +59,10 @@ async function main() {
       targetId: 'worknaru-dev-mismatch-check', endpoint: url, expectedServerId: 'srv_not_the_expected_daemon',
     }).getDaemonStatus();
     assert.equal(mismatchStatus.failure.code, 'target_mismatch');
-    const cliStatus = await worknaruStatus(serverId, 0);
+    const cliStatus = await worknaruStatus(serverId, 0, paths);
     assert.equal(cliStatus.outcome, 'available');
     assert.deepEqual(cliStatus.server, { id: serverId, version });
-    const cliMismatch = await worknaruStatus('srv_not_the_expected_daemon', 1);
+    const cliMismatch = await worknaruStatus('srv_not_the_expected_daemon', 1, paths);
     assert.equal(cliMismatch.failure.code, 'target_mismatch');
     const detailAfterProbe = await connection.driver.getDaemonStatus({ timeout: 5000 });
     assert.equal(detailAfterProbe.pid, detail.pid, 'Status probes changed daemon process');
@@ -69,10 +70,10 @@ async function main() {
     assert.equal((await timeout(api.agents.list(), 5000, 'Agent list after probe')).entries.length, 0);
     await connection.driver.close();
     connection = null;
-    connection = await connectOwned(child.pid);
+    connection = await connectOwned(child.pid, paths);
     assert.equal(connection.info.serverId, serverId, 'Identity changed on client reconnect');
     report = {
-      version, dataHome, endpoint: url, serverId, supervisorPid: child.pid,
+      version, dataHome: paths.dataHome, endpoint: url, serverId, supervisorPid: child.pid,
       sdkConnection: connection.driver.getConnectionState(),
       agentCount: agents.entries.length, relayEnabled: detail.relay.enabled,
       reconnectPreservedDaemon: true,
@@ -86,11 +87,11 @@ async function main() {
     await timeout(exited, 20000, 'Dedicated daemon shutdown');
     assert.equal(child.exitCode, 0, 'Dedicated supervisor did not exit cleanly');
     assert.equal(await portOpen(), false, 'Dedicated listener remains open');
-    assert.equal(existsSync(path.join(dataHome, 'paseo.pid')), false, 'Dedicated PID lock remains');
+    assert.equal(existsSync(paths.pid), false, 'Dedicated PID lock remains');
     const offlineStatus = await runtime.getDaemonStatus();
     assert.equal(offlineStatus.failure.code, 'connection_failed');
     assert.equal(offlineStatus.localProcess, 'unknown');
-    const cliOfflineStatus = await worknaruStatus(serverId, 1);
+    const cliOfflineStatus = await worknaruStatus(serverId, 1, paths);
     assert.equal(cliOfflineStatus.failure.code, 'connection_failed');
     report = { ...report, shutdown: 'completed', listenerClosed: true, pidLockRemoved: true,
       adapterOfflineResult: offlineStatus.failure.code, cliOfflineResult: cliOfflineStatus.failure.code };

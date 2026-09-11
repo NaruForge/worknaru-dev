@@ -5,9 +5,11 @@
   "scripts": {
     "verify": "node verify.mjs",
     "status": "node status.mjs",
-    "web": "node web.mjs"
+    "web": "node web.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@worknaru/branding": "workspace:*",
     "@getpaseo/cli": "0.8.0",
     "@getpaseo/client": "0.8.0",
     "@worknaru/cli": "workspace:*",

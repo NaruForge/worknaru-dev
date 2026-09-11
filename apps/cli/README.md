@@ -4,6 +4,10 @@ AI Agent와 사용자가 Worknaru Core API를 호출하는 프로그램이다. �
 
 ## 설치와 실행
 
+제목·제품 오류 문구는 [공통 리브랜딩 설정](../../packages/branding/README.md)을 빌드해 적용한다. 실제 명령·환경 변수·오류/종료 코드와 JSON 구조는 유지하며 메시지의 제품 이름은 바뀔 수 있다.
+
+표시 이름은 한글과 일반 공백을 포함한 제한된 문자 집합을 지원한다. 개발 실행기의 데이터 루트는 기본값을 포함해 폴더명에 영문·숫자·`-_.`만 허용한다. 이 경로 제한과 브랜드 링크의 ASCII 규칙을 CLI 옵션 전체에 적용하는 것은 아니다.
+
 저장소 루트에서 실행한다. 검증 환경은 Windows, Node.js `24.18.0`, 루트 `packageManager`에 지정된 pnpm이다.
 
 ```powershell
@@ -20,6 +24,8 @@ pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id $serverI
 ```
 
 다른 Daemon을 조회할 때는 주소와 예상 서버 ID를 별도로 확인해 전달한다. CLI가 접속 응답을 보고 예상 ID를 자동 등록하지는 않는다. 수동 테스트를 마치면 `web:dev` 터미널에 `stop`을 입력해 전용 Daemon을 종료한다.
+
+위 예시는 기본 데이터 루트다. 개발 실행기에 `WORKNARU_DATA_DIR`를 지정했다면 해당 루트의 `server-id`를 읽는다. CLI 자체는 이 변수로 접속 대상을 선택하거나 파일을 자동 탐색하지 않는다. [저장 위치 설정](../paseo-dev/README.md#저장-위치-설정)
 
 루트의 `pnpm --silent worknaru ...` 또는 `node apps/cli/bin/worknaru.mjs ...`로도 실행할 수 있다. JSON을 파싱하는 Agent는 pnpm의 스크립트 실행 로그가 섞이지 않도록 `pnpm exec worknaru ... --json`이나 직접 Node 실행을 사용한다. 코드 변경 후에는 다시 빌드한다. 현재 workspace 내부에서 실행하며 전역 설치는 필요하지 않다.
 

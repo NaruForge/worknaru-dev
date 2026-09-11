@@ -8,6 +8,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@worknaru/branding": "workspace:*",
     "@worknaru/core": "workspace:*",
     "@worknaru/paseo-adapter": "workspace:*"
   }
