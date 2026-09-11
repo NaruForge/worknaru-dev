@@ -204,7 +204,23 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     });
   }
   return {
-    execute,
+    health: input => execute('health', input),
+    options: input => execute('options', input),
+    directories: input => execute('directories', input),
+    create: input => execute('create', input),
+    list: input => execute('list', input),
+    show: input => execute('show', input),
+    history: input => execute('history', input),
+    send: input => execute('send', input),
+    requests: input => execute('requests', input),
+    cancel: input => execute('cancel', input),
+    discard: input => execute('discard', input),
+    resume: input => execute('resume', input),
+    permission: input => execute('permission', input),
+    archivePreview: input => execute('archivePreview', input),
+    archive: input => execute('archive', input),
+    settings: input => execute('settings', input),
+    saveSettings: input => execute('saveSettings', input),
     async initialize() {
       for (const r of state.requests) if (['sending', 'running'].includes(r.state)) { r.state = 'uncertain'; r.error = '재시작 전 요청 결과를 확인해야 합니다.'; state.paused[r.agentId] = true; }
       save();

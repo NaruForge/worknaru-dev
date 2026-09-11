@@ -2,6 +2,8 @@
 
 전용 Paseo Daemon에 로드하는 신뢰된 로컬 서버 플러그인이다. `worknaru-agent-service`의 `agents.execute` RPC로 CLI와 Web의 요청을 받고, Core 정책을 사용해 지속 대기열을 실행한다. UI나 CLI 프로세스의 수명에 의존하지 않는다.
 
+RPC envelope는 Adapter와 이 앱의 통신 구현에 한정한다. `operation`은 Agent 메서드의 고정 enum으로 검증하며 임의 명령이나 서비스 수명 메서드를 실행할 수 없다. Core 정책 서비스도 공개 `execute()` 없이 Agent별 명시적 메서드를 제공한다. Module·Workspace 작업을 이 RPC에 추가하지 않는다.
+
 설치는 저장소 루트에서 `pnpm exec worknaru agent setup` 후 `pnpm exec worknaru dev start`다. setup은 기본 전용 설정을 백업하고 이 앱만 활성화한다. 개인용 Paseo 설정은 사용하지 않는다. 실행 중 setup이나 사용자 변경 설정 덮어쓰기는 거부한다. 자세한 사용법은 [CLI](../cli/README.md)와 [Web](../web/README.md)에 있다.
 
 `index.server.ts`가 RPC를 등록하고 초기화를 시작한다. `server/entry.mjs`는 전용 실행기가 전달한 데이터 루트·기본 작업 폴더와 server-id를 확인한다. [Core 정책](../../packages/core/src/agent-service.mjs)에 [Paseo Driver](../../packages/paseo-adapter/src/agent-driver.mjs), 폴더 검증과 SQLite 저장소를 주입한다. 플러그인 해제 시 타이머·구독·연결·DB를 정리한다. 전용 데이터 경로가 없으면 사용자 홈으로 대체하지 않는다.

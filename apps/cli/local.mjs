@@ -83,7 +83,7 @@ export async function doctor(paths) {
     if (status.state === 'running' && await agentsEnabled(paths)) {
       try {
         const { createCore } = await import('./dist/bootstrap.js');
-        const health = await createCore({ targetId: 'worknaru-dev', endpoint, expectedServerId: status.daemon.server.id, timeoutMs: 5000 }).agents('health', {});
+        const health = await createCore({ targetId: 'worknaru-dev', endpoint, expectedServerId: status.daemon.server.id, timeoutMs: 5000 }).agents.health({});
         checks.push({ name: 'Agent service', ok: health.ready, detail: health.ready ? 'ready' : 'not ready', next: 'Inspect daemon.log and agent-state.sqlite availability, then dev stop/start.' });
       } catch { checks.push({ name: 'Agent service', ok: false, detail: 'unavailable', next: 'Inspect daemon.log, then dev stop/start.' }); }
     }

@@ -24,7 +24,7 @@ Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. `
 
 ## Agent 작업
 
-[agents.ts](src/agents.ts)의 `AgentOperationMap`이 `agents(operation, input)`의 입력과 결과를 연결한다. 상태 조회만 구현한 기존 Runtime에서는 Agent 메서드를 생략할 수 있으며 Core가 `feature_unavailable`로 알린다.
+[agents.ts](src/agents.ts)의 `AgentAPI`가 `agents.create()`·`send()`·`history()` 등 메서드별 입력과 결과를 정의한다. 임의 operation 문자열이나 다른 도메인의 명령을 실행하는 공개 통로는 없다. 상태 조회만 구현한 기존 Runtime에서는 Agent 메서드를 생략할 수 있으며 Core가 `feature_unavailable`로 알린다.
 
 | 작업 | 계약 |
 | --- | --- |

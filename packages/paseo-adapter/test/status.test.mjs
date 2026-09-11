@@ -213,7 +213,7 @@ test('each concurrent probe has independent connection ownership', async () => {
   await withDaemon({}, async context => {
     const runtime = createPaseoRuntime(optionsFor(context.endpoint));
     const results = await Promise.all([runtime.getDaemonStatus(), runtime.getDaemonStatus()]);
-    assert.ok(results.every(result => result.outcome === 'available'));
+    assert.ok(results.every(result => result.outcome === 'available'), JSON.stringify(results));
     assert.equal(context.connectionCount, 2);
     assert.equal(context.commands.length, 2);
   });

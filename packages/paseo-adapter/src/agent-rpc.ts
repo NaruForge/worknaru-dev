@@ -3,8 +3,9 @@ import { AgentError, type AgentAPI } from '@worknaru/runtime';
 import type { PaseoAdapterOptions } from './index.js';
 import { createStatusWebSocket } from './status-websocket.js';
 
-export function agentRpc(options: PaseoAdapterOptions): AgentAPI['agents'] {
-  return async (operation, input) => {
+export function agentRpc(options: PaseoAdapterOptions): AgentAPI {
+  // This envelope is private to the adapter. Apps consume named Agent capabilities.
+  const invoke = async <K extends keyof AgentAPI>(operation: K, input: unknown): Promise<Awaited<ReturnType<AgentAPI[K]>>> => {
     const client = new DaemonClient({ url: options.endpoint, clientId: `worknaru-agent-${crypto.randomUUID()}`,
       clientType: options.clientType ?? 'cli', appVersion: '0.8.0', connectTimeoutMs: options.timeoutMs ?? 5000,
       reconnect: { enabled: false }, logger: { debug() {}, info() {}, warn() {}, error() {} },
@@ -23,5 +24,24 @@ export function agentRpc(options: PaseoAdapterOptions): AgentAPI['agents'] {
       if (error instanceof AgentError) throw error;
       throw new AgentError('agent_service_unavailable', 'Agent 실행부에 연결할 수 없습니다. doctor로 준비 상태를 확인해 주세요.');
     } finally { await client.close().catch(() => {}); }
+  };
+  return {
+    health: (input = {}) => invoke('health', input),
+    options: (input = {}) => invoke('options', input),
+    directories: input => invoke('directories', input),
+    create: input => invoke('create', input),
+    list: (input = {}) => invoke('list', input),
+    show: input => invoke('show', input),
+    history: input => invoke('history', input),
+    send: input => invoke('send', input),
+    requests: input => invoke('requests', input),
+    cancel: input => invoke('cancel', input),
+    discard: input => invoke('discard', input),
+    resume: input => invoke('resume', input),
+    permission: input => invoke('permission', input),
+    archivePreview: input => invoke('archivePreview', input),
+    archive: input => invoke('archive', input),
+    settings: (input = {}) => invoke('settings', input),
+    saveSettings: input => invoke('saveSettings', input),
   };
 }

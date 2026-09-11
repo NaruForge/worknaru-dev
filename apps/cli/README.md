@@ -46,7 +46,7 @@ pnpm exec worknaru agent list --archived
 
 대화형 `create`는 작업 폴더·실제 사용 가능한 Codex 모델·이름을 묻는다. `--cwd`, `--model`, `--name`으로 생략할 수 있다. 비대화형에서는 현재 폴더·Provider의 기본 모델·`새 Agent`를 사용한다. 같은 폴더에서 서로 독립적인 Agent를 만들 수 있다. 모든 폴더 경로는 Daemon 컴퓨터 기준이다. 이름이 겹치면 전체 ID 또는 유일한 4자 이상 ID 접두사를 쓴다. 목록에는 이 제품에서 만든 Agent만 표시한다.
 
-`send`는 접수 후 기본 600초 동안 결과를 관찰한다. `--no-wait`는 접수 상태와 요청 ID를 바로 반환한다. `wait <agent> --request <요청ID>`로 다시 관찰할 수 있다. `--wait-timeout 60`은 관찰 시간만 제한한다. Ctrl+C도 관찰만 끝내며 Agent 작업을 중단하지 않는다. 후속 `send`는 같은 Agent 세션의 대화를 이어간다. `history`는 최근 최대 200개 원본 항목을 읽고, `--all`은 이전 페이지도 읽는다. 응답 조각은 사람용 출력에서 하나로 합친다.
+`send`는 접수 후 기본 600초 동안 결과를 관찰한다. `--no-wait`는 접수 상태와 요청 ID를 바로 반환한다. `wait <agent> --request <요청ID>`로 다시 관찰할 수 있다. `--wait-timeout 60`은 관찰 시간만 제한한다. Ctrl+C도 관찰만 끝내며 Agent 작업을 중단하지 않는다. 후속 `send`는 같은 Agent 세션의 대화를 이어간다. `history`는 최근 최대 200개 원본 항목을 읽고, `--all`은 이전 페이지도 읽는다. `send`/`wait`의 완료 응답은 필요하면 이전 페이지까지 읽어 해당 요청의 응답을 표시한다. 조회 도중 기록이 교체돼 응답 범위를 확인하지 못하면 전체 기록 조회를 안내한다. 응답 조각은 사람용 출력에서 하나로 합친다.
 
 ### 전송 방식과 대기열
 
@@ -69,6 +69,8 @@ pnpm exec worknaru agent queue resume "문서 도우미"
 ### 권한과 보관
 
 대화형 `send`/`wait`는 권한 요청을 표시하고 승인·거부를 묻는다. 질문은 선택지 번호나 직접 입력으로 답한다. 비대화형과 `--json`은 질문하지 않고 `permission_pending`과 요청 정보를 반환한다.
+
+`agent permissions`는 권한 ID, 실행 입력과 선택 가능한 action을 표시한다. 특정 선택지를 지정할 때는 표시된 `--allow`/`--deny`와 `--action <actionID>`를 함께 사용한다.
 
 ```powershell
 pnpm exec worknaru agent permissions "문서 도우미"

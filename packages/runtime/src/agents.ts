@@ -20,28 +20,25 @@ export interface AgentHistory { entries: HistoryEntry[]; cursor: unknown; epoch:
 export interface AgentSettings { sendMode: SendMode; revision: number }
 export interface AgentOptions { defaultCwd: string; models: { id: string; name: string; default: boolean }[]; available: boolean }
 export interface ArchivePreview { token: string; agents: Agent[]; queued: AgentRequest[] }
-export interface AgentOperationMap {
-  health: { input: Record<string, never>; output: { ready: boolean; version: number } };
-  options: { input: { cwd?: string }; output: AgentOptions };
-  directories: { input: { query: string }; output: { paths: string[] } };
-  create: { input: { id: string; name: string; cwd: string; model: string }; output: Agent };
-  list: { input: { archived?: boolean }; output: Agent[] };
-  show: { input: { agent: string }; output: Agent };
-  history: { input: { agent: string; cursor?: unknown }; output: AgentHistory };
-  send: { input: { agent: string; id: string; text: string; mode?: SendMode }; output: AgentRequest };
-  requests: { input: { agent: string }; output: { requests: AgentRequest[]; paused: boolean } };
-  cancel: { input: { agent: string; id: string }; output: AgentRequest };
-  discard: { input: { agent: string; id: string }; output: AgentRequest };
-  resume: { input: { agent: string }; output: { resumed: boolean } };
-  permission: { input: { agent: string; id: string; behavior: 'allow' | 'deny'; actionId?: string; answers?: Record<string, unknown> }; output: Agent };
-  archivePreview: { input: { agent: string }; output: ArchivePreview };
-  archive: { input: { token: string }; output: { archived: string[]; failed: string[] } };
-  settings: { input: Record<string, never>; output: AgentSettings };
-  saveSettings: { input: { sendMode: SendMode; revision: number }; output: AgentSettings };
-}
-export type AgentOperation = keyof AgentOperationMap;
+/** Agent-only capabilities. Transport operation names and envelopes are adapter details. */
 export interface AgentAPI {
-  agents<K extends AgentOperation>(operation: K, input: AgentOperationMap[K]['input']): Promise<AgentOperationMap[K]['output']>;
+  health(input?: Record<string, never>): Promise<{ ready: boolean; version: number }>;
+  options(input?: { cwd?: string }): Promise<AgentOptions>;
+  directories(input: { query: string }): Promise<{ paths: string[] }>;
+  create(input: { id: string; name: string; cwd: string; model: string }): Promise<Agent>;
+  list(input?: { archived?: boolean }): Promise<Agent[]>;
+  show(input: { agent: string }): Promise<Agent>;
+  history(input: { agent: string; cursor?: unknown }): Promise<AgentHistory>;
+  send(input: { agent: string; id: string; text: string; mode?: SendMode }): Promise<AgentRequest>;
+  requests(input: { agent: string }): Promise<{ requests: AgentRequest[]; paused: boolean }>;
+  cancel(input: { agent: string; id: string }): Promise<AgentRequest>;
+  discard(input: { agent: string; id: string }): Promise<AgentRequest>;
+  resume(input: { agent: string }): Promise<{ resumed: boolean }>;
+  permission(input: { agent: string; id: string; behavior: 'allow' | 'deny'; actionId?: string; answers?: Record<string, unknown> }): Promise<Agent>;
+  archivePreview(input: { agent: string }): Promise<ArchivePreview>;
+  archive(input: { token: string }): Promise<{ archived: string[]; failed: string[] }>;
+  settings(input?: Record<string, never>): Promise<AgentSettings>;
+  saveSettings(input: { sendMode: SendMode; revision: number }): Promise<AgentSettings>;
 }
 export class AgentError extends Error {
   constructor(readonly code: string, message: string) { super(message); this.name = 'AgentError'; }

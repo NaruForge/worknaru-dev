@@ -104,7 +104,7 @@ Web UI의 상태 조회도 같은 Core API와 Runtime 결과를 사용한다. �
 
 ## Agent 작업과 지속 대기열
 
-CLI/Web의 `Core.agents()` → Runtime → Adapter가 전용 플러그인의 `agents.execute`를 호출한다. 플러그인은 Core 정책에 Node 전용 Paseo Driver·SQLite 저장소·폴더 검증을 주입한다. Provider 실행과 타임라인은 Paseo가 관리하고, 전송 접수·기본 설정·정지 상태는 Worknaru의 SQLite가 관리한다. 이 두 자료를 완료 여부 추정으로 혼합하지 않는다.
+CLI/Web의 `Core.agents`의 Agent 전용 메서드 → Runtime → Adapter가 전용 플러그인의 `agents.execute`를 호출한다. 플러그인은 Core 정책에 Node 전용 Paseo Driver·SQLite 저장소·폴더 검증을 주입한다. Provider 실행과 타임라인은 Paseo가 관리하고, 전송 접수·기본 설정·정지 상태는 Worknaru의 SQLite가 관리한다. 이 두 자료를 완료 여부 추정으로 혼합하지 않는다.
 
 Core 정책은 메시지를 먼저 저장하고 Agent별로 직렬 처리한다. 기본 FIFO는 현재 턴이 성공한 뒤 다음 메시지를 실행한다. 권한 대기·실패·취소·결과 불명확에서는 다음 작업을 보류한다. 추가 지시는 현재 턴에만 전달하고, 지원하지 않을 때 작업 교체로 바꾸지 않는다. 고정된 Paseo protocol/server의 안전한 admission 패치와 설치된 guard 테스트로 이 동작을 확인한다.
 

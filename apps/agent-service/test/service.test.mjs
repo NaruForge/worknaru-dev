@@ -25,7 +25,7 @@ async function fixture(t, seed = initialAgentState(), extra = {}) {
   };
   const service = createAgentService({ driver, store: { load: () => structuredClone(stored), save: value => { stored = structuredClone(value); }, close() {} }, validateDirectory: async () => {} });
   await service.initialize(); t.after(() => service.close());
-  const call = (op, input = {}) => service.execute(op, input);
+  const call = (op, input = {}) => service[op](input);
   const send = (id, mode) => call('send', { agent: 'agent-one', id, text: id, ...(mode ? { mode } : {}) });
   const finish = (type = 'turn_completed', id = 'agent-one') => { const a = agents.get(id); const turnId = a.turnId; a.turnId = null; a.status = 'idle'; listeners.get(id)?.({ type, turnId }); };
   const settle = async () => { for (let i = 0; i < 10; i++) await delay(1); };
@@ -139,6 +139,6 @@ test('storage write failure prevents execution and marks health unavailable', as
   const service = createAgentService({ driver: { list: async () => [snapshot()], get: async () => snapshot(), send: async () => { sent = true; }, close: async () => {} },
     store: { load: () => null, save: () => { if (fail) throw Error('disk failure'); }, close() {} }, validateDirectory: async () => {} });
   await service.initialize(); fail = true;
-  await assert.rejects(service.execute('send', { agent: 'agent-one', id: 'unsaved', text: 'must not execute' }), { code: 'storage_unavailable' });
-  assert.equal((await service.execute('health', {})).ready, false); assert.equal(sent, false); await service.close();
+  await assert.rejects(service.send({ agent: 'agent-one', id: 'unsaved', text: 'must not execute' }), { code: 'storage_unavailable' });
+  assert.equal((await service.health({})).ready, false); assert.equal(sent, false); await service.close();
 });

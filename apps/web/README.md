@@ -30,6 +30,8 @@ pnpm exec worknaru dev start
 
 **대기 메시지**를 펼치면 상태·내용·실행 전 취소를 확인한다. 실패·취소·결과 불명확 시 자동 실행이 멈춘다. 기록을 확인한 뒤 **남은 대기열 재개**를 누른다. `uncertain` 요청은 **기록 확인 후 실행 포기**로 취소 처리한 뒤 재개할 수 있다. 현재 작업이 진행 중이면 먼저 완료·권한 처리·보관을 선택한다. 불명확한 요청을 자동으로 재전송하지 않는다.
 
+전송 실패·취소 시 입력을 남기며, 다시 **전송**하면 새 요청으로 접수한다. 통신 장애로 접수 여부가 불명확한 동안은 같은 요청 ID로 결과를 확인해 중복 실행을 막는다. **기록 확인 후 실행 포기**로 취소된 것이 확인되면 같은 내용도 새로 전송할 수 있다.
+
 권한 요청은 대화 아래 카드에 표시된다. 실행 내용을 읽고 승인·거부를 선택한다. 질문에는 추천 선택지나 직접 입력으로 답하고, 여러 답은 쉼표로 구분한다. 실패 시 입력 내용을 유지한다. CLI에서 처리한 권한은 다음 조회에 반영된다. 보관 영향이 바뀌거나 미리보기가 만료되면 창을 닫고 다시 보관을 눌러 최신 대상을 확인한다.
 
 화면은 작은 창에서 Agent 목록을 위에 배치한다. 폼에는 label과 키보드 포커스를 제공하고 상태·오류는 텍스트로 안내한다. 대화·도구 출력은 HTML로 실행하지 않고 텍스트로 표시한다.
@@ -45,7 +47,7 @@ pnpm exec worknaru dev start
 
 ## 실행 구조
 
-- [시작 코드](src/bootstrap.ts)가 Paseo Adapter를 만들고 Core에 주입한다. [Agent 화면](src/agents.ts)은 Core의 `agents()`를, [상태 화면](src/main.ts)은 `getDaemonStatus()`를 호출한다.
+- [시작 코드](src/bootstrap.ts)가 Paseo Adapter를 만들고 Core에 주입한다. [Agent 화면](src/agents.ts)은 Core의 `agents` 메서드 객체를, [상태 화면](src/main.ts)은 `getDaemonStatus()`를 호출한다.
 - [빌드](build.mjs)는 TypeScript 검사 후 화면·Core·Adapter·Paseo Client를 브라우저용 `dist/app.js`에 함께 묶는다. 공통 브랜드로 HTML·CSS를 생성하고 정적 브랜드 자산을 `dist`에 복사한다.
 - 개발 실행 프로그램은 [지정 데이터 루트](../paseo-dev/README.md#저장-위치-설정)의 `tmp/web-*`에 허용된 웹 자산을 복사한다. 자신이 시작한 Daemon의 소유권·서버 ID를 확인한 뒤 이 폴더의 `connection.json`에 공개 대상 ID와 예상 서버 ID를 쓴다. 비밀번호·Provider 인증 정보·Daemon 설정·로그는 제공하지 않는다. 임시 웹 폴더는 해당 실행 종료 시 정리한다.
 - 브라우저는 이 설정을 읽고 페이지와 같은 호스트의 `/ws`로 접속한다. Daemon이 정적 파일 제공과 WebSocket 접속을 모두 맡으며 별도 Worknaru API 서버는 없다.

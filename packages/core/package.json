@@ -10,7 +10,8 @@
     "./agent-service": "./src/agent-service.mjs"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc --noEmit --strict --skipLibCheck --module NodeNext --target ES2023 test/agent-api.types.ts && node --test test/*.test.mjs"
   },
   "dependencies": {
     "@worknaru/runtime": "workspace:*"

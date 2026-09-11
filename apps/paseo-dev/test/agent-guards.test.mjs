@@ -41,3 +41,23 @@ test('installed server refuses archived, permission-pending, and changed-turn se
 test('installed server starts an idle queue message once', async () => {
   const idle = fixture({ running: false }); await sendPromptToAgent({ ...idle.params, activeTurnBehavior: 'idle_only' }); assert.deepEqual(idle.calls, ['start']);
 });
+
+test('simultaneous guarded sends admit one run without replacing it', async () => {
+  const f = fixture({ running: false }); let running = false;
+  f.params.agentManager.hasInFlightRun = () => running;
+  f.params.agentManager.streamAgent = async function* () { running = true; f.calls.push('start'); };
+  const results = await Promise.allSettled([
+    sendPromptToAgent({ ...f.params, activeTurnBehavior: 'idle_only' }),
+    sendPromptToAgent({ ...f.params, messageId: crypto.randomUUID(), activeTurnBehavior: 'idle_only' }),
+  ]);
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+  assert.match(results.find(r => r.status === 'rejected').reason.message, /WORKNARU_AGENT_BUSY/);
+  assert.deepEqual(f.calls, ['start']);
+});
+
+test('a turn changing during strict steer never falls back to replacement', async () => {
+  const f = fixture();
+  f.params.agentManager.steerAgentRun = async () => { f.calls.push('steer'); throw Error('Active turn changed before steering could be delivered'); };
+  await assert.rejects(sendPromptToAgent({ ...f.params, activeTurnBehavior: 'steer_only' }), /Active turn changed/);
+  assert.deepEqual(f.calls, ['steer']);
+});
