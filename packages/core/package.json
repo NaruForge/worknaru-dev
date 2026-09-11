@@ -3,8 +3,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./agent-service": "./src/agent-service.mjs"
   },
-  "scripts": { "build": "tsc -p tsconfig.json" },
-  "dependencies": { "@worknaru/runtime": "workspace:*" }
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@worknaru/runtime": "workspace:*"
+  }
 }

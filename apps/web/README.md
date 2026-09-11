@@ -1,6 +1,6 @@
 # Worknaru Web UI
 
-전용 Paseo Daemon의 상태를 확인하는 작은 웹 앱이다. **상태 확인** 버튼을 누르면 Core API를 호출하고, 연결 결과와 성공 시 서버 ID·Paseo 버전을 표시한다.
+Codex Agent 생성·조회·메시지 전송·응답 확인·후속 대화·보관을 제공한다. CLI와 같은 Agent·대기열·기본 전송 설정을 사용한다. 화면 아래 **Daemon 연결 확인**에서 기존 상태 조회도 할 수 있다.
 
 ## 직접 실행
 
@@ -12,10 +12,27 @@
 
 ```powershell
 pnpm install --frozen-lockfile
+pnpm exec worknaru agent setup
 pnpm exec worknaru dev start
 ```
 
-준비가 끝나고 명령이 반환되면 같은 PC의 브라우저에서 `http://127.0.0.1:6868/`를 열어 **상태 확인**을 누른다. 터미널을 닫아도 실행은 유지된다. 종료는 `pnpm exec worknaru dev stop`으로 한다. 문제 진단은 `pnpm exec worknaru doctor`, CLI 조회는 `pnpm exec worknaru status`를 사용한다.
+`agent setup`은 정지된 개발 환경에서 최초 한 번 실행한다. Codex 설치·로그인이 필요하다. 준비 완료 뒤 같은 PC의 브라우저에서 `http://127.0.0.1:6868/`를 연다. 터미널을 닫아도 실행은 유지된다. 종료는 `pnpm exec worknaru dev stop`이다. 문제 진단은 `doctor`, CLI 조회는 `status`를 사용한다.
+
+## Agent와 작업하기
+
+1. **새 Agent**에서 이름·작업 폴더·Codex 모델을 선택한다. 폴더는 Daemon 컴퓨터의 실제 폴더이며 입력 시 경로 후보를 요청한다. 모델은 설치된 Provider에서 조회한다.
+2. 목록에서 Agent를 선택한다. 이름·상태·모델·작업 폴더와 대화 기록을 확인할 수 있다. 같은 이름은 짧은 ID로 구분한다.
+3. 메시지를 적고 **전송** 또는 Enter를 누른다. Shift+Enter는 줄바꿈이다. 한글 조합 중 Enter는 전송하지 않는다. 접수 후 대기 상태와 응답을 자동 갱신한다.
+4. 같은 창에서 다음 메시지를 보내 대화를 이어간다. **이전 대화 불러오기**로 앞선 기록을 읽는다. 탭을 다시 열어도 Daemon에 저장된 Agent·이력을 조회할 수 있다.
+5. 작업을 끝내면 **보관**을 누른다. 하위 Agent, 중단될 작업, 취소할 대기 메시지를 확인한 뒤 **확인하고 보관**한다. **보관함 보기**에서 다시 기록을 읽을 수 있다. 보관 후 전송은 비활성화하며 파일을 삭제하지 않는다.
+
+**전송 설정**은 CLI와 공유하는 기본값이다. 메시지 옆 **전송 방식**에서 이번 메시지만 바꿀 수 있다. 대기열은 성공한 작업 뒤에 순서대로 실행하며 탭을 닫아도 유지된다. 추가 지시는 현재 턴에 전달하고, 지원되지 않을 때는 오류를 표시한다. 진행 중인 작업을 대신 중단하지 않는다.
+
+**대기 메시지**를 펼치면 상태·내용·실행 전 취소를 확인한다. 실패·취소·결과 불명확 시 자동 실행이 멈춘다. 기록을 확인한 뒤 **남은 대기열 재개**를 누른다. `uncertain` 요청은 **기록 확인 후 실행 포기**로 취소 처리한 뒤 재개할 수 있다. 현재 작업이 진행 중이면 먼저 완료·권한 처리·보관을 선택한다. 불명확한 요청을 자동으로 재전송하지 않는다.
+
+권한 요청은 대화 아래 카드에 표시된다. 실행 내용을 읽고 승인·거부를 선택한다. 질문에는 추천 선택지나 직접 입력으로 답하고, 여러 답은 쉼표로 구분한다. 실패 시 입력 내용을 유지한다. CLI에서 처리한 권한은 다음 조회에 반영된다. 보관 영향이 바뀌거나 미리보기가 만료되면 창을 닫고 다시 보관을 눌러 최신 대상을 확인한다.
+
+화면은 작은 창에서 Agent 목록을 위에 배치한다. 폼에는 label과 키보드 포커스를 제공하고 상태·오류는 텍스트로 안내한다. 대화·도구 출력은 HTML로 실행하지 않고 텍스트로 표시한다.
 
 가장 작은 확인 순서는 다음과 같다.
 
@@ -28,15 +45,19 @@ pnpm exec worknaru dev start
 
 ## 실행 구조
 
-- [시작 코드](src/bootstrap.ts)가 Paseo Adapter를 만들고 Core에 주입한다. [화면 코드](src/main.ts)는 Core의 `getDaemonStatus()`를 호출한다.
+- [시작 코드](src/bootstrap.ts)가 Paseo Adapter를 만들고 Core에 주입한다. [Agent 화면](src/agents.ts)은 Core의 `agents()`를, [상태 화면](src/main.ts)은 `getDaemonStatus()`를 호출한다.
 - [빌드](build.mjs)는 TypeScript 검사 후 화면·Core·Adapter·Paseo Client를 브라우저용 `dist/app.js`에 함께 묶는다. 공통 브랜드로 HTML·CSS를 생성하고 정적 브랜드 자산을 `dist`에 복사한다.
 - 개발 실행 프로그램은 [지정 데이터 루트](../paseo-dev/README.md#저장-위치-설정)의 `tmp/web-*`에 허용된 웹 자산을 복사한다. 자신이 시작한 Daemon의 소유권·서버 ID를 확인한 뒤 이 폴더의 `connection.json`에 공개 대상 ID와 예상 서버 ID를 쓴다. 비밀번호·Provider 인증 정보·Daemon 설정·로그는 제공하지 않는다. 임시 웹 폴더는 해당 실행 종료 시 정리한다.
 - 브라우저는 이 설정을 읽고 페이지와 같은 호스트의 `/ws`로 접속한다. Daemon이 정적 파일 제공과 WebSocket 접속을 모두 맡으며 별도 Worknaru API 서버는 없다.
 - 기본 조회 제한 시간은 5초다. 조회 중 버튼을 비활성화하고, 완료 후 조회용 연결을 정리한다. 연결 실패를 원격 프로세스 종료의 확정 판정으로 사용하지 않는다.
 
-현재 실행 명령은 `127.0.0.1`에만 바인딩하는 로컬 개발용이다. 인증 입력·대상 선택·설정 저장·지속 연결·Agent 실행 기능은 없다. Node.js와 브라우저에 공통인 Web Crypto를 사용하므로 브라우저에서는 localhost 또는 HTTPS 실행 환경이 필요하다. 원격 공개·배포는 이 테스트에 포함하지 않는다.
+현재 실행 명령은 `127.0.0.1`에만 바인딩하는 로컬 개발용이다. 인증 입력·대상 선택·원격 배포는 지원하지 않는다. Web Crypto를 사용하므로 localhost 또는 HTTPS 환경이 필요하다. 화면은 보이는 동안 약 1.5초마다 조회하며 중복 조회를 막는다. 대기열 실행과 Provider 이벤트 관찰은 Daemon 플러그인이 담당한다. 따라서 탭 종료는 작업 종료를 뜻하지 않는다.
 
 ## 검증
+
+Agent·대기열·권한·보관과 브라우저 사용 흐름의 검증 근거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 둔다. 기본 전체 흐름, CLI와 Web 간 후속 대화·설정 공유, 권한 승인·거부, 한글 조합 Enter·줄바꿈, 보관 후 전송 금지, 작은 화면과 재접속을 확인한다. 실제 Codex 검증에는 Provider 사용량이 발생한다.
+
+실행 중인 Agent 개발 환경에서 `playwright-cli open http://127.0.0.1:6868/` 후 `playwright-cli run-code --filename=apps/web/test/agent.browser.mjs`로 실제 생성·후속 대화·새로고침·한글 조합 Enter·390px 화면·보관을 재현한다. 새 Agent 하나를 만들고 보관하며, 캡처는 `.local/agent-browser-mobile.png`에 저장한다. `playwright-cli`는 별도 준비한 검증 도구이며 제품 런타임 의존성은 아니다.
 
 `pnpm test`는 웹 타입 검사·브라우저 빌드와 기존 CLI·Adapter 테스트를 수행한다. `pnpm paseo:verify`는 실제 전용 Daemon의 SDK·Adapter·CLI 연동을 확인한다. 브라우저 확인은 위 실행 절차로 수행하며 자동 브라우저 테스트가 `pnpm test`에 포함되는 것은 아니다.
 

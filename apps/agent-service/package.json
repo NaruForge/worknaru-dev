@@ -1,0 +1,17 @@
+{
+  "name": "@worknaru/agent-service",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@worknaru/core": "workspace:*",
+    "@worknaru/runtime": "workspace:*",
+    "@worknaru/paseo-adapter": "workspace:*",
+    "@worknaru/dev-environment": "workspace:*",
+    "@getpaseo/plugin": "0.8.0",
+    "zod": "4.6.1"
+  }
+}

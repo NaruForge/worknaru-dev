@@ -1,6 +1,6 @@
 # Worknaru CLI
 
-개발 환경의 진단·시작·조회·종료와 Core API 상태 조회를 제공한다. 사람은 내부 주소나 서버 ID를 외우지 않고 시작할 수 있고, Agent는 명시적 대상과 JSON 출력을 사용할 수 있다.
+개발 환경 관리와 Codex Agent의 생성·대화·대기열·보관을 제공한다. 사람은 이름과 대화형 입력으로 사용할 수 있고, 자동화는 ID와 JSON 출력을 사용할 수 있다. 제품 기능은 Core API를 호출한다.
 
 ## 설치와 기본 사용
 
@@ -26,6 +26,69 @@ pnpm exec worknaru dev stop
 새 코드·브랜드를 반영하려면 `dev stop` 후 `dev start`한다. 빌드 존재 여부와 최신 여부는 다르므로, `doctor`의 빌드 점검은 파일 존재만 확인한다. 디렉터리 쓰기 가능 여부는 `dev start`에서 실제 쓰기로 검사한다.
 
 진입점은 빌드 전에도 동작한다. 의존성 설치에 문제가 있어 `pnpm exec`가 실행되지 않으면 `node apps/cli/bin/worknaru.mjs doctor`로 진단한다. Node 자체가 없으면 먼저 설치해야 한다. 빌드 전 도움말에는 기본 이름 Worknaru를 표시하고 빌드 후에는 [공통 브랜드](../../packages/branding/README.md)의 이름을 사용한다.
+
+## Agent 생성부터 보관까지
+
+Codex 설치·로그인을 준비한 뒤 정지된 개발 환경에서 `pnpm exec worknaru agent setup`을 한 번 실행한다. 기존 기본 설정은 데이터 루트의 `config.before-agents-<시각>.json`에 백업하고 전용 실행 플러그인을 등록한다. 변경된 사용자 설정은 덮어쓰지 않으며 실행 중인 환경에서는 거부한다. 다음 `dev start`가 플러그인 준비까지 확인한다. 이미 준비된 설정에서 setup은 재사용한다.
+
+```powershell
+pnpm exec worknaru agent setup
+pnpm exec worknaru dev start
+pnpm exec worknaru agent create --name "문서 도우미"
+pnpm exec worknaru agent list
+pnpm exec worknaru agent show "문서 도우미"
+pnpm exec worknaru agent send "문서 도우미" "이 폴더의 문서 구성을 설명해 주세요."
+pnpm exec worknaru agent send "문서 도우미" "그 설명을 세 문장으로 줄여 주세요."
+pnpm exec worknaru agent history "문서 도우미" --all
+pnpm exec worknaru agent archive "문서 도우미"
+pnpm exec worknaru agent list --archived
+```
+
+대화형 `create`는 작업 폴더·실제 사용 가능한 Codex 모델·이름을 묻는다. `--cwd`, `--model`, `--name`으로 생략할 수 있다. 비대화형에서는 현재 폴더·Provider의 기본 모델·`새 Agent`를 사용한다. 같은 폴더에서 서로 독립적인 Agent를 만들 수 있다. 모든 폴더 경로는 Daemon 컴퓨터 기준이다. 이름이 겹치면 전체 ID 또는 유일한 4자 이상 ID 접두사를 쓴다. 목록에는 이 제품에서 만든 Agent만 표시한다.
+
+`send`는 접수 후 기본 600초 동안 결과를 관찰한다. `--no-wait`는 접수 상태와 요청 ID를 바로 반환한다. `wait <agent> --request <요청ID>`로 다시 관찰할 수 있다. `--wait-timeout 60`은 관찰 시간만 제한한다. Ctrl+C도 관찰만 끝내며 Agent 작업을 중단하지 않는다. 후속 `send`는 같은 Agent 세션의 대화를 이어간다. `history`는 최근 최대 200개 원본 항목을 읽고, `--all`은 이전 페이지도 읽는다. 응답 조각은 사람용 출력에서 하나로 합친다.
+
+### 전송 방식과 대기열
+
+```powershell
+pnpm exec worknaru settings get send-mode
+pnpm exec worknaru settings set send-mode queue
+pnpm exec worknaru agent send "문서 도우미" "다음 작업" --queue --no-wait
+pnpm exec worknaru agent send "문서 도우미" "현재 작업의 조건을 추가합니다" --steer --no-wait
+pnpm exec worknaru agent queue list "문서 도우미"
+pnpm exec worknaru agent queue cancel "문서 도우미" <대기요청ID>
+pnpm exec worknaru agent queue resume "문서 도우미"
+```
+
+기본 `queue`는 현재 작업이 성공한 뒤 FIFO로 실행한다. CLI와 Web의 기본 설정은 같은 저장소에 기록되며 `--queue`/`--steer`는 이번 메시지에만 적용된다. `steer`는 진행 중인 턴에 추가 지시를 전달한다. 실행 중이 아니면 새 턴으로 처리한다. 권한 대기·앞선 대기 메시지·일시 정지 상태에서는 추가 지시를 거부한다. Provider가 지원하지 않거나 턴이 바뀌면 실패를 알리고, 진행 중인 작업을 중단하는 방식으로 바꾸지 않는다.
+
+대기 메시지는 데이터 루트의 SQLite에 저장된다. 터미널·브라우저 종료와 무관하게 실행하고 Daemon 재시작 뒤에도 보존한다. 실패·취소 시 다음 메시지를 자동 실행하지 않는다. 기록을 확인한 후 `queue resume`으로 남은 메시지만 재개한다. `queue cancel`은 실행 전 메시지만 취소한다.
+
+접수 도중 연결이 끊기거나 재시작 전 실행 결과를 확정할 수 없으면 `uncertain`으로 남기고 자동 재전송하지 않는다. 기록·파일·현재 작업 상태를 확인한 뒤 `agent queue discard <agent> <요청ID> --yes`로 해당 요청의 자동 재실행을 포기하고, `queue resume`을 실행한다. 완료로 표시하는 기능은 아니며 진행 중인 작업·권한 요청이 있으면 거부한다. 필요하면 별도의 새 요청 ID로 새 메시지를 보낸다.
+
+### 권한과 보관
+
+대화형 `send`/`wait`는 권한 요청을 표시하고 승인·거부를 묻는다. 질문은 선택지 번호나 직접 입력으로 답한다. 비대화형과 `--json`은 질문하지 않고 `permission_pending`과 요청 정보를 반환한다.
+
+```powershell
+pnpm exec worknaru agent permissions "문서 도우미"
+pnpm exec worknaru agent permission respond "문서 도우미" <권한ID> --allow
+pnpm exec worknaru agent permission respond "문서 도우미" <권한ID> --deny
+# 질문의 header를 키로 전달한다. 여러 선택은 쉼표로 구분한다.
+pnpm exec worknaru agent permission respond "문서 도우미" <권한ID> --allow --answers '{"answers":{"선택":"첫 번째"}}'
+```
+
+Provider가 명시적 action을 제공하면 `--action <ID>`를 함께 쓴다. 이미 처리된 요청은 다시 처리하지 않는다. 승인·거부를 기본값으로 자동 제출하지 않는다.
+
+`archive`는 대상·하위 Agent·진행 중인 작업·취소할 대기열을 먼저 보여 준다. 확인 후 작업을 중단하고 보관한다. 비대화형에서는 확인 필요 결과와 미리보기를 반환하며, 검토 후 `--yes`를 붙여 실행한다. 확인 사이에 영향 범위가 바뀌면 다시 확인해야 한다. 일부 보관 실패는 성공과 구분해 보고한다. 보관된 Agent는 이력만 조회하며 메시지 전송으로 자동 복구하지 않는다. 대화 기록·작업 폴더 파일은 남고 영구 삭제·복원은 지원하지 않는다.
+
+### 자동화 결과
+
+생성·전송에 `--id <고유요청ID>`를 지정하면 같은 내용의 재시도를 한 번의 요청으로 묶는다. 같은 ID로 내용을 바꾸면 `id_conflict`다. 생성·전송 응답을 받지 못한 자동화는 **새 ID로 재전송하지 말고 같은 ID로 조회·재시도**한다.
+
+전송 결과는 `id`, `agentId`, `text`, `mode`, `state`, `turnId`, `createdAt`, `error`를 포함한다. 상태는 `queued`, `sending`, `running`, `completed`, `failed`, `canceled`, `uncertain`이다. 접수 성공은 작업 완료와 다르다. 종료 코드는 성공 0, 실패·권한 대기·관찰 시간 초과·확인 필요 1, 입력 오류 2, Ctrl+C 관찰 종료 130이다. 전송과 권한 RPC는 SDK 응답 제한도 적용되며 `--timeout-ms`는 Agent 연결 대기에 적용된다. 실행 완료 대기는 `--wait-timeout`으로 제어한다.
+
+기능 설계·검증 근거: [ADR 0006](../../docs/adr/0006-agent-lifecycle-and-durable-queue.md), [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17).
 
 ## 대상 선택
 

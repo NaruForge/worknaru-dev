@@ -26,6 +26,7 @@ export function resolveDataPaths(env = process.env, repositoryRoot = root) {
     dataHome, source,
     config: path.join(dataHome, 'config.json'), serverId: path.join(dataHome, 'server-id'),
     pid: path.join(dataHome, 'paseo.pid'), log: path.join(dataHome, 'daemon.log'),
+    agentState: path.join(dataHome, 'agent-state.sqlite'),
     launcherLog: path.join(dataHome, 'launcher.log'), worktrees: path.join(dataHome, 'worktrees'),
     temporary: path.join(dataHome, 'tmp'),
   });

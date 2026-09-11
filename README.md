@@ -2,7 +2,7 @@
 
 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것들을 하나의 Workspace에서 조합·실행할 수 있게 하는 플랫폼.
 
-현재 구현은 CLI와 Web UI를 통한 전용 Paseo Daemon 상태 조회다. Module·Workspace의 개발·조합·실행 기능은 후속 구현 대상이다.
+현재 CLI와 Web UI에서 Codex Agent를 생성·조회하고, 메시지 전송·응답 확인·후속 대화·보관까지 사용할 수 있다. 지속 대기열, 진행 중인 작업에 추가 지시, 권한 승인·거부와 질문 응답을 지원한다. Module·Worknaru Workspace의 개발·조합·실행 기능은 후속 구현 대상이다.
 
 [개념 아키텍처](docs/architecture.md)는 CLI와 Web UI의 공통 구성요소, 호출 흐름과 실행 환경의 경계를 설명한다.
 
@@ -13,12 +13,19 @@ Windows·Node.js 24 LTS와 루트 `packageManager`의 pnpm을 준비한 뒤, 저
 ```powershell
 pnpm install --frozen-lockfile
 pnpm exec worknaru doctor
+pnpm exec worknaru agent setup
 pnpm exec worknaru dev start
 pnpm exec worknaru status
+pnpm exec worknaru agent create --name "작업 도우미"
+pnpm exec worknaru agent send "작업 도우미" "이 폴더에서 할 수 있는 일을 설명해 주세요."
+pnpm exec worknaru agent send "작업 도우미" "그중 첫 번째를 더 설명해 주세요."
+pnpm exec worknaru agent archive "작업 도우미"
 pnpm exec worknaru dev stop
 ```
 
 `dev start`는 빌드 후 Daemon과 Web UI를 백그라운드에서 시작한다. 준비 완료 뒤 `http://127.0.0.1:6868/`를 열고, 종료는 `dev stop`으로 한다. 실행 중인 환경은 재사용하며 `doctor`와 `status`는 읽기 전용이다. 전역 설치와 별도 Daemon 터미널은 필요하지 않다. 상세 옵션·실패 해결은 [CLI 안내](apps/cli/README.md), 화면 확인은 [Web UI 안내](apps/web/README.md)를 따른다.
+
+`agent setup`은 개발 환경이 정지했을 때 최초 한 번 실행한다. 전용 Daemon에 Agent 실행 플러그인을 준비하며 기존 기본 설정은 백업한다. Codex가 설치되고 로그인된 환경이 필요하다. Agent 생성 시 모델 목록을 조회하고 작업 폴더를 선택한다. 기본 전송 방식은 대기열이며, 터미널·탭을 닫아도 Daemon이 살아 있는 동안 순서대로 실행한다. 보관은 실행 중인 작업과 하위 Agent에 미치는 영향을 확인한 뒤 진행하고 기록·파일을 보존한다.
 
 설정으로 자신의 브랜드를 쉽게 적용할 수 있다. 표시 이름·로고·파비콘·대표 색상·홈페이지/문서/지원 링크를 바꾸고 `pnpm build`로 반영한다. 저장 위치는 `WORKNARU_DATA_DIR`로 루트 하나를 지정한다. [리브랜딩 설정](packages/branding/README.md) · [저장 위치 설정](apps/paseo-dev/README.md#저장-위치-설정)
 

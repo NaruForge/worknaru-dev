@@ -38,6 +38,9 @@ test('bootstrap help and doctor run without dist or installed dependencies and d
     assert.equal(result.code, 0, result.stderr); assert.match(result.stdout, /doctor/);
   }
   const result = await invoke(['doctor', '--json'], data, entry);
+  for (const args of [['agent', '--help'], ['agent', 'setup', '--help'], ['settings', '--help']]) {
+    const help = await invoke(args, data, entry); assert.equal(help.code, 0); assert.match(help.stdout, /agent create/);
+  }
   assert.equal(result.code, 1); assert.equal(result.stderr, '');
   const checks = JSON.parse(result.stdout).checks;
   assert.equal(checks.find(check => check.name === 'Build').ok, false);

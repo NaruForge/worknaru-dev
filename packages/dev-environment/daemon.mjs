@@ -12,7 +12,7 @@ import { describeDataPaths, prepareDataDirectories, resolveDataPaths, root } fro
 import { prepareWebFiles } from './web-files.mjs';
 
 export { root } from './paths.mjs';
-import { configState, expectedConfig, listen, endpoint, version } from './config.mjs';
+import { configState, expectedConfig, agentsEnabled, listen, endpoint, version } from './config.mjs';
 export { listen, endpoint, version } from './config.mjs';
 const logger = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(key => [key, () => {}]));
 const require = createRequire(import.meta.url);
@@ -87,6 +87,8 @@ export function childEnvironment(paths, inherited = process.env) {
   }
   return {
     ...env, PASEO_HOME: paths.dataHome, PASEO_HOST: listen, PASEO_LISTEN: listen,
+    WORKNARU_AGENT_DATA_ROOT: paths.dataHome, WORKNARU_AGENT_DEFAULT_CWD: root,
+    WORKNARU_AGENT_STATE_FILE: paths.agentState,
     TEMP: paths.temporary, TMP: paths.temporary,
   };
 }
@@ -169,6 +171,18 @@ export async function startDedicatedDaemon({ webDist, paths = resolveDataPaths()
       try { connection = await connectOwned(child.pid, paths); break; }
       catch (error) {
         if (Date.now() >= deadline) throw error;
+        await delay(500);
+      }
+    }
+    if (await agentsEnabled(paths)) {
+      const deadline = Date.now() + 45000;
+      while (true) {
+        signal?.throwIfAborted();
+        try {
+          const response = await connection.driver.invokePluginRpc('worknaru-agent-service', 'agents.execute', { operation: 'health', input: {} });
+          if (response?.ok && response.data?.ready) break;
+        } catch { /* Plugin compiles and reconnects while daemon becomes ready. */ }
+        if (Date.now() >= deadline) throw new Error('Agent service did not become ready. Inspect dedicated plugin logs.');
         await delay(500);
       }
     }

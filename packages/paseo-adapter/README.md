@@ -31,7 +31,19 @@ if (status.outcome === 'available') {
 
 `clientType`은 `'cli'` 또는 `'browser'`이며 기본값은 `'cli'`다. 웹 앱의 시작 코드가 `'browser'`를 전달한다. 연결 ID 생성에는 Node.js와 브라우저의 `globalThis.crypto.randomUUID()`를 사용하고, 통신에는 각 환경의 표준 WebSocket을 사용한다. 브라우저 실행은 localhost 또는 HTTPS 환경을 전제로 한다.
 
-각 호출은 독립된 클라이언트를 사용하고 종료 시 연결을 정리한다. 자동 재접속은 꺼져 있다. `timeoutMs`는 연결과 상태 요청을 합친 제한 시간이며 기본값은 5초, 허용 범위는 정수 1~300000ms다. 반환 필드의 의미는 [Runtime 계약](../runtime/README.md)에 설명한다.
+상태 호출은 독립된 클라이언트를 사용하고 종료 시 연결을 정리한다. 자동 재접속은 꺼져 있다. `timeoutMs`는 연결과 상태 요청을 합친 제한 시간이며 기본값은 5초, 허용 범위는 정수 1~300000ms다. 반환 필드의 의미는 [Runtime 계약](../runtime/README.md)에 설명한다.
+
+## Agent RPC와 실행 Driver
+
+앱은 `Runtime.agents(operation, input)`을 통해 전용 플러그인의 `agents.execute` RPC를 호출한다. [agent-rpc.ts](src/agent-rpc.ts)는 매 호출에서 서버 ID·0.8.0 버전을 확인한 뒤 Worknaru 결과·오류를 반환하고 연결을 닫는다. `timeoutMs`는 이 경로의 연결 제한이며 RPC는 SDK의 응답 제한을 따른다. 승인된 요청 뒤 연결 정리 오류 때문에 자동 재전송을 유도하지 않는다. 원시 SDK 예외는 제품 오류로 변환한다.
+
+서버 플러그인이 사용하는 별도 Node 전용 export `@worknaru/paseo-adapter/agent-driver`는 Codex 모델 조회·생성·목록·타임라인·전송·권한·보관을 SDK에 연결한다. 이 export는 브라우저에서 가져오지 않는다. Worker 연결은 재접속하고 이벤트를 관찰하며, 연결 손실·타임라인 교체는 Core 정책에 알린다. 재접속 이후에도 대상 ID·버전을 확인한다. 권한 완료 이벤트는 0.8.0의 명시적 이벤트 구독에 등록해야 `respondToPermissionAndWait`의 결과를 받을 수 있다.
+
+타임라인의 `seqStart`를 Worknaru 순서 번호로 매핑하고 `epoch`·이전 페이지 cursor·clientMessageId·turnId를 전달한다. Provider의 턴 ID는 재시작 뒤 재사용될 수 있으므로 특정 요청 결과는 사용자 메시지 ID 이후 범위로 확인한다. 작업 폴더 후보는 부모 경로 기준 SDK 조회 결과를 절대경로로 변환한다.
+
+고정 버전의 기존 `steer`는 불가능할 때 현재 작업 교체로 바뀔 수 있다. 이를 방지하기 위해 [protocol 패치](patches/@getpaseo__protocol@0.8.0.patch)에 `idle_only`·`steer_only` 입력을 추가하고 [server 패치](patches/@getpaseo__server@0.8.0.patch)에서 보관·권한 대기·실행 중 여부를 확인한다. `idle_only`는 바쁜 Agent를 거부하고 `steer_only`는 Provider의 명시적 수락만 허용한다. 기존 `interrupt`/`steer`의 의미는 바꾸지 않는다. Adapter가 안전한 모드만 사용하고 일반 Paseo CLI를 우회 호출하지 않는다.
+
+설치된 SDK·프로토콜·서버의 패치는 [guard 테스트](../../apps/paseo-dev/test/agent-guards.test.mjs)로 확인한다. 버전 변경 시 이 테스트와 실제 Codex 전송·권한·보관을 다시 검증해야 한다. 설계는 [ADR 0006](../../docs/adr/0006-agent-lifecycle-and-durable-queue.md), 검증 근거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 둔다.
 
 ## 실패 판정
 
