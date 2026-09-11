@@ -7,6 +7,7 @@
     "build": "pnpm -r --if-present build",
     "test": "pnpm build && pnpm -r --if-present test",
     "dev:verify": "node --test apps/cli/test/dev.integration.mjs",
+    "agent:verify": "pnpm build && node --test apps/cli/test/agent.integration.mjs",
     "paseo:verify": "pnpm build && pnpm --filter @worknaru/paseo-dev verify",
     "paseo:status": "pnpm build && pnpm --filter @worknaru/paseo-dev status",
     "web:dev": "pnpm build && pnpm --filter @worknaru/paseo-dev web"

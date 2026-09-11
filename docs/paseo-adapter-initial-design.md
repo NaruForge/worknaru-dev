@@ -6,7 +6,7 @@
 
 이 문서는 구현 전 검토할 기술 설계다. 구현 작업의 범위·진행 상태·검증 증거는 [프로젝트 기록 규약](project-records.md)에 따라 관리한다.
 
-상태 조회의 실제 사용 방법과 Core 연결은 [Worknaru CLI 안내](../apps/cli/README.md)를 참고한다. 이 초안의 다른 기능 제안이 모두 구현되었다는 뜻은 아니다.
+실제 사용 방법은 [Worknaru CLI 안내](../apps/cli/README.md)와 [Web UI 안내](../apps/web/README.md)를 참고한다. 아래 제안의 현재 채택 범위는 [ADR 0006](adr/0006-agent-lifecycle-and-durable-queue.md)에 있다. Codex Agent 생성·조회·대화·지속 대기열·권한·보관을 연결했으며 다른 Provider·독립 작업 중단 명령·Module/Worknaru Workspace·영구 삭제/복원은 구현 범위 밖이다. 이 문서의 넓은 초기 제안과 현재 제품 지원 범위를 구분한다.
 
 ## 목표
 

@@ -1,5 +1,6 @@
 import type { DaemonStatus } from '@worknaru/core';
 import { loadCore } from './bootstrap.js';
+import { startAgents } from './agents.js';
 
 function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -37,6 +38,7 @@ function show(phase: string, heading: string, message: string) {
 async function start() {
   try {
     const { core, endpoint } = await loadCore();
+    void startAgents(core);
     element('endpoint').textContent = endpoint;
     button.disabled = false;
     show('idle', '확인 대기', '버튼을 눌러 현재 연결 상태를 확인해 주세요.');

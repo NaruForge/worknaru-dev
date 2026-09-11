@@ -5,6 +5,7 @@ import type {
 // Version-pinned internal dependency, confined to this adapter.
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
 import { createStatusWebSocket } from './status-websocket.js';
+import { agentRpc } from './agent-rpc.js';
 
 export const SUPPORTED_PASEO_VERSION = '0.8.0';
 
@@ -109,6 +110,7 @@ export function createPaseoRuntime(options: PaseoAdapterOptions): Runtime {
   });
 
   return {
+    agents: agentRpc(options),
     async getDaemonStatus(): Promise<DaemonStatus> {
       const deadline = Date.now() + timeoutMs;
       let client: DaemonClient | undefined;

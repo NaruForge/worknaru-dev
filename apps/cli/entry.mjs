@@ -11,6 +11,9 @@ Usage (from the repository, after pnpm install --frozen-lockfile):
   pnpm exec worknaru dev start       Build and start Daemon + Web UI in background
   pnpm exec worknaru status          Check this development environment
   pnpm exec worknaru dev stop        Stop the owned development environment
+  pnpm exec worknaru agent setup     Prepare Agent features once, while stopped
+  pnpm exec worknaru agent --help    Create, converse, queue and archive Agents
+  pnpm exec worknaru settings get send-mode
 
 Use --json for one JSON document; --help or -h for help.
 Windows, one local environment at http://127.0.0.1:6868/.
@@ -43,6 +46,20 @@ function parseLocal(args) {
 }
 export async function run(args, env, output = { stdout: text => process.stdout.write(text), stderr: text => process.stderr.write(text) }) {
   try {
+    if (['agent', 'settings'].includes(args[0])) {
+      if (args.includes('--help') || args.includes('-h') || args.length < 2) { output.stdout((await import('./agent-arguments.mjs')).agentHelp); return 0; }
+      if (args[0] === 'agent' && args[1] === 'setup' && !args.includes('--help') && !args.includes('-h')) {
+        if (args.slice(2).some(arg => arg !== '--json') || new Set(args).size !== args.length) throw new LocalError('invalid_arguments', 'agent setup [--json]을 사용해 주세요.', 2);
+        if (explicitTarget([], env)) throw new LocalError('invalid_configuration', 'agent setup은 WORKNARU_DATA_DIR의 전용 환경만 준비합니다. 명시적 연결 설정을 해제해 주세요.', 2);
+        const { setupAgents } = await import('./agent-setup.mjs');
+        const result = await setupAgents(localPaths(env));
+        output.stdout(args.includes('--json') ? `${JSON.stringify(result)}\n` : `Agent 기능 준비 완료\n다음: ${result.next}\n`);
+        return 0;
+      }
+      let module;
+      try { module = await import('./agent-cli.mjs'); } catch { throw new LocalError('build_required', 'Agent 기능을 빌드해 주세요. pnpm install --frozen-lockfile 후 pnpm build'); }
+      return module.runAgents(args, env, output);
+    }
     const simpleStatusHelp = args[0] === 'status' && args.slice(1).some(value => ['--help', '-h'].includes(value))
       && args.slice(1).every(value => ['--help', '-h', '--json'].includes(value));
     const explicit = args[0] === 'status' && explicitTarget(args, env) && !simpleStatusHelp;

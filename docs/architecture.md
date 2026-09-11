@@ -2,7 +2,7 @@
 
 Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것들을 하나의 Workspace에서 조합·실행할 수 있게 하는 플랫폼이다. 사용자가 플랫폼 안에서 AI Agent와 함께 Module을 개발하는 것이 핵심 목표다.
 
-이 문서는 현재 코드의 구성요소와 실행 구조를 설명한다. CLI와 Web UI는 같은 Core와 Paseo Adapter를 사용해 전용 Daemon의 상태를 확인한다. 웹 앱은 브라우저 안에서 실행하며, 현재 제품 기능은 일회성 상태 조회에 한정한다.
+이 문서는 현재 코드의 구성요소와 실행 구조를 설명한다. CLI와 Web UI는 같은 Core·Runtime·Paseo Adapter를 통해 전용 Daemon 상태와 Codex Agent의 생성·대화·대기열·권한·보관을 사용한다. 웹 코드는 브라우저에서 실행하고 지속 대기열은 Daemon의 서버 플러그인이 실행한다.
 
 제품 호출·로컬 개발 환경 관리·CLI와 브라우저 실행 구조의 현재 결정은 [ADR 0005](adr/0005-local-development-cli-boundary.md)에 둔다. 이전 결정의 본문은 ADR 0001·0003에 보존한다. 작업 범위와 검증 증거는 관련 GitHub Issue에서 관리한다.
 
@@ -16,7 +16,7 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 
 예를 들어 문서 정규화 Module은 업로드된 형식에 따라 변환 서비스를 선택하고, 변환 결과를 사람이 검수·수정한 뒤 일관된 최종 문서를 만들 수 있다. 이는 플랫폼이 지원하려는 업무의 예시다.
 
-현재 코드가 제공하는 것은 이 제품을 만들기 위한 실행 기반의 연결과 상태 조회다. Module 정의·개발·실행, Worknaru Workspace 관리와 Agent 세션의 생성·재사용은 아직 제품 API로 구현하지 않았다. Worknaru Workspace와 Paseo Workspace의 대응 관계도 후속 설계 대상이다.
+현재 제품 API는 상태 조회와 Agent 생성·재사용·대화·보관을 제공한다. Module 정의·개발·실행, Worknaru Workspace 관리와 Paseo Workspace의 대응 관계는 후속 설계 대상이다.
 
 ## 구성과 연결
 
@@ -50,17 +50,18 @@ Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에
 
 | 구성요소 | 책임과 구현 범위 | 코드·사용 안내 |
 | --- | --- | --- |
-| CLI | 명령·옵션·환경 변수 해석, 로컬 개발 환경 진단·시작·종료, Core 상태 조회, 텍스트·JSON 출력 | [apps/cli](../apps/cli/README.md) |
-| Web UI | 상태 확인 버튼·결과 표시, 개발용 접속 설정 전달과 Core API 호출 | [apps/web](../apps/web/README.md) |
+| CLI | 명령·대화형 입력·JSON, 개발 환경 관리, Core를 통한 Agent 작업과 상태 조회 | [apps/cli](../apps/cli/README.md) |
+| Web UI | Agent 목록·대화·권한·설정·보관 화면과 Core API 호출 | [apps/web](../apps/web/README.md) |
+| Agent service | Daemon 서버 플러그인의 RPC·수명·SQLite·작업 폴더 검증. Core 정책과 Adapter Driver 구성 | [apps/agent-service](../apps/agent-service/README.md) |
 | Dev environment | 개발 실행기들이 공유하는 경로·설정·Paseo 프로세스·공개 웹 파일 준비. Node 전용 | [packages/dev-environment](../packages/dev-environment/README.md) |
 | Branding | 빌드 시 검증·고정한 제품 표시 이름·정적 자산·색상·링크를 앱에 제공 | [packages/branding](../packages/branding/README.md) |
-| Core | 앱이 호출할 Worknaru API 제공. 현재 `getDaemonStatus()`를 주입된 Runtime으로 전달 | [packages/core](../packages/core/README.md) |
+| Core | 앱의 Worknaru API와 생성 멱등성·FIFO·권한·보관 정책. 저장소와 Driver는 실행 앱에서 주입 | [packages/core](../packages/core/README.md) |
 | Runtime | 실행 기반에 요청할 기능과 Worknaru가 이해할 결과·오류 타입 정의 | [packages/runtime](../packages/runtime/README.md) |
-| Paseo Adapter | 지정한 Daemon에 접속해 식별자·버전·상태를 확인하고, SDK 응답·오류를 Runtime 계약으로 변환 | [packages/paseo-adapter](../packages/paseo-adapter/README.md) |
+| Paseo Adapter | 대상·버전 확인, Worknaru RPC 연결, 서버 실행 Driver의 SDK 호출·응답·이벤트 변환 | [packages/paseo-adapter](../packages/paseo-adapter/README.md) |
 | Paseo Client | Adapter 내부에서 사용하는 Paseo SDK. Daemon 연결과 메시지 송수신 처리 | [Paseo SDK 안내](https://paseo.sh/docs/sdk.md) |
-| Paseo Daemon | 접속을 받아 상태를 제공하는 실행 서비스. Paseo가 가진 Agent 실행·세션 관리 기능은 이후 필요한 범위에서 연결 | [전용 개발 환경](../apps/paseo-dev/README.md) |
+| Paseo Daemon | 상태·WebSocket·플러그인 호스팅·Codex Agent 실행·세션과 기록 관리 | [전용 개발 환경](../apps/paseo-dev/README.md) |
 
-Core는 구체적인 Paseo SDK, CLI 출력 형식이나 웹 화면을 알지 못한다. 현재 Core는 상태 조회를 전달하는 얇은 API다. Module·Workspace의 업무 정책과 관계를 담당할 경계는 Core에 두며, 해당 업무 로직은 별도 구현 범위로 남아 있다.
+Core는 구체적인 Paseo SDK, CLI 출력 형식이나 웹 화면을 알지 못한다. 앱의 Core API는 Runtime을 통해 요청하고, 서버 플러그인에서 사용하는 Core 정책은 주입된 Driver·저장소로 Agent 운영을 처리한다. Module·Workspace의 업무 정책과 관계는 별도 구현 범위다.
 
 Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제품 코드에서 Adapter 내부에 모은다. 다른 실행 기반을 도입할 때도 Core가 사용하는 Runtime 계약을 기준으로 연결할 수 있다.
 
@@ -76,7 +77,7 @@ Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제
 
 CLI는 사람과 AI Agent가 사용한다. 사람에게는 `doctor`, `dev start`, `status`, `dev stop`의 기본 개발 흐름을 제공하고, 자동화는 명시적 대상과 JSON 계약을 사용할 수 있다. CLI를 호출하는 Agent와 Daemon이 관리하는 Agent 세션은 서로 다른 개념이다. 현재 상태 조회 명령은 호출자를 위한 새 Agent 세션을 만들지 않는다.
 
-Web UI의 [시작 코드](../apps/web/src/bootstrap.ts)도 Adapter를 생성하고 Core에 주입한다. [화면 코드](../apps/web/src/main.ts)는 Core API를 호출하고 Worknaru의 결과·오류를 표시한다. 개발 실행 프로그램이 확인한 대상 ID·예상 서버 ID를 `connection.json`으로 전달하고, 브라우저는 페이지와 같은 호스트의 `/ws`로 접속한다. CLI의 환경 변수를 브라우저에서 직접 읽지 않는다. 현재 웹 앱에는 인증 입력·대상 선택·설정 저장 UI가 없다.
+Web UI의 [시작 코드](../apps/web/src/bootstrap.ts)도 Adapter를 생성하고 Core에 주입한다. [Agent 화면](../apps/web/src/agents.ts)과 [상태 화면](../apps/web/src/main.ts)은 Core API의 결과·오류를 표시한다. 개발 실행기가 대상 ID·예상 서버 ID를 `connection.json`으로 전달하고 브라우저는 같은 호스트의 `/ws`로 접속한다. CLI 환경 변수는 브라우저에서 직접 읽지 않는다. 기본 전송 설정은 CLI와 같은 서버 저장소에 기록하며 인증 입력·대상 선택은 지원하지 않는다.
 
 Web UI의 HTML·JavaScript 같은 정적 파일은 Paseo Daemon 자체가 브라우저에 제공할 수 있다. 별도 정적 호스팅을 사용할 수도 있으며, 파일을 제공하는 위치와 Core·Adapter가 실행되는 위치는 구분한다. 어느 경우든 전달된 코드의 Core 호출과 Daemon 통신은 브라우저 안에서 수행하므로 이 경로에 별도 Worknaru API 서버를 필수 구성요소로 두지 않는다.
 
@@ -86,7 +87,7 @@ Web UI의 HTML·JavaScript 같은 정적 파일은 Paseo Daemon 자체가 브라
 
 ## 상태 조회 한 번의 흐름
 
-현재 제품 명령은 `worknaru status`다. 동작 순서는 다음과 같다.
+상태 조회 명령 `worknaru status`의 동작 순서는 다음과 같다.
 
 1. 연결 옵션·환경 변수가 하나라도 있으면 명시적 주소와 예상 서버 ID를 모두 요구한다. 없으면 현재 데이터 루트의 관리 실행기·서버 ID·PID 기록을 확인하고 해당 대상을 선택한다. 불완전한 명시적 설정은 기본 대상으로 보충하지 않는다.
 2. 시작 코드가 Adapter와 Core를 구성하고, 명령 처리 코드가 `Core.getDaemonStatus()`를 호출한다.
@@ -99,7 +100,15 @@ Web UI의 HTML·JavaScript 같은 정적 파일은 Paseo Daemon 자체가 브라
 
 조회는 Daemon이나 Agent를 시작·중단·보관하지 않는다. 명령이 끝날 때 정리하는 것은 조회용 연결이다. 명령 문법·인증 전달·출력 형식·종료 코드의 상세 정의는 [CLI 사용 안내](../apps/cli/README.md), 결과 타입의 의미는 [Runtime 계약](../packages/runtime/README.md)을 따른다.
 
-Web UI의 첫 상태 조회도 같은 Core API와 Runtime 결과를 사용한다. 입력과 결과 표현을 웹 화면이 맡고, 대상 확인·상태 조회·오류 변환·조회용 연결 정리는 공통 Adapter가 맡는다. 지속 연결, 이벤트 구독과 재접속 정책은 현재의 일회성 상태 조회와 별도로 설계한다.
+Web UI의 상태 조회도 같은 Core API와 Runtime 결과를 사용한다. 입력과 결과 표현을 웹 화면이 맡고, 대상 확인·상태 조회·오류 변환·조회용 연결 정리는 공통 Adapter가 맡는다.
+
+## Agent 작업과 지속 대기열
+
+CLI/Web의 `Core.agents`의 Agent 전용 메서드 → Runtime → Adapter가 전용 플러그인의 `agents.execute`를 호출한다. 플러그인은 Core 정책에 Node 전용 Paseo Driver·SQLite 저장소·폴더 검증을 주입한다. Provider 실행과 타임라인은 Paseo가 관리하고, 전송 접수·기본 설정·정지 상태는 Worknaru의 SQLite가 관리한다. 이 두 자료를 완료 여부 추정으로 혼합하지 않는다.
+
+Core 정책은 메시지를 먼저 저장하고 Agent별로 직렬 처리한다. 기본 FIFO는 현재 턴이 성공한 뒤 다음 메시지를 실행한다. 권한 대기·실패·취소·결과 불명확에서는 다음 작업을 보류한다. 추가 지시는 현재 턴에만 전달하고, 지원하지 않을 때 작업 교체로 바꾸지 않는다. 고정된 Paseo protocol/server의 안전한 admission 패치와 설치된 guard 테스트로 이 동작을 확인한다.
+
+Web은 주기적으로 상태·기록을 조회하고, CLI는 접수만 받거나 결과를 관찰한다. Worker는 Provider 이벤트를 별도 연결로 구독하므로 탭·CLI 종료는 작업 종료가 아니다. Daemon 재시작 뒤 대기 메시지는 남고 미확정 실행은 `uncertain`으로 멈춘다. 사용자가 기록을 확인해 실행 포기 처리한 뒤 남은 대기를 재개할 수 있다. 보관은 하위 Agent와 대기열 영향을 다시 확인하고 실행을 정리하며 대화·파일을 보존한다. 선택 근거와 대안은 [ADR 0006](adr/0006-agent-lifecycle-and-durable-queue.md)에 있다.
 
 ## 브라우저 호환 범위
 
@@ -115,7 +124,7 @@ Core·Runtime의 책임과 상태 조회 계약을 유지하면서 다음과 같
 | 의존 패키지와 빌드 | 버전에 한정한 pnpm 패치로 Paseo relay의 브라우저 파일 경로를 조정한다. 웹 빌드는 Core·Adapter·Client를 함께 포함한다. 세부 사항은 [Adapter 안내](../packages/paseo-adapter/README.md)를 따른다. |
 | 검증 경계 | Windows의 브라우저에서 전용 Daemon의 정상 조회·종료 후 실패를 확인한다. 인증 오류·대상 불일치·시간 초과는 loopback 응답 서버로 검증한다. 기존 CLI 동작은 공통 테스트와 전용 Daemon 검증으로 확인한다. |
 
-검증한 범위는 현재 상태 조회 기능이다. 다른 브라우저·원격 배포·로그인·지속 연결의 호환성을 포괄적으로 보장하는 것은 아니다. 설계 조사 근거는 [아키텍처 작업 #7](https://github.com/NaruForge/worknaru-dev/issues/7), 최초 구현과 실제 실행 검증은 [웹 상태 조회 #9](https://github.com/NaruForge/worknaru-dev/issues/9), Paseo 정식 버전 전환 후 재검증은 [0.8.0 전환 #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 연결한다.
+상태 조회의 설계 조사 근거는 [아키텍처 작업 #7](https://github.com/NaruForge/worknaru-dev/issues/7), 최초 구현·실행 검증은 [웹 상태 조회 #9](https://github.com/NaruForge/worknaru-dev/issues/9), 정식 버전 전환은 [0.8.0 전환 #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 있다. Agent 기능의 CLI/Web 교차 사용·권한·대기열·보관 검증은 [#17](https://github.com/NaruForge/worknaru-dev/issues/17)에 연결한다. 다른 브라우저·원격 배포·로그인 호환성 전체를 보장하는 것은 아니다.
 
 ## 실행 환경과 데이터 경계
 
@@ -126,15 +135,15 @@ Worknaru 전용 Paseo는 현재 PC의 개인용 Paseo와 실행 인스턴스, Da
 | 위치·수명 | 현재 보관하는 것 |
 | --- | --- |
 | Git 저장소 | 소스, 문서, 패키지 의존성과 개발 환경 재현 절차 |
-| CLI 프로세스 | 호출에 전달된 설정과 조회 중인 클라이언트·결과. Core와 Adapter에 별도 업무 상태 저장소는 없음 |
-| 브라우저 | 내려받은 웹 코드·대상 설정과 조회 중인 클라이언트·화면 결과. 업무 데이터 저장·동기화 기능은 없음 |
-| 전용 Daemon 데이터 디렉터리 | Daemon 식별 정보·설정·로그·worktree·임시 파일과 CLI 관리 실행 기록·잠금. `WORKNARU_DATA_DIR`로 지정하고 기본값은 Git 추적에서 제외된 `.local/paseo-dev/` |
+| CLI 프로세스 | 명령·관찰 중인 클라이언트·결과. 종료해도 Agent·대기열을 삭제하지 않음 |
+| 브라우저 | 웹 코드·대상 설정·선택된 Agent·화면 결과·입력 중 초안. Agent·대기열의 원본은 Daemon에 있음 |
+| 전용 Daemon 데이터 디렉터리 | 식별 정보·설정·로그·Agent 기록·worktree·임시 파일·CLI 관리 기록과 `agent-state.sqlite`의 전송·설정. `WORKNARU_DATA_DIR`로 지정하며 기본값은 Git에서 제외된 `.local/paseo-dev/` |
 | 임시 웹 제공 디렉터리 | 데이터 루트의 `tmp/web-*`. 공개 빌드 자산과 실행용 `connection.json`만 제공하고 해당 실행 종료 시 정리 |
 | 기존 사용자 환경 | 공유하여 사용할 수 있는 Provider 설정과 인증 정보 |
 
 구체적인 경로·버전·접속 주소와 실행 절차는 [Paseo 개발 환경 안내](../apps/paseo-dev/README.md)에서 관리한다. Git 커밋이나 태그로 보존하는 코드와 Daemon의 실행 데이터는 보존 범위가 다르다.
 
-브라우저는 화면과 클라이언트 연결을 담당하고, Provider 실행·파일 접근·Agent 세션 관리는 접속 대상 Daemon 쪽에서 이루어진다. 이후 다른 기기에서 Web UI를 여는 경우에도 작업 디렉터리는 대상 Daemon의 파일 시스템을 기준으로 해석한다. 브라우저 탭이나 연결을 닫는 동작이 Daemon의 Agent 작업을 종료하는 의미가 되지 않도록 후속 세션 기능을 설계한다.
+브라우저는 화면과 클라이언트 연결을 담당하고 Provider 실행·파일 접근·Agent 세션 관리는 접속 대상 Daemon에서 이루어진다. 작업 폴더는 Daemon 파일 시스템 기준이다. 탭·연결 종료는 Agent 작업을 종료하지 않으며 `dev stop`은 전용 실행 환경 전체를 종료한다.
 
 ## 로컬 개발 환경 관리
 
