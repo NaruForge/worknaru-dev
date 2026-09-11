@@ -1,3 +1,5 @@
+import { brand } from '@worknaru/branding';
+
 export type Environment = Readonly<Record<string, string | undefined>>;
 
 export interface DaemonConfiguration {
@@ -14,7 +16,7 @@ export class CliError extends Error {
   }
 }
 
-export const help = `Worknaru CLI
+export const help = `${brand.displayName} CLI
 
 Usage:
   worknaru status [options]

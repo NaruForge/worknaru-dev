@@ -1,4 +1,5 @@
 import type { DaemonStatus, WorknaruCore } from '@worknaru/core';
+import { brand } from '@worknaru/branding';
 import { CliError, help, parseCommand } from './arguments.js';
 import type { DaemonConfiguration, Environment } from './arguments.js';
 
@@ -42,7 +43,7 @@ export async function runCli(
     const known = error instanceof CliError;
     const detail = known
       ? { code: error.code, message: error.message }
-      : { code: 'internal_error', message: 'Worknaru could not complete the command.' };
+      : { code: 'internal_error', message: `${brand.displayName} could not complete the command.` };
     // Preserve JSON mode even when parsing or configuration fails. Never echo
     // argument values, credentials, stack traces or unexpected exception text.
     if (args.includes('--json')) output.stdout(`${JSON.stringify({ error: detail })}\n`);

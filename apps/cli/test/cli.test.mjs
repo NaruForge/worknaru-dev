@@ -8,6 +8,7 @@ import test from 'node:test';
 import { createWorknaruCore } from '@worknaru/core';
 import { createCore } from '../dist/bootstrap.js';
 import { runCli } from '../dist/cli.js';
+import { brand } from '@worknaru/branding';
 
 const secret = 'test-only-private-password';
 const endpoint = 'ws://127.0.0.1:12345/ws';
@@ -90,6 +91,7 @@ test('help needs no configuration and does not construct Core', async () => {
     const result = await invoke(args, {}, () => assert.fail('Help must not construct Core'));
     assert.equal(result.code, 0);
     assert.match(result.stdout, /worknaru status/);
+    assert.ok(result.stdout.startsWith(`${brand.displayName} CLI\n`));
     assert.equal(result.stderr, '');
   }
 });
@@ -177,7 +179,7 @@ async function runProcess(args, extraEnv = {}) {
 test('real executable provides help and JSON input failures', async () => {
   const help = await runProcess(['--help']);
   assert.equal(help.code, 0);
-  assert.match(help.stdout, /Worknaru CLI/);
+  assert.ok(help.stdout.startsWith(`${brand.displayName} CLI\n`));
   assert.equal(help.stderr, '');
   const invalid = await runProcess(['status', '--json']);
   assert.equal(invalid.code, 2);

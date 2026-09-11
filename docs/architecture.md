@@ -52,6 +52,7 @@ Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에
 | --- | --- | --- |
 | CLI | 명령·옵션·환경 변수 해석, Core API 호출, 일반 텍스트·JSON 출력과 종료 코드 결정 | [apps/cli](../apps/cli/README.md) |
 | Web UI | 상태 확인 버튼·결과 표시, 개발용 접속 설정 전달과 Core API 호출 | [apps/web](../apps/web/README.md) |
+| Branding | 빌드 시 검증·고정한 제품 표시 이름·정적 자산·색상·링크를 앱에 제공 | [packages/branding](../packages/branding/README.md) |
 | Core | 앱이 호출할 Worknaru API 제공. 현재 `getDaemonStatus()`를 주입된 Runtime으로 전달 | [packages/core](../packages/core/README.md) |
 | Runtime | 실행 기반에 요청할 기능과 Worknaru가 이해할 결과·오류 타입 정의 | [packages/runtime](../packages/runtime/README.md) |
 | Paseo Adapter | 지정한 Daemon에 접속해 식별자·버전·상태를 확인하고, SDK 응답·오류를 Runtime 계약으로 변환 | [packages/paseo-adapter](../packages/paseo-adapter/README.md) |
@@ -63,6 +64,8 @@ Core는 구체적인 Paseo SDK, CLI 출력 형식이나 웹 화면을 알지 못
 Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제품 코드에서 Adapter 내부에 모은다. 다른 실행 기반을 도입할 때도 Core가 사용하는 Runtime 계약을 기준으로 연결할 수 있다.
 
 ## 앱 시작과 기능 호출
+
+앱의 표시 계층은 [공통 브랜드 패키지](../packages/branding/README.md)가 빌드 시 생성한 이름·자산·색상·링크를 사용한다. Core·Runtime·Adapter는 브랜드에 의존하지 않는다. 저장 위치는 개발 실행기의 [공통 경로 해석](../apps/paseo-dev/paths.mjs)이 시작 시 결정하며, 브랜드에서 데이터 경로·서버 ID를 유도하지 않는다. 근거는 [ADR 0004](adr/0004-build-time-branding-and-data-root.md)에 둔다.
 
 [CLI 시작 코드](../apps/cli/src/bootstrap.ts)는 설정으로 Paseo Adapter를 만들고, 그 Runtime을 Core에 주입한다. 이 단계에서 사용할 구현을 선택한다.
 
@@ -122,7 +125,8 @@ Worknaru 전용 Paseo는 현재 PC의 개인용 Paseo와 실행 인스턴스, Da
 | Git 저장소 | 소스, 문서, 패키지 의존성과 개발 환경 재현 절차 |
 | CLI 프로세스 | 호출에 전달된 설정과 조회 중인 클라이언트·결과. Core와 Adapter에 별도 업무 상태 저장소는 없음 |
 | 브라우저 | 내려받은 웹 코드·대상 설정과 조회 중인 클라이언트·화면 결과. 업무 데이터 저장·동기화 기능은 없음 |
-| 전용 Daemon 데이터 디렉터리 | Daemon 식별 정보, 설정·로그 등 실행 데이터. 개발 환경의 `.local/` 아래에 두며 Git 추적에서 제외 |
+| 전용 Daemon 데이터 디렉터리 | Daemon 식별 정보·설정·로그·worktree·임시 파일. `WORKNARU_DATA_DIR`로 지정하고 기본값은 Git 추적에서 제외된 `.local/paseo-dev/` |
+| 임시 웹 제공 디렉터리 | 데이터 루트의 `tmp/web-*`. 공개 빌드 자산과 실행용 `connection.json`만 제공하고 해당 실행 종료 시 정리 |
 | 기존 사용자 환경 | 공유하여 사용할 수 있는 Provider 설정과 인증 정보 |
 
 구체적인 경로·버전·접속 주소와 실행 절차는 [Paseo 개발 환경 안내](../apps/paseo-dev/README.md)에서 관리한다. Git 커밋이나 태그로 보존하는 코드와 Daemon의 실행 데이터는 보존 범위가 다르다.

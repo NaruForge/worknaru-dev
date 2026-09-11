@@ -4,6 +4,8 @@
 
 ## 직접 실행
 
+이름·로고·파비콘·대표 색상·관련 링크는 [공통 리브랜딩 설정](../../packages/branding/README.md)을 수정해 재빌드한다. 브랜드는 실행 중 바뀌지 않으며 서버 식별자와 상태 조회 동작은 유지한다.
+
 저장소 루트에서 실행한다.
 
 ```powershell
@@ -11,7 +13,7 @@ pnpm install --frozen-lockfile --store-dir .pnpm-store
 pnpm web:dev
 ```
 
-실행 명령이 `Worknaru Web UI: http://127.0.0.1:6868/`를 출력하면 같은 PC의 브라우저에서 해당 주소를 연다. 터미널은 실행한 채로 두고 **상태 확인**을 누른다. 종료하려면 그 터미널에서 `stop`을 입력하고 Enter를 누르거나 Ctrl+C를 누른다.
+실행 명령이 `<표시 이름> Web UI: http://127.0.0.1:6868/`를 출력하면 같은 PC의 브라우저에서 해당 주소를 연다. 기본 표시 이름은 Worknaru다. 터미널은 실행한 채로 두고 **상태 확인**을 누른다. 종료하려면 그 터미널에서 `stop`을 입력하고 Enter를 누르거나 Ctrl+C를 누른다.
 
 가장 작은 확인 순서는 다음과 같다.
 
@@ -25,8 +27,8 @@ pnpm web:dev
 ## 실행 구조
 
 - [시작 코드](src/bootstrap.ts)가 Paseo Adapter를 만들고 Core에 주입한다. [화면 코드](src/main.ts)는 Core의 `getDaemonStatus()`를 호출한다.
-- [빌드](build.mjs)는 TypeScript 검사 후 화면·Core·Adapter·Paseo Client를 브라우저용 `dist/app.js`에 함께 묶는다. HTML과 CSS도 `dist`에 복사한다.
-- 개발 실행 프로그램은 자신이 시작한 Daemon의 소유권·서버 ID를 확인한 뒤 `dist/connection.json`에 공개 대상 ID와 예상 서버 ID를 쓴다. 비밀번호나 Provider 인증 정보는 넣지 않는다.
+- [빌드](build.mjs)는 TypeScript 검사 후 화면·Core·Adapter·Paseo Client를 브라우저용 `dist/app.js`에 함께 묶는다. 공통 브랜드로 HTML·CSS를 생성하고 정적 브랜드 자산을 `dist`에 복사한다.
+- 개발 실행 프로그램은 [지정 데이터 루트](../paseo-dev/README.md#저장-위치-설정)의 `tmp/web-*`에 허용된 웹 자산을 복사한다. 자신이 시작한 Daemon의 소유권·서버 ID를 확인한 뒤 이 폴더의 `connection.json`에 공개 대상 ID와 예상 서버 ID를 쓴다. 비밀번호·Provider 인증 정보·Daemon 설정·로그는 제공하지 않는다. 임시 웹 폴더는 해당 실행 종료 시 정리한다.
 - 브라우저는 이 설정을 읽고 페이지와 같은 호스트의 `/ws`로 접속한다. Daemon이 정적 파일 제공과 WebSocket 접속을 모두 맡으며 별도 Worknaru API 서버는 없다.
 - 기본 조회 제한 시간은 5초다. 조회 중 버튼을 비활성화하고, 완료 후 조회용 연결을 정리한다. 연결 실패를 원격 프로세스 종료의 확정 판정으로 사용하지 않는다.
 

@@ -2,16 +2,17 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, open, readFile, writeFile } from 'node:fs/promises';
+import { open, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import net from 'node:net';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+import { isDeepStrictEqual } from 'node:util';
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
+import { describeDataPaths, prepareDataDirectories, resolveDataPaths, root } from './paths.mjs';
+import { prepareWebFiles } from './web-files.mjs';
 
-export const root = fileURLToPath(new URL('../../', import.meta.url));
-export const dataHome = path.join(root, '.local', 'paseo-dev');
+export { root } from './paths.mjs';
 export const listen = '127.0.0.1:6868';
 export const endpoint = `ws://${listen}/ws`;
 export const version = '0.8.0';
@@ -62,13 +63,12 @@ export function portOpen() {
   });
 }
 
-async function prepare() {
-  assert.ok(!existsSync(path.join(dataHome, 'paseo.pid')), 'Dedicated PID file already exists; inspect it before rerunning');
+async function prepare(paths) {
+  assert.ok(!existsSync(paths.pid), `Dedicated PID file already exists; inspect it before rerunning: ${paths.pid}`);
   const server = net.createServer();
   server.listen({ host: '127.0.0.1', port: 6868, exclusive: true });
   await once(server, 'listening');
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
-  await mkdir(path.join(dataHome, 'tmp'), { recursive: true });
   const config = {
     version: 1,
     daemon: {
@@ -79,36 +79,40 @@ async function prepare() {
       serviceProxy: { enabled: false },
     },
     pluginsEnabled: false,
-    worktrees: { root: path.join(dataHome, 'worktrees') },
+    worktrees: { root: paths.worktrees },
     features: {
       dictation: { enabled: false },
       voiceMode: { enabled: false },
       webUi: { enabled: false },
     },
-    log: { file: { path: path.join(dataHome, 'daemon.log') } },
+    log: { file: { path: paths.log } },
   };
-  const configPath = path.join(dataHome, 'config.json');
+  const configPath = paths.config;
   if (existsSync(configPath)) {
-    assert.deepEqual(JSON.parse(await readFile(configPath, 'utf8')), config,
-      'Dedicated config was changed; inspect it instead of overwriting it');
-  } else {
+    // Do not print the diff: existing configuration may contain credentials.
+    let matches = false;
+    try { matches = isDeepStrictEqual(JSON.parse(await readFile(configPath, 'utf8')), config); } catch { /* field-level message below */ }
+    if (!matches) throw new Error(`Dedicated config differs or is unreadable; inspect it instead of overwriting it: ${configPath}`);
+  }
+  await prepareDataDirectories(paths);
+  if (!existsSync(configPath)) {
     await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, { flag: 'wx' });
   }
 }
 
-export function childEnvironment() {
-  const env = { ...process.env };
+export function childEnvironment(paths, inherited = process.env) {
+  const env = { ...inherited };
   // Preserve the user home and provider credentials, but never inherit a Paseo target.
   for (const key of Object.keys(env)) {
     if (/^PASEO_/i.test(key) || /^ELECTRON_/i.test(key)) delete env[key];
   }
   return {
-    ...env, PASEO_HOME: dataHome, PASEO_HOST: listen, PASEO_LISTEN: listen,
-    TEMP: path.join(dataHome, 'tmp'), TMP: path.join(dataHome, 'tmp'),
+    ...env, PASEO_HOME: paths.dataHome, PASEO_HOST: listen, PASEO_LISTEN: listen,
+    TEMP: paths.temporary, TMP: paths.temporary,
   };
 }
 
-export async function connectOwned(ownerPid) {
+export async function connectOwned(ownerPid, paths) {
   const driver = new DaemonClient({
     url: endpoint, clientId: 'worknaru-paseo-dev-verification', clientType: 'cli',
     appVersion: version, connectTimeoutMs: 5000, reconnect: { enabled: false }, logger,
@@ -116,8 +120,8 @@ export async function connectOwned(ownerPid) {
   try {
     await driver.connect();
     const info = driver.getLastServerInfoMessage();
-    const expectedId = (await readFile(path.join(dataHome, 'server-id'), 'utf8')).trim();
-    const pidInfo = JSON.parse(await readFile(path.join(dataHome, 'paseo.pid'), 'utf8'));
+    const expectedId = (await readFile(paths.serverId, 'utf8')).trim();
+    const pidInfo = JSON.parse(await readFile(paths.pid, 'utf8'));
     assert.equal(pidInfo.pid, ownerPid, 'PID file is not owned by this invocation');
     assert.equal(pidInfo.listen, listen, 'Dedicated daemon listener differs');
     assert.ok(info?.serverId, 'Server handshake has no identity');
@@ -130,9 +134,11 @@ export async function connectOwned(ownerPid) {
   }
 }
 
-export async function startDedicatedDaemon({ webDist } = {}) {
-  await prepare();
-  const launchLog = await open(path.join(dataHome, 'launcher.log'), 'a');
+export async function startDedicatedDaemon({ webDist, paths = resolveDataPaths() } = {}) {
+  console.error(describeDataPaths(paths));
+  await prepare(paths);
+  const launchLog = await open(paths.launcherLog, 'a');
+  let webFiles;
   let child;
   let exited;
   let connection;
@@ -151,39 +157,40 @@ export async function startDedicatedDaemon({ webDist } = {}) {
         } else { child.kill('SIGTERM'); }
         await timeout(exited, 10000, 'Owned supervisor exit');
       }
-    } finally { await launchLog.close(); }
+    } finally { await launchLog.close(); await webFiles?.cleanup(); }
   }
   try {
+    if (webDist) webFiles = await prepareWebFiles(webDist, paths);
     child = spawn(process.execPath, [supervisorEntry, '--no-relay', '--no-mcp', '--no-inject-mcp',
       webDist ? '--web-ui' : '--no-web-ui'], {
       cwd: root,
-      env: { ...childEnvironment(), ...(webDist ? { PASEO_WEB_UI_DIST_DIR: webDist } : {}) },
+      env: { ...childEnvironment(paths), ...(webFiles ? { PASEO_WEB_UI_DIST_DIR: webFiles.directory } : {}) },
       windowsHide: true, shell: false, stdio: ['ignore', launchLog.fd, launchLog.fd],
     });
     exited = once(child, 'exit');
     exited.catch(() => {});
     await once(child, 'spawn');
-    console.error('Starting dedicated Paseo; logs: .local/paseo-dev/daemon.log');
+    console.error(`Starting dedicated Paseo; logs: ${paths.log}`);
     const deadline = Date.now() + 45000;
     while (true) {
       assert.ok(running(), 'Dedicated supervisor exited during startup');
-      try { connection = await connectOwned(child.pid); break; }
+      try { connection = await connectOwned(child.pid, paths); break; }
       catch (error) {
         if (Date.now() >= deadline) throw error;
         await delay(500);
       }
     }
     return {
-      child, exited, connection, cleanup,
+      child, exited, connection, cleanup, paths, webDirectory: webFiles?.directory,
       async stop() {
         if (!running()) return;
-        const owned = await connectOwned(child.pid);
+        const owned = await connectOwned(child.pid, paths);
         try { await owned.driver.shutdownServer({ timeout: 5000 }); }
         finally { await owned.driver.close(); }
         await timeout(exited, 20000, 'Dedicated daemon shutdown');
         assert.equal(child.exitCode, 0, 'Dedicated supervisor did not exit cleanly');
         assert.equal(await portOpen(), false, 'Dedicated listener remains open');
-        assert.equal(existsSync(path.join(dataHome, 'paseo.pid')), false, 'Dedicated PID lock remains');
+        assert.equal(existsSync(paths.pid), false, 'Dedicated PID lock remains');
       },
     };
   } catch (error) { await cleanup(); throw error; }
