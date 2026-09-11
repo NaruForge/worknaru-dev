@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createAgentService, initialAgentState } from '@worknaru/core/agent-service';
-import { AgentError, conversationMessages } from '@worknaru/core';
+import { conversationMessages } from '@worknaru/core';
 
 const snapshot = (id = 'agent-one', extra = {}) => ({ id, name: id, cwd: '/project', model: 'codex-model', managed: true, status: 'idle', turnId: null, archivedAt: null, permissions: [], parentId: null, ...extra });
 async function fixture(t, seed = initialAgentState(), extra = {}) {
@@ -26,10 +26,11 @@ async function fixture(t, seed = initialAgentState(), extra = {}) {
   const service = createAgentService({ driver, store: { load: () => structuredClone(stored), save: value => { stored = structuredClone(value); }, close() {} }, validateDirectory: async () => {} });
   await service.initialize(); t.after(() => service.close());
   const call = (op, input = {}) => service[op](input);
-  const send = (id, mode) => call('send', { agent: 'agent-one', id, text: id, ...(mode ? { mode } : {}) });
+  const send = id => call('send', { agent: 'agent-one', id, text: id });
+  const setMode = async sendMode => service.saveSettings({ ...(await service.settings()), sendMode });
   const finish = (type = 'turn_completed', id = 'agent-one') => { const a = agents.get(id); const turnId = a.turnId; a.turnId = null; a.status = 'idle'; listeners.get(id)?.({ type, turnId }); };
   const settle = async () => { for (let i = 0; i < 10; i++) await delay(1); };
-  return { service, driver, agents, calls, call, send, finish, settle, state: () => stored, listeners };
+  return { service, driver, agents, calls, call, send, setMode, finish, settle, state: () => stored, listeners };
 }
 
 test('FIFO waits for a successful turn; retry IDs and follow-up do not duplicate a send', async t => {
@@ -68,23 +69,61 @@ test('restart preserves queued messages and settings, while ambiguous accepted s
   const resumed = await fixture(t, pending); await resumed.settle(); assert.equal(resumed.calls[0][1], 'persisted');
 });
 
-test('steer keeps the current turn and rejects unavailable steering without queue or interrupt fallback', async t => {
+test('shared steer setting follows the current turn when the Provider accepts it', async t => {
   const f = await fixture(t); await f.send('first'); await f.settle(); const turn = f.agents.get('agent-one').turnId;
-  await f.send('steering', 'steer'); await f.settle(); assert.equal(f.state().requests[1].turnId, turn);
-  f.driver.send = async () => { throw new AgentError('steer_unavailable', 'queue를 선택해 주세요.'); };
-  const rejected = await f.send('unavailable', 'steer'); assert.equal(rejected.state, 'failed'); assert.equal(f.agents.get('agent-one').turnId, turn);
+  await f.setMode('steer'); await f.send('steering'); await f.settle(); assert.equal(f.state().requests[1].turnId, turn);
+  assert.equal(f.calls[1][2], 'steer');
   f.finish(); await f.settle(); assert.equal(f.state().requests[0].state, 'completed'); assert.equal(f.state().requests[1].state, 'completed');
 });
 
 test('steer defaults to a normal turn when idle and keeps the retry identity', async t => {
-  const f = await fixture(t); await f.send('idle-steer', 'steer'); await f.send('idle-steer', 'steer'); await f.settle();
+  const f = await fixture(t); await f.setMode('steer'); await f.send('idle-steer'); await f.setMode('queue'); await f.send('idle-steer'); await f.settle();
   assert.equal(f.calls.length, 1); assert.equal(f.calls[0][2], 'queue');
+});
+
+test('settings affect new admissions without rewriting queued requests or duplicate IDs', async t => {
+  const f = await fixture(t); await f.send('first'); await f.send('pending'); await f.settle();
+  await f.setMode('steer'); await f.send('pending'); assert.equal(f.state().requests.length, 2);
+  assert.equal(f.state().requests[1].mode, 'queue');
+  await assert.rejects(f.service.send({ agent: 'agent-one', id: 'override', text: 'test', mode: 'steer' }), { code: 'invalid_input' });
+  assert.equal(f.state().requests.length, 2);
+  f.finish(); await f.settle(); assert.deepEqual(f.calls[1], ['send', 'pending', 'queue']);
+});
+
+test('native steer replacement cancels the old request without canceling or pausing the new one', async t => {
+  const f = await fixture(t); await f.send('first'); await f.settle(); await f.setMode('steer');
+  f.driver.send = async (id, text, messageId, mode) => {
+    const agent = f.agents.get(id); const previousTurn = agent.turnId;
+    agent.turnId = 'replacement-turn';
+    f.calls.push(['send', messageId, mode]);
+    f.listeners.get(id)({ type: 'turn_canceled', turnId: previousTurn });
+    f.listeners.get(id)({ type: 'timeline', turnId: agent.turnId, item: { type: 'user_message', clientMessageId: messageId } });
+  };
+  await f.send('replacement'); await f.settle();
+  assert.deepEqual(f.state().requests.map(r => r.state), ['canceled', 'running']);
+  assert.equal(!!f.state().paused['agent-one'], false);
+  f.finish(); await f.settle(); assert.deepEqual(f.state().requests.map(r => r.state), ['canceled', 'completed']);
+});
+
+test('a replacement completed before send acknowledgement keeps its own outcome', async t => {
+  const f = await fixture(t); await f.send('first'); await f.settle(); await f.setMode('steer');
+  f.driver.send = async (id, _text, messageId) => {
+    const oldTurn = f.agents.get(id).turnId; const listener = f.listeners.get(id);
+    Object.assign(f.agents.get(id), { turnId: null, status: 'idle' });
+    listener({ type: 'turn_canceled', turnId: oldTurn });
+    listener({ type: 'turn_started', turnId: 'fast-replacement' });
+    listener({ type: 'timeline', turnId: 'fast-replacement', item: { type: 'user_message', clientMessageId: messageId } });
+    listener({ type: 'turn_completed', turnId: 'fast-replacement' });
+  };
+  await f.send('replacement'); await f.settle();
+  assert.deepEqual(f.state().requests.map(r => [r.state, r.turnId]), [['canceled', 'turn-1'], ['completed', 'fast-replacement']]);
+  assert.equal(!!f.state().paused['agent-one'], false);
 });
 
 test('permission holds the queue; stale actions are rejected and question answers reach the driver', async t => {
   const f = await fixture(t); f.agents.get('agent-one').permissions = [{ id: 'permission', actions: [{ id: 'allow-once', behavior: 'allow' }], input: {} }];
   await f.send('pending'); await f.settle(); assert.equal(f.calls.length, 0);
-  await assert.rejects(f.send('steer', 'steer'), { code: 'steer_blocked' });
+  await f.setMode('steer'); await assert.rejects(f.send('steer'), { code: 'steer_blocked' });
   await assert.rejects(f.call('permission', { agent: 'agent-one', id: 'permission', behavior: 'allow', actionId: 'wrong' }), { code: 'invalid_input' });
   const answers = { answers: { Choice: 'First' } };
   await f.call('permission', { agent: 'agent-one', id: 'permission', behavior: 'allow', actionId: 'allow-once', answers });

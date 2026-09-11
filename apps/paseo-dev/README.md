@@ -29,7 +29,7 @@ CLI·SDK·Daemon은 정식 버전 `0.8.0`으로 고정했다. 베타에서 정�
 
 Agent 기능은 `pnpm exec worknaru agent setup` 후 관리형 `dev start`로 실행한다. 사용법은 [CLI](../cli/README.md), [Web](../web/README.md), 지속 실행 구조는 [Agent 서비스](../agent-service/README.md)에 있다. setup을 실행한 루트에서는 플러그인을 활성화하며 기본 저수준 상태 검증과 구분한다. 개인용 Paseo의 플러그인 설정을 바꾸지 않는다.
 
-`pnpm agent:verify`는 개발 환경을 종료한 뒤 실행하는 별도 실제 Codex 검사다. `.local/agent-integration/`에 새 데이터·작업 폴더를 만들고 생성·FIFO·후속 대화·권한 승인 확인·설정/이력 재시작 유지·보관·보관 후 전송 거부를 검증한다. Codex 설치·로그인과 Provider 사용량이 필요하다. 테스트 폴더는 로컬 검증 자료로 남긴다. 권한 거부·질문 답변·steer 불가/경쟁·하위 보관은 공통 정책과 설치된 guard 테스트에서도 검사한다. 실제 검증 증거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 둔다.
+`pnpm agent:verify`는 개발 환경을 종료한 뒤 실행하는 별도 실제 Codex 검사다. `.local/agent-integration/`에 새 데이터·작업 폴더를 만들고 생성·FIFO·후속 대화·권한 승인 확인·설정/이력 재시작 유지·보관·보관 후 전송 거부를 검증한다. Codex 설치·로그인과 Provider 사용량이 필요하다. 테스트 폴더는 로컬 검증 자료로 남긴다. 권한 거부·질문 답변·공유 설정·하위 보관은 공통 정책 테스트에서도 검사한다. 원본 Paseo steer의 수락·교체와 제거한 전송 모드의 거부는 설치된 기본 계약 테스트로 확인한다. 실제 검증 증거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 둔다.
 
 ## 저장 위치 설정
 

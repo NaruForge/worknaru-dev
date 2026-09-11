@@ -37,6 +37,6 @@ Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. `
 | `archivePreview`, `archive` | 하위 Agent·대기열을 포함한 영향 확인 토큰과 실제 보관 결과 |
 | `settings`, `saveSettings` | CLI/Web 공통 전송 기본값과 낙관적 revision 검사 |
 
-전송 방식은 `queue`와 `steer`다. 요청 상태는 `queued → sending → running → completed`이며 `failed`, `canceled`, `uncertain`도 별도로 표현한다. 성공한 턴 뒤에만 다음 대기를 실행한다. 재시작·통신 장애로 확정하지 못한 요청은 `uncertain`으로 남기며 자동 재전송하지 않는다. `discard`는 이를 사용자 확인으로 취소 처리하는 동작이며 완료나 Provider 실행 중단을 뜻하지 않는다.
+전송 방식은 공통 `settings`의 `queue`와 `steer`다. `send` 입력은 Agent·요청 ID·메시지만 받으며 요청별 mode를 받지 않는다. 응답의 `mode`는 접수된 실행 방식을 나타낸다. 설정 변경은 접수된 대기에 소급하지 않는다. steer는 Paseo 기본 동작을 따르며 미지원 시 기존 작업을 교체할 수 있다. 요청 상태는 `queued → sending → running → completed`이며 `failed`, `canceled`, `uncertain`도 별도로 표현한다. 성공한 턴 뒤에만 다음 대기를 실행한다. 재시작·통신 장애로 확정하지 못한 요청은 `uncertain`으로 남기며 자동 재전송하지 않는다. `discard`는 이를 사용자 확인으로 취소 처리하는 동작이며 완료나 Provider 실행 중단을 뜻하지 않는다.
 
-실패는 안전한 `AgentError(code, message)`로 전달한다. 대상·버전 불일치, 입력 오류, 모호한 이름, 권한 만료, steer 불가, 미리보기 변경·만료, 저장 오류와 실행 결과 불명확을 구분한다. 질문 답변은 `{ answers: { [header]: string } }`를 permission 입력의 `answers`에 넣는다. 모든 경로는 대상 Daemon 기준이다. 자세한 운영 의미는 [ADR 0006](../../docs/adr/0006-agent-lifecycle-and-durable-queue.md)을 따른다.
+실패는 안전한 `AgentError(code, message)`로 전달한다. 대상·버전 불일치, 입력 오류, 모호한 이름, 권한 만료, 추가 지시 접수 보류, 미리보기 변경·만료, 저장 오류와 실행 결과 불명확을 구분한다. 질문 답변은 `{ answers: { [header]: string } }`를 permission 입력의 `answers`에 넣는다. 모든 경로는 대상 Daemon 기준이다. 자세한 운영 의미는 [ADR 0008](../../docs/adr/0008-native-paseo-send-settings.md)을 따른다.

@@ -10,25 +10,23 @@ export async function startAgents(core: WorknaruCore) {
   let settings: AgentSettings = { sendMode: 'queue', revision: 0 };
   let history: AgentHistory | null = null;
   let preview: ArchivePreview | null = null;
-  let busy = false, sending = false, stopped = false, modeOverride = false, permissionSignature = '';
+  let busy = false, sending = false, stopped = false, permissionSignature = '';
   let archiving = false;
   let readFailure = false;
   const drafts = new Map<string, string>();
   let listSignature = '', historySignature = '', queueSignature = '';
   let settingsRevision = 0;
   let creationId = crypto.randomUUID();
-  let pendingSend: { id: string; agent: string; text: string; mode: SendMode } | null = null;
+  let pendingSend: { id: string; agent: string; text: string } | null = null;
   const notice = (text: string) => { el('agent-notice').textContent = text; };
   const report = (error: unknown) => notice(messageOf(error));
-  const mode = el<HTMLSelectElement>('send-mode');
   const composer = el<HTMLTextAreaElement>('message');
   const selectAgent = (agent: Agent) => {
     if (selected && selected.id !== agent.id) drafts.set(selected.id, composer.value);
     if (selected?.id !== agent.id) composer.value = drafts.get(agent.id) ?? '';
     selected = agent; history = null; historySignature = ''; permissionSignature = ''; queueSignature = ''; location.hash = agent.id;
   };
-  const applySettings = (value: AgentSettings) => { settings = value; if (!modeOverride) mode.value = value.sendMode; };
-  mode.onchange = () => { modeOverride = true; };
+  const applySettings = (value: AgentSettings) => { settings = value; el('current-send-mode').textContent = `전송 방식: ${value.sendMode === 'queue' ? '대기열' : '추가 지시'} · 전송 설정에서 변경`; };
 
   function showHistory(page: AgentHistory, older = false) {
     if (!history || !history.entries.length || page.epoch !== history.epoch
@@ -181,8 +179,8 @@ export async function startAgents(core: WorknaruCore) {
   };
   el<HTMLFormElement>('send-form').onsubmit = async event => {
     event.preventDefault(); if (!selected || selected.archivedAt || sending || archiving || !composer.value.trim()) return;
-    const text = composer.value; const chosen = mode.value as SendMode; const id = selected.id;
-    if (!pendingSend || pendingSend.agent !== id || pendingSend.text !== text || pendingSend.mode !== chosen) pendingSend = { id: crypto.randomUUID(), agent: id, text, mode: chosen };
+    const text = composer.value; const id = selected.id;
+    if (!pendingSend || pendingSend.agent !== id || pendingSend.text !== text) pendingSend = { id: crypto.randomUUID(), agent: id, text };
     sending = true; el<HTMLButtonElement>('send-message').disabled = true;
     try {
       const request = await core.agents.send(pendingSend);
@@ -190,7 +188,7 @@ export async function startAgents(core: WorknaruCore) {
       else if (request.state === 'failed' || request.state === 'canceled') {
         pendingSend = null;
         notice(`${request.error ?? (request.state === 'canceled' ? '이전 요청이 취소됐습니다.' : '전송에 실패했습니다.')} 다시 전송하면 새 요청으로 접수합니다.`);
-      } else { if (composer.value === text && selected?.id === id) composer.value = ''; pendingSend = null; modeOverride = false; mode.value = settings.sendMode; notice(request.state === 'completed' ? '이미 완료된 요청입니다. 대화 기록을 확인해 주세요.' : request.mode === 'steer' ? '추가 지시를 전달했습니다.' : '대기열에 추가했습니다. 이 화면을 닫아도 실행됩니다.'); }
+      } else { if (composer.value === text && selected?.id === id) composer.value = ''; pendingSend = null; notice(request.state === 'completed' ? '이미 완료된 요청입니다. 대화 기록을 확인해 주세요.' : request.mode === 'steer' ? '메시지를 전달했습니다.' : '대기열에 추가했습니다. 이 화면을 닫아도 실행됩니다.'); }
     } catch (e) { report(e); }
     finally { sending = false; el<HTMLButtonElement>('send-message').disabled = !!selected?.archivedAt; await refresh(); composer.focus(); }
   };

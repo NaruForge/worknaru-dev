@@ -106,9 +106,9 @@ Web UI의 상태 조회도 같은 Core API와 Runtime 결과를 사용한다. �
 
 CLI/Web의 `Core.agents`의 Agent 전용 메서드 → Runtime → Adapter가 전용 플러그인의 `agents.execute`를 호출한다. 플러그인은 Core 정책에 Node 전용 Paseo Driver·SQLite 저장소·폴더 검증을 주입한다. Provider 실행과 타임라인은 Paseo가 관리하고, 전송 접수·기본 설정·정지 상태는 Worknaru의 SQLite가 관리한다. 이 두 자료를 완료 여부 추정으로 혼합하지 않는다.
 
-Core 정책은 메시지를 먼저 저장하고 Agent별로 직렬 처리한다. 기본 FIFO는 현재 턴이 성공한 뒤 다음 메시지를 실행한다. 권한 대기·실패·취소·결과 불명확에서는 다음 작업을 보류한다. 추가 지시는 현재 턴에만 전달하고, 지원하지 않을 때 작업 교체로 바꾸지 않는다. 고정된 Paseo protocol/server의 안전한 admission 패치와 설치된 guard 테스트로 이 동작을 확인한다.
+Core 정책은 메시지를 먼저 저장하고 Agent별로 직렬 처리한다. 기본 FIFO는 현재 턴이 성공한 뒤 다음 메시지를 실행한다. 권한 대기·실패·취소·결과 불명확에서는 다음 작업을 보류한다. 전송 방식은 공통 설정에서만 선택하고 새 접수부터 적용한다. 추가 지시는 Paseo 기본 steer로 전달하며 미지원 시 기존 작업을 교체할 수 있다. protocol/server 패치와 메시지별 override는 없다. 내부 직렬화는 Worknaru 서비스 경유 요청에 적용하며 외부 Paseo 클라이언트의 같은 Agent 동시 변경까지 원자적으로 조정하지 않는다.
 
-Web은 주기적으로 상태·기록을 조회하고, CLI는 접수만 받거나 결과를 관찰한다. Worker는 Provider 이벤트를 별도 연결로 구독하므로 탭·CLI 종료는 작업 종료가 아니다. Daemon 재시작 뒤 대기 메시지는 남고 미확정 실행은 `uncertain`으로 멈춘다. 사용자가 기록을 확인해 실행 포기 처리한 뒤 남은 대기를 재개할 수 있다. 보관은 하위 Agent와 대기열 영향을 다시 확인하고 실행을 정리하며 대화·파일을 보존한다. 선택 근거와 대안은 [ADR 0006](adr/0006-agent-lifecycle-and-durable-queue.md)에 있다.
+Web은 주기적으로 상태·기록을 조회하고, CLI는 접수만 받거나 결과를 관찰한다. Worker는 Provider 이벤트를 별도 연결로 구독하므로 탭·CLI 종료는 작업 종료가 아니다. Daemon 재시작 뒤 대기 메시지는 남고 미확정 실행은 `uncertain`으로 멈춘다. 사용자가 기록을 확인해 실행 포기 처리한 뒤 남은 대기를 재개할 수 있다. 보관은 하위 Agent와 대기열 영향을 다시 확인하고 실행을 정리하며 대화·파일을 보존한다. 선택 근거와 대안은 [ADR 0008](adr/0008-native-paseo-send-settings.md)에 있다.
 
 ## 브라우저 호환 범위
 

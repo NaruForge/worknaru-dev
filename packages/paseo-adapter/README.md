@@ -35,15 +35,15 @@ if (status.outcome === 'available') {
 
 ## Agent RPC와 실행 Driver
 
-앱은 `Runtime.agents.create()`·`send()` 등 명시적인 메서드을 통해 전용 플러그인의 `agents.execute` RPC를 호출한다. [agent-rpc.ts](src/agent-rpc.ts)는 매 호출에서 서버 ID·0.8.0 버전을 확인한 뒤 Worknaru 결과·오류를 반환하고 연결을 닫는다. `timeoutMs`는 이 경로의 연결 제한이며 RPC는 SDK의 응답 제한을 따른다. 승인된 요청 뒤 연결 정리 오류 때문에 자동 재전송을 유도하지 않는다. 원시 SDK 예외는 제품 오류로 변환한다.
+앱은 `Runtime.agents.create()`·`send()` 등 명시적인 메서드를 통해 전용 플러그인의 `agents.execute` RPC를 호출한다. [agent-rpc.ts](src/agent-rpc.ts)는 매 호출에서 서버 ID·0.8.0 버전을 확인한 뒤 Worknaru 결과·오류를 반환하고 연결을 닫는다. `timeoutMs`는 이 경로의 연결 제한이며 RPC는 SDK의 응답 제한을 따른다. 승인된 요청 뒤 연결 정리 오류 때문에 자동 재전송을 유도하지 않는다. 원시 SDK 예외는 제품 오류로 변환한다.
 
 서버 플러그인이 사용하는 별도 Node 전용 export `@worknaru/paseo-adapter/agent-driver`는 Codex 모델 조회·생성·목록·타임라인·전송·권한·보관을 SDK에 연결한다. 이 export는 브라우저에서 가져오지 않는다. Worker 연결은 재접속하고 이벤트를 관찰하며, 연결 손실·타임라인 교체는 Core 정책에 알린다. 재접속 이후에도 대상 ID·버전을 확인한다. 권한 완료 이벤트는 0.8.0의 명시적 이벤트 구독에 등록해야 `respondToPermissionAndWait`의 결과를 받을 수 있다.
 
 타임라인의 `seqStart`를 Worknaru 순서 번호로 매핑하고 `epoch`·이전 페이지 cursor·clientMessageId·turnId를 전달한다. Provider의 턴 ID는 재시작 뒤 재사용될 수 있으므로 특정 요청 결과는 사용자 메시지 ID 이후 범위로 확인한다. 작업 폴더 후보는 부모 경로 기준 SDK 조회 결과를 절대경로로 변환한다.
 
-고정 버전의 기존 `steer`는 불가능할 때 현재 작업 교체로 바뀔 수 있다. 이를 방지하기 위해 [protocol 패치](patches/@getpaseo__protocol@0.8.0.patch)에 `idle_only`·`steer_only` 입력을 추가하고 [server 패치](patches/@getpaseo__server@0.8.0.patch)에서 보관·권한 대기·실행 중 여부를 확인한다. `idle_only`는 바쁜 Agent를 거부하고 `steer_only`는 Provider의 명시적 수락만 허용한다. 기존 `interrupt`/`steer`의 의미는 바꾸지 않는다. Adapter가 안전한 모드만 사용하고 일반 Paseo CLI를 우회 호출하지 않는다.
+Paseo 기본 전송 API를 사용하며 protocol/server 패치는 없다. Core가 idle 상태와 권한·보관 상태를 확인한 뒤 대기 메시지를 일반 `interrupt` 모드로 전달한다. 추가 지시는 원래 `steer` 모드로 전달하며, Provider가 적용하지 못하면 Paseo가 진행 중인 작업을 교체할 수 있다. 별도 strict 전송이나 원자적 idle-only 조건을 덧붙이지 않는다.
 
-설치된 SDK·프로토콜·서버의 패치는 [guard 테스트](../../apps/paseo-dev/test/agent-guards.test.mjs)로 확인한다. 버전 변경 시 이 테스트와 실제 Codex 전송·권한·보관을 다시 검증해야 한다. 설계는 [ADR 0006](../../docs/adr/0006-agent-lifecycle-and-durable-queue.md), 검증 근거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 둔다.
+설치된 원본 프로토콜과 기본 steer의 수락·교체는 [전송 계약 테스트](../../apps/paseo-dev/test/agent-sending.test.mjs)로 확인한다. 버전 변경 시 이 테스트와 실제 Codex 전송·권한·보관을 다시 검증한다. 결정은 [ADR 0008](../../docs/adr/0008-native-paseo-send-settings.md), 검증 근거는 [Issue #19](https://github.com/NaruForge/worknaru-dev/issues/19)에 둔다.
 
 ## 실패 판정
 
@@ -67,17 +67,9 @@ if (status.outcome === 'available') {
 
 ### Paseo 호환성 패치의 책임과 제거 조건
 
-Agent 전송의 protocol/server 패치는 일반 Adapter 변환보다 큰 유지보수 비용이다. `packages/paseo-adapter`가 이 호환성 계층을 소유하며, Paseo 업그레이드는 SDK 변환뿐 아니라 서버 admission·프로토콜 계약 검증을 포함한다. 두 패치는 `0.8.0`에만 적용한다. pnpm lockfile의 패치 해시와 설치 실패를 무시하거나 검증 없이 버전 범위를 넓히지 않는다.
+Agent 전송용 protocol/server 패치는 제거했다. 현재 남은 패치는 아래 relay의 브라우저 배포 경로 수정뿐이다. 지원 버전은 0.8.0으로 유지하며 업그레이드 시 SDK 변환·연결·기본 전송의 실제 동작을 검증한다. 자체 strict 전송 모드의 패치 이식은 필요하지 않다. 이전 선택과 변경 근거는 [ADR 0008](../../docs/adr/0008-native-paseo-send-settings.md)에 있다.
 
-클라이언트에서 실행 상태를 먼저 읽는 것만으로는 조회와 전송 사이의 경쟁을 막지 못한다. 기존 `steer`는 실패 시 작업을 교체하므로 안전한 대체 경로로 사용할 수 없다. 새 `idle_only`·`steer_only`는 미패치 프로토콜에서 거부된다. protocol 패치만 없애고 기존 enum을 재사용하면 이 보호가 사라지므로 그렇게 축소하지 않는다.
-
-업그레이드 변경에는 다음 검증을 포함한다.
-
-1. `pnpm install --frozen-lockfile`과 `pnpm test`로 실제 설치된 프로토콜, 바쁜 턴·권한 대기·보관 상태의 거부, steer 수락·미지원·턴 교체 경쟁, 동시 전송을 확인한다.
-2. `pnpm agent:verify`와 실제 Provider의 steer 검증으로 현재 턴 보존, FIFO, 권한 응답, 재시작 복구와 보관을 확인한다. 단순 빌드 성공으로 호환성을 판정하지 않는다.
-3. Paseo가 공식 API로 idle-only 및 fallback 없는 strict steer를 제공하고 같은 검증을 통과하면 Driver를 공식 API로 교체하고 두 패치를 함께 제거한다. 공식 지원 전에는 자체 Provider 구현으로 범위를 확대하지 않는다.
-
-선택 근거와 공개 API 경계는 [ADR 0007](../../docs/adr/0007-agent-api-and-paseo-compatibility-boundary.md)에 있다.
+같은 Agent를 외부 Paseo 클라이언트가 동시에 조작할 때 Core의 조회와 네이티브 전송 사이에 상태가 바뀔 수 있다. CLI/Web의 서비스 내부 직렬화는 유지하지만 외부 전송·보관까지 원자적으로 조정한다고 보장하지 않는다.
 
 `@getpaseo/client`는 정식 버전 `0.8.0`으로 고정했다. 이 버전의 공개 facade에는 Daemon 식별 정보와 상태 API가 없어 내부 `DaemonClient.getLastServerInfoMessage()`와 `getDaemonStatus()`를 사용한다. SDK 버전 변경 시 내부 경로와 오류 변환을 다시 검증해야 한다. Adapter는 Paseo CLI·서버 패키지·로컬 프로세스 조회에 의존하지 않는다.
 

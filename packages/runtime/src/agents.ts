@@ -29,7 +29,7 @@ export interface AgentAPI {
   list(input?: { archived?: boolean }): Promise<Agent[]>;
   show(input: { agent: string }): Promise<Agent>;
   history(input: { agent: string; cursor?: unknown }): Promise<AgentHistory>;
-  send(input: { agent: string; id: string; text: string; mode?: SendMode }): Promise<AgentRequest>;
+  send(input: { agent: string; id: string; text: string }): Promise<AgentRequest>;
   requests(input: { agent: string }): Promise<{ requests: AgentRequest[]; paused: boolean }>;
   cancel(input: { agent: string; id: string }): Promise<AgentRequest>;
   discard(input: { agent: string; id: string }): Promise<AgentRequest>;

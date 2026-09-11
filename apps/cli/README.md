@@ -53,18 +53,23 @@ pnpm exec worknaru agent list --archived
 ```powershell
 pnpm exec worknaru settings get send-mode
 pnpm exec worknaru settings set send-mode queue
-pnpm exec worknaru agent send "문서 도우미" "다음 작업" --queue --no-wait
-pnpm exec worknaru agent send "문서 도우미" "현재 작업의 조건을 추가합니다" --steer --no-wait
+pnpm exec worknaru agent send "문서 도우미" "다음 작업" --no-wait
+pnpm exec worknaru settings set send-mode steer
+pnpm exec worknaru agent send "문서 도우미" "현재 작업의 조건을 추가합니다" --no-wait
 pnpm exec worknaru agent queue list "문서 도우미"
 pnpm exec worknaru agent queue cancel "문서 도우미" <대기요청ID>
 pnpm exec worknaru agent queue resume "문서 도우미"
 ```
 
-기본 `queue`는 현재 작업이 성공한 뒤 FIFO로 실행한다. CLI와 Web의 기본 설정은 같은 저장소에 기록되며 `--queue`/`--steer`는 이번 메시지에만 적용된다. `steer`는 진행 중인 턴에 추가 지시를 전달한다. 실행 중이 아니면 새 턴으로 처리한다. 권한 대기·앞선 대기 메시지·일시 정지 상태에서는 추가 지시를 거부한다. Provider가 지원하지 않거나 턴이 바뀌면 실패를 알리고, 진행 중인 작업을 중단하는 방식으로 바꾸지 않는다.
+기본 `queue`는 현재 작업이 성공한 뒤 FIFO로 실행한다. 전송 방식은 CLI의 `settings set send-mode queue|steer` 또는 Web의 **전송 설정**에서만 바꾼다. 두 앱이 같은 저장소를 사용하며 설정 변경은 새로 접수한 메시지부터 적용한다. 접수된 요청과 같은 ID의 재시도는 당시 전송 방식을 유지한다. 메시지별 `--queue`/`--steer`는 지원하지 않는다.
 
-대기 메시지는 데이터 루트의 SQLite에 저장된다. 터미널·브라우저 종료와 무관하게 실행하고 Daemon 재시작 뒤에도 보존한다. 실패·취소 시 다음 메시지를 자동 실행하지 않는다. 기록을 확인한 후 `queue resume`으로 남은 메시지만 재개한다. `queue cancel`은 실행 전 메시지만 취소한다.
+`steer`는 Paseo 기본 동작으로 진행 중인 작업에 추가 지시를 전달한다. 추가 지시를 적용할 수 없으면 기존 작업을 중단하고 새 요청을 시작할 수 있다. 실행 중이 아니면 새 턴으로 처리한다. 권한 대기·앞선 대기 메시지·일시 정지 상태에서는 추가 지시를 거부하므로 먼저 처리하거나 공통 설정을 queue로 변경한다.
+
+대기 메시지는 데이터 루트의 SQLite에 저장된다. 터미널·브라우저 종료와 무관하게 실행하고 Daemon 재시작 뒤에도 보존한다. 실패·취소 시 다음 메시지를 자동 실행하지 않는다. 다만 Paseo의 steer가 새 요청을 시작하며 이전 턴을 취소한 경우에는 새 요청을 계속 처리한다. 기록을 확인한 후 `queue resume`으로 남은 메시지만 재개한다. `queue cancel`은 실행 전 메시지만 취소한다.
 
 접수 도중 연결이 끊기거나 재시작 전 실행 결과를 확정할 수 없으면 `uncertain`으로 남기고 자동 재전송하지 않는다. 기록·파일·현재 작업 상태를 확인한 뒤 `agent queue discard <agent> <요청ID> --yes`로 해당 요청의 자동 재실행을 포기하고, `queue resume`을 실행한다. 완료로 표시하는 기능은 아니며 진행 중인 작업·권한 요청이 있으면 거부한다. 필요하면 별도의 새 요청 ID로 새 메시지를 보낸다.
+
+같은 Agent의 전송·권한·보관은 Worknaru CLI/Web으로 처리한다. 외부 Paseo 클라이언트가 같은 Agent를 동시에 변경할 때의 전송·보관 경쟁은 지원하지 않는다.
 
 ### 권한과 보관
 

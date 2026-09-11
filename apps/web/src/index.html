@@ -30,7 +30,7 @@
           <details id="queue-panel"><summary id="queue-summary">대기 메시지</summary><div id="queue-list"></div><button id="resume-queue" class="secondary" type="button" hidden>남은 대기열 재개</button></details>
           <form id="send-form" class="composer">
             <label for="message">메시지</label><textarea id="message" rows="3" placeholder="어떤 작업을 도와드릴까요?" disabled required maxlength="65536"></textarea>
-            <div class="composer-actions"><div><label for="send-mode">전송 방식</label><select id="send-mode"><option value="queue">대기열에 추가</option><option value="steer">진행 중인 작업에 추가 지시</option></select><small>Enter로 전송 · Shift+Enter로 줄바꿈</small></div><button id="send-message" type="submit" disabled>전송</button></div>
+            <div class="composer-actions"><div><small id="current-send-mode">전송 설정 불러오는 중…</small><small>Enter로 전송 · Shift+Enter로 줄바꿈</small></div><button id="send-message" type="submit" disabled>전송</button></div>
           </form>
         </section>
       </div>
@@ -56,7 +56,7 @@
         <label for="create-model">모델</label><select id="create-model" required><option value="">모델 불러오는 중…</option></select>
         <p id="create-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close="create-dialog" class="secondary">취소</button><button id="create-submit" type="submit">만들기</button></div>
       </form></dialog>
-      <dialog id="settings-dialog" aria-labelledby="settings-title"><form id="settings-form"><h2 id="settings-title">기본 전송 방식</h2><p>CLI와 Web에서 함께 사용하는 설정입니다. 메시지를 보낼 때 바꿀 수도 있습니다.</p><label for="default-mode">전송 방식</label><select id="default-mode"><option value="queue">대기열에 추가</option><option value="steer">진행 중인 작업에 추가 지시</option></select><p>대기열은 현재 작업이 성공하면 순서대로 실행됩니다. 추가 지시를 지원하지 않으면 전송에 실패하며, 현재 작업은 계속됩니다.</p><p id="settings-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close="settings-dialog" class="secondary">취소</button><button type="submit">저장</button></div></form></dialog>
+      <dialog id="settings-dialog" aria-labelledby="settings-title"><form id="settings-form"><h2 id="settings-title">기본 전송 방식</h2><p>CLI와 Web에서 함께 사용하는 설정입니다. 변경한 방식은 새로 접수하는 메시지부터 적용됩니다.</p><label for="default-mode">전송 방식</label><select id="default-mode"><option value="queue">대기열에 추가</option><option value="steer">진행 중인 작업에 추가 지시</option></select><p>대기열은 현재 작업이 성공하면 순서대로 실행됩니다. 추가 지시를 적용할 수 없으면 진행 중인 작업을 중단하고 새 요청을 시작할 수 있습니다.</p><p id="settings-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close="settings-dialog" class="secondary">취소</button><button type="submit">저장</button></div></form></dialog>
       <dialog id="archive-dialog" aria-labelledby="archive-title"><h2 id="archive-title">Agent 보관</h2><p>진행 중인 작업을 중단하고 대기 메시지를 취소합니다. 대화 기록과 작업 폴더의 파일은 남습니다.</p><div id="archive-impact"></div><p id="archive-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" data-close="archive-dialog" class="secondary">취소</button><button id="confirm-archive" type="button">확인하고 보관</button></div></dialog>
       <noscript>상태를 확인하려면 브라우저에서 JavaScript를 사용해야 합니다.</noscript>
       <footer aria-label="서비스 링크">{{brand.links}}</footer>

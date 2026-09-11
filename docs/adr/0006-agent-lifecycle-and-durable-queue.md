@@ -1,7 +1,8 @@
 # 0006. Agent 생명주기와 Daemon 소유의 지속 대기열
 
 - 날짜: 2026-09-11
-- 상태: Accepted
+- 상태: Superseded
+- 대체 결정: [ADR 0008](0008-native-paseo-send-settings.md). 메시지별 선택과 strict 전송·패치 정책을 대체하며 지속 대기열·권한·보관 결정은 유지한다. 아래 내용은 당시 결정의 기록이다.
 - 관련 Work Item: [#17](https://github.com/NaruForge/worknaru-dev/issues/17)
 - 승인 근거: 사용자가 생성 → 조회 → 메시지 전송 → 응답 확인 → 후속 대화 → 보관, 사람이 쉽게 쓰는 CLI/Web과 문서 갱신 계획의 구현 및 PR 작성을 지시했다.
 - 구현: [Core 정책](../../packages/core/src/agent-service.mjs), [실행 앱](../../apps/agent-service/README.md), [Adapter](../../packages/paseo-adapter/README.md)

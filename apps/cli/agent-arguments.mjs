@@ -3,7 +3,7 @@ export const agentHelp = `Agent 사용법 (pnpm exec worknaru ...)
   agent create [--name 이름] [--cwd 폴더] [--model 모델]
   agent list [--archived]
   agent show <이름 또는 ID>
-  agent send <agent> "메시지" [--queue | --steer] [--no-wait]
+  agent send <agent> "메시지" [--no-wait]
   agent wait <agent> [--request 요청ID] [--wait-timeout 초]
   agent history <agent> [--all]
   agent queue list <agent>
@@ -17,13 +17,14 @@ export const agentHelp = `Agent 사용법 (pnpm exec worknaru ...)
   settings set send-mode queue|steer
 
 이름이 겹치면 agent list에서 전체 ID 또는 유일한 4자 이상 접두사를 선택하세요.
+전송 방식은 settings set send-mode queue|steer에서 변경합니다.
 send는 기본 600초 대기합니다. --wait-timeout은 관찰만 제한하며 작업을 중단하지 않습니다.
 --id로 생성/전송 요청 ID를 지정할 수 있습니다. 기본은 자동 생성입니다.
 --json: 질문 없이 JSON 한 문서. --no-wait: 접수 후 반환. Ctrl+C: 관찰만 종료.
 명시적 연결: --endpoint URL --server-id ID (기존 WORKNARU_* 설정도 적용)
 `;
 
-const flags = new Set(['--json', '--yes', '--no-wait', '--queue', '--steer', '--archived', '--allow', '--deny', '--all']);
+const flags = new Set(['--json', '--yes', '--no-wait', '--archived', '--allow', '--deny', '--all']);
 const values = new Set(['--name', '--cwd', '--model', '--id', '--request', '--wait-timeout', '--action', '--answers', '--endpoint', '--server-id', '--target', '--timeout-ms']);
 export function parseAgentArgs(args) {
   const positional = []; const options = {};
@@ -34,12 +35,11 @@ export function parseAgentArgs(args) {
     options[token] = flags.has(token) ? true : args[++i];
     if (options[token] === undefined || (typeof options[token] === 'string' && options[token].startsWith('--'))) throw Error('옵션 값이 필요합니다.');
   }
-  if (options['--queue'] && options['--steer']) throw Error('--queue와 --steer는 함께 사용할 수 없습니다.');
   if (options['--allow'] && options['--deny']) throw Error('승인과 거부 중 하나만 선택해 주세요.');
   if (options['--wait-timeout'] && (!/^\d+$/.test(options['--wait-timeout']) || Number(options['--wait-timeout']) < 1 || Number(options['--wait-timeout']) > 86400)) throw Error('대기 시간은 1~86400초 정수입니다.');
   const allowed = {
     create: ['--name', '--cwd', '--model', '--id'], list: ['--archived'], show: [], permissions: [], history: ['--all'],
-    send: ['--id', '--queue', '--steer', '--no-wait', '--wait-timeout'], wait: ['--request', '--wait-timeout'],
+    send: ['--id', '--no-wait', '--wait-timeout'], wait: ['--request', '--wait-timeout'],
     archive: ['--yes'], 'queue list': [], 'queue cancel': [], 'queue resume': [], 'queue discard': ['--yes'],
     'permission respond': ['--allow', '--deny', '--action', '--answers'], settings: [],
   };
