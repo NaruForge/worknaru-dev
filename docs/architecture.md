@@ -4,6 +4,8 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 
 이 문서는 현재 코드의 구성요소와 실행 구조를 설명한다. CLI와 Web UI는 같은 Core·Runtime·Paseo Adapter를 통해 전용 Daemon 상태와 Codex Agent의 생성·대화·대기열·권한·보관을 사용한다. 웹 코드는 브라우저에서 실행하고 지속 대기열은 Daemon의 서버 플러그인이 실행한다.
 
+개별 용어의 정의와 혼동하기 쉬운 차이는 [용어집](glossary.md)에서 확인한다.
+
 제품 호출·로컬 개발 환경 관리·CLI와 브라우저 실행 구조의 현재 결정은 [ADR 0005](adr/0005-local-development-cli-boundary.md)에 둔다. 이전 결정의 본문은 ADR 0001·0003에 보존한다. 작업 범위와 검증 증거는 관련 GitHub Issue에서 관리한다.
 
 ## 제품 개념과 현재 구현의 관계
