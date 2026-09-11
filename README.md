@@ -4,7 +4,7 @@
 
 현재 CLI와 Web UI에서 Codex Agent를 생성·조회하고, 메시지 전송·응답 확인·후속 대화·보관까지 사용할 수 있다. 지속 대기열, 진행 중인 작업에 추가 지시, 권한 승인·거부와 질문 응답을 지원한다. Module·Worknaru Workspace의 개발·조합·실행 기능은 후속 구현 대상이다.
 
-[개념 아키텍처](docs/architecture.md)는 CLI와 Web UI의 공통 구성요소, 호출 흐름과 실행 환경의 경계를 설명한다.
+[용어집](docs/glossary.md)은 제품과 실행 기반의 핵심 용어를 정의한다. [개념 아키텍처](docs/architecture.md)는 CLI와 Web UI의 공통 구성요소, 호출 흐름과 실행 환경의 경계를 설명한다.
 
 개발 환경에서 CLI를 사용하려면 [Worknaru CLI 실행 안내](apps/cli/README.md)를 참고한다. Daemon 연결과 CLI 연동은 [Paseo 개발 환경 검증](apps/paseo-dev/README.md)에서 확인한다.
 
