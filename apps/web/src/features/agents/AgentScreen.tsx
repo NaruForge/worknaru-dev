@@ -75,7 +75,7 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
       box.scrollTop = olderAnchor.current.top + box.scrollHeight - olderAnchor.current.height;
       olderAnchor.current = null;
     } else if (atBottom.current && !olderAnchor.current) box.scrollTop = box.scrollHeight;
-  }, [ui.history, selected?.id]);
+  }, [ui.history, selected?.id, selected?.permissions, ui.queue]);
   async function action(work: () => Promise<unknown>, notice: string, closeDiscard = false) {
     if (actionGuard.current) return;
     actionGuard.current = true;
@@ -513,6 +513,7 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
           agent={selected}
           onClose={() => setDialog(null)}
           onBusy={ui.setArchiving}
+          focusAfterArchive={() => historyBox.current}
           onArchived={() => {
             setDialog(null);
             ui.setNotice('보관했습니다. 보관함에서 대화 기록을 다시 볼 수 있습니다.');

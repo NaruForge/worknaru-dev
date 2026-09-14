@@ -28,3 +28,5 @@ Daemon 정적 배포의 flat 파일 계약과 Core → Runtime → Adapter를 �
 정적 배포는 기존 SDK를 포함한 단일 JS 번들을 유지하므로 코드 분할을 사용할 수 없다. 이를 바꾸려면 별도 정적 자산 계약의 변경 근거가 필요하다. 화면 비교는 고정된 Linux/브라우저 환경에 한정하며 Windows 픽셀 결과와 동일하다고 가정하지 않는다. 검사 예외와 기준 이미지는 PR에서 검토한다.
 
 구현과 검증 근거는 연결된 작업의 PR에 남기며 진행 상태를 이 문서에 복제하지 않는다.
+
+채택 시 화면 비교: [이전 UI](../assets/ui-v1-before.png)와 [v1 UI](../assets/ui-v1-after.png). 같은 고정 대화 데이터·Windows Chromium·1440×900 viewport로 캡처했으며 이전 UI는 전체 페이지가 viewport보다 길다. 이전 화면은 `d155d91`의 HTML/CSS/화면 코드를 사용했다. 이 이미지는 결정 시점의 비교 자료이며 회귀 검사용 Linux 기준 이미지는 Web 브라우저 테스트가 소유한다.

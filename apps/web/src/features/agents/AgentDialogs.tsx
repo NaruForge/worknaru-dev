@@ -275,13 +275,16 @@ export function ArchiveAgentDialog({
   onClose,
   onBusy,
   onArchived,
+  focusAfterArchive,
 }: {
   core: WorknaruCore;
   agent: Agent;
   onClose: () => void;
   onBusy: (value: boolean) => void;
   onArchived: () => void;
+  focusAfterArchive: () => HTMLElement | null;
 }) {
+  const archived = useRef(false);
   const [preview, setPreview] = useState<ArchivePreview | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -316,7 +319,10 @@ export function ArchiveAgentDialog({
           `일부 Agent의 보관을 확인하지 못했습니다: ${result.failed.join(', ')}. 대상을 다시 확인해 주세요.`,
         );
         setPreview(null);
-      } else onArchived();
+      } else {
+        archived.current = true;
+        onArchived();
+      }
     } catch (e) {
       setError(messageOf(e));
       setPreview(null);
@@ -333,6 +339,7 @@ export function ArchiveAgentDialog({
       title="Agent 보관"
       description="진행 중인 작업을 중단하고 대기 메시지를 취소합니다. 대화 기록과 작업 폴더의 파일은 남습니다."
       busy={busy}
+      returnFocus={() => (archived.current ? focusAfterArchive() : null)}
     >
       <Stack>
         {preview ? (

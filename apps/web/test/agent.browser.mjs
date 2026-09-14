@@ -52,7 +52,9 @@ async (page) => {
   await page.screenshot({ path: '.local/agent-browser-mobile.png', fullPage: true });
   // A streamed reply can appear before the durable request settles. Confirm the
   // execution state before taking an archive preview that must remain current.
-  await page.getByLabel('메시지 실행 상태', { exact: true }).waitFor({ state: 'hidden', timeout: 60000 });
+  await page
+    .getByLabel('메시지 실행 상태', { exact: true })
+    .waitFor({ state: 'hidden', timeout: 60000 });
   await page.getByRole('button', { name: '보관', exact: true }).click();
   await page.getByRole('button', { name: '확인하고 보관', exact: true }).click();
   await page.getByRole('dialog', { name: 'Agent 보관' }).waitFor({ state: 'hidden' });
@@ -61,6 +63,11 @@ async (page) => {
   await page.getByRole('button', { name: '보관함', exact: true }).click();
   await page.getByRole('button').filter({ hasText: name }).waitFor();
   await page.getByRole('button').filter({ hasText: name }).click();
+  await page
+    .getByLabel('대화 기록', { exact: true })
+    .locator('article')
+    .filter({ hasText: 'MAPLE FOLLOWUP' })
+    .waitFor();
   return {
     name,
     archived: true,
