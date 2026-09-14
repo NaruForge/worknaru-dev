@@ -3,11 +3,11 @@ import { brand } from '@worknaru/branding';
 import type { WorknaruCore } from '@worknaru/core';
 import {
   Alert,
-  Badge,
   Button,
   Dialog,
   EmptyState,
   Icon,
+  IconButton,
   Inline,
   Link,
   Loading,
@@ -101,40 +101,44 @@ function ConnectedApp({ core, endpoint }: { core: WorknaruCore; endpoint: string
   return (
     <div className={styles.app}>
       <aside className={styles.appRail} aria-label="앱 탐색 영역">
-        <div className={styles.brand}>
-          {brand.logo && <img className={styles.logo} src={`./${brand.logo}`} alt="" />}
-          <strong>{brand.displayName}</strong>
+        <div className={styles.brand} title={`${brand.displayName} · 개발 환경`}>
+          {brand.logo ? (
+            <img className={styles.logo} src={`./${brand.logo}`} alt={brand.displayName} />
+          ) : (
+            <span role="img" aria-label={brand.displayName}>
+              <Icon name="message" />
+            </span>
+          )}
         </div>
         <nav aria-label="앱 탐색" className={styles.appNavigation}>
-          <Button
-            size="small"
+          <IconButton
+            icon="message"
+            label="Agent"
             variant={active ? 'secondary' : 'ghost'}
             aria-current={active ? 'page' : undefined}
             onClick={returnToAgent}
-          >
-            <span className={styles.railItem}>
-              <Icon name="message" />
-              Agent
-            </span>
-          </Button>
-          <Button
-            size="small"
-            variant={!active ? 'secondary' : 'ghost'}
-            aria-current={!active ? 'page' : undefined}
-            onClick={() => openSettings()}
-          >
-            <span className={styles.railItem}>
-              <Icon name="settings" />
-              설정{shared.dirty && <Badge tone="warning">미저장</Badge>}
-            </span>
-          </Button>
+          />
+          <div className={styles.settingsNavigation}>
+            <IconButton
+              icon="settings"
+              label={shared.dirty ? '설정 (미저장)' : '설정'}
+              variant={!active ? 'secondary' : 'ghost'}
+              aria-current={!active ? 'page' : undefined}
+              onClick={() => openSettings()}
+            />
+            {shared.dirty && (
+              <span className={styles.unsavedIndicator} aria-hidden="true">
+                <Icon name="info" />
+              </span>
+            )}
+          </div>
         </nav>
         <div className={styles.railFooter}>
-          <Badge>개발 환경</Badge>
+          <span role="img" aria-label="개발 환경" title="개발 환경">
+            <Icon name="info" />
+          </span>
           {Object.keys(brand.links).length > 0 && (
-            <Button variant="ghost" size="small" onClick={() => setHelp(true)}>
-              도움말
-            </Button>
+            <IconButton icon="more" label="도움말" onClick={() => setHelp(true)} />
           )}
         </div>
       </aside>
@@ -174,7 +178,6 @@ function ConnectedApp({ core, endpoint }: { core: WorknaruCore; endpoint: string
             view={navigation.agentView}
             onNavigate={navigation.navigate}
             panels={panels}
-            onSettings={() => openSettings('behavior')}
           />
         </div>
         <div className={styles.featureView} hidden={active}>

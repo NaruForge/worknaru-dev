@@ -3,7 +3,8 @@
 async (page) => {
   const name = `Browser check ${Date.now()}`;
   await page.goto('http://127.0.0.1:6868/');
-  await page.getByRole('button', { name: '전송 설정', exact: true }).click();
+  await page.getByRole('button', { name: '설정', exact: true }).click();
+  await page.getByRole('button', { name: 'Agent 동작', exact: true }).click();
   const mode = page.getByLabel('기본 전송 방식', { exact: true });
   await mode.waitFor();
   if ((await mode.inputValue()) !== 'queue') {
@@ -63,11 +64,14 @@ async (page) => {
   await page
     .getByLabel('메시지 실행 상태', { exact: true })
     .waitFor({ state: 'hidden', timeout: 60000 });
-  await page.getByRole('button', { name: '보관', exact: true }).click();
+  await page.getByRole('button', { name: 'Agent 목록으로', exact: true }).click();
+  await page
+    .getByRole('group', { name, exact: true })
+    .getByRole('button', { name: 'Agent 보관', exact: true })
+    .click();
   await page.getByRole('button', { name: '확인하고 보관', exact: true }).click();
   await page.getByRole('dialog', { name: 'Agent 보관' }).waitFor({ state: 'hidden' });
   await message.waitFor({ state: 'hidden' });
-  await page.getByRole('button', { name: 'Agent 목록으로', exact: true }).click();
   await page.getByRole('button', { name: '보관함', exact: true }).click();
   await page.getByRole('button').filter({ hasText: name }).waitFor();
   await page.getByRole('button').filter({ hasText: name }).click();

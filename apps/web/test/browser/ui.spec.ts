@@ -148,7 +148,10 @@ test('reading position survives refresh and content does not execute HTML', asyn
   expect(await history.evaluate((element) => element.scrollTop)).toBe(200);
   await page.getByLabel('메시지', { exact: true }).fill('<img src=x onerror="alert(1)">');
   await page.getByRole('button', { name: '보내기', exact: true }).click();
-  await expect(page.getByRole('img')).toHaveCount(0);
+  // App branding and status icons may expose an image role. Only user content
+  // must stay plain text; do not count unrelated navigation graphics here.
+  await expect(history.locator('img')).toHaveCount(0);
+  await expect(history.getByText('<img src=x onerror="alert(1)">', { exact: true })).toBeVisible();
 });
 test('empty, loading and disconnected screens remain readable on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

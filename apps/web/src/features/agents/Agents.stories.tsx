@@ -58,3 +58,14 @@ export const Archived: Story = { args: { scenario: 'archived' } };
 export const Long: Story = { args: { scenario: 'long' } };
 export const Continuity: Story = { args: { scenario: 'continuity' } };
 export const Many: Story = { args: { scenario: 'many' } };
+export const ListArchive: Story = {
+  args: { scenario: 'continuity' },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '목록 행의 보관 아이콘으로 선택하지 않은 Agent도 사전 확인 후 보관합니다. 주간 업무 정리에 초안을 쓰고 고객 미팅 준비를 보관하면 현재 대화가 유지됩니다.',
+      },
+    },
+  },
+};
