@@ -12,3 +12,8 @@ core.agents.execute('workspace.run', {});
 core.agents.create({ text: 'Hello' });
 // @ts-expect-error Message-level mode overrides are not part of the Agent API.
 core.agents.send({ agent: 'agent-1', id: 'send-1', text: 'Hello', mode: 'steer' });
+
+// @ts-expect-error Model discovery always requires an explicit working directory.
+core.agents.options();
+// @ts-expect-error There is no implicit default working folder in discovery results.
+core.agents.options({ cwd: '/project' }).then(result => result.defaultCwd);

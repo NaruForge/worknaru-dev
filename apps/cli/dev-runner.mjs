@@ -31,7 +31,7 @@ async function stop() {
   });
 }
 async function start(message) {
-  owner = message.owner;
+  owner = { ...message.owner, controllerPid: process.pid };
   assert.equal(owner.repository, root);
   assert.equal(owner.dataRoot, paths.dataHome);
   assert.match(owner.token, /^[a-f0-9-]{36}$/);
@@ -59,7 +59,7 @@ async function start(message) {
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(pipeFor(owner.token), resolve); });
   await writeFile(paths.record, JSON.stringify(owner), { flag: 'wx', mode: 0o600 });
-  daemon = await startDedicatedDaemon({ paths, webDist: path.join(root, 'apps/web/dist'), signal: abort.signal });
+  daemon = await startDedicatedDaemon({ paths, storageLocked: true, webDist: path.join(root, 'apps/web/dist'), signal: abort.signal });
   serverId = daemon.connection.info.serverId;
   pidRecord = await readFile(paths.pid, 'utf8');
   await writeFile(path.join(daemon.webDirectory, 'connection.json'), JSON.stringify({ targetId: 'worknaru-dev', expectedServerId: serverId }));

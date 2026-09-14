@@ -1,5 +1,6 @@
 import { createWorknaruCore } from '@worknaru/core';
 import { createPaseoRuntime } from '@worknaru/paseo-adapter';
+import { prepareStorageIdentity } from './shell/storageIdentity.js';
 
 /** The development launcher writes public target metadata after verifying its daemon. */
 export async function loadCore() {
@@ -24,7 +25,14 @@ export async function loadCore() {
     expectedServerId: configuration.expectedServerId,
     clientType: 'browser',
   });
+  const storage = prepareStorageIdentity(
+    endpoint.href,
+    configuration.targetId,
+    configuration.expectedServerId,
+  );
+  if (storage.changed) window.history.replaceState(null, '', '#/agents?list=active');
   return {
+    storagePrefix: storage.storagePrefix,
     core: createWorknaruCore({ runtime }),
     endpoint: endpoint.href,
     identity: JSON.stringify([

@@ -1,7 +1,8 @@
 # 0004. 빌드 시 브랜드 고정과 독립적인 단일 저장 루트
 
 - 날짜: 2026-09-11
-- 상태: Accepted
+- 상태: Superseded
+- 후속 결정: [ADR 0011](0011-external-data-and-development-reset.md)이 저장 위치·기존 데이터 처리 정책을 대체한다. 브랜딩 관련 결정은 후속 ADR에서 유지한다.
 - 승인 근거: 사용자가 제한된 초기 지원 범위를 채택하고 구현·PR 작성을 요청했다. [범위 채택](https://github.com/NaruForge/worknaru-dev/issues/13#issuecomment-5625616324), [구현 지시](https://github.com/NaruForge/worknaru-dev/issues/13#issuecomment-5627083878)
 - 관련 Work Item: [기본 리브랜딩과 단일 저장 루트 지원 #13](https://github.com/NaruForge/worknaru-dev/issues/13)
 - 구현: [공통 브랜드](../../packages/branding/README.md), [경로 해석](../../apps/paseo-dev/paths.mjs), [웹 제공 파일 준비](../../apps/paseo-dev/web-files.mjs)

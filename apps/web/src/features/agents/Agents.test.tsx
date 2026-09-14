@@ -148,6 +148,9 @@ it('creates once, retains the creation ID across a lost acknowledgement and sele
     </StrictMode>,
   );
   fireEvent.click(screen.getByRole('button', { name: '새 Agent' }));
+  fireEvent.change(screen.getByLabelText('작업 폴더'), {
+    target: { value: 'C:\\Projects\\my-work' },
+  });
   const button = await screen.findByRole('button', { name: '만들기' });
   await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(button);
@@ -162,12 +165,14 @@ it('does not permit creation when models are unavailable', async () => {
   const fixture = createFixture('empty');
   fixture.core.agents.options = async () => ({
     available: false,
-    defaultCwd: '',
     models: [],
   });
   const create = vi.spyOn(fixture.core.agents, 'create');
   render(<App core={fixture.core} />);
   fireEvent.click(screen.getByRole('button', { name: '새 Agent' }));
+  fireEvent.change(screen.getByLabelText('작업 폴더'), {
+    target: { value: 'C:\\Projects\\my-work' },
+  });
   await screen.findByRole('alert');
   expect((screen.getByRole('button', { name: '만들기' }) as HTMLButtonElement).disabled).toBe(true);
   expect(create).not.toHaveBeenCalled();
@@ -306,4 +311,44 @@ it('returns focus to the opener on cancel and offers theme selection', async () 
   await user.selectOptions(screen.getByLabelText('화면 테마'), 'dark');
   expect(document.documentElement.dataset.theme).toBe('dark');
   expect(localStorage.getItem('worknaru.ui.theme')).toBe('dark');
+});
+
+it('starts with an editable blank folder and ignores a late model response after the folder changes', async () => {
+  const fixture = createFixture('empty');
+  type Options = Awaited<ReturnType<typeof fixture.core.agents.options>>;
+  let finishOld!: (value: Options) => void;
+  let finishNew!: (value: Options) => void;
+  const options = vi.spyOn(fixture.core.agents, 'options').mockImplementation(
+    ({ cwd }) =>
+      new Promise<Options>((resolve) => {
+        if (cwd === 'C:/first') finishOld = resolve;
+        else finishNew = resolve;
+      }),
+  );
+  render(<App core={fixture.core} />);
+  fireEvent.click(screen.getByRole('button', { name: '새 Agent' }));
+  const folder = screen.getByLabelText('작업 폴더') as HTMLInputElement;
+  const create = screen.getByRole('button', { name: '만들기' }) as HTMLButtonElement;
+  expect(folder.disabled).toBe(false);
+  expect(folder.value).toBe('');
+  expect(options).not.toHaveBeenCalled();
+  expect(create.disabled).toBe(true);
+  fireEvent.change(folder, { target: { value: 'C:/first' } });
+  await waitFor(() => expect(options).toHaveBeenCalledTimes(1));
+  fireEvent.change(folder, { target: { value: 'C:/second' } });
+  await waitFor(() => expect(options).toHaveBeenCalledTimes(2));
+  const value: Options = {
+    available: true,
+    models: [{ id: 'new', name: 'New model', default: true }],
+  };
+  await act(async () =>
+    finishOld({ ...value, models: [{ id: 'old', name: 'Old model', default: true }] }),
+  );
+  expect(create.disabled).toBe(true);
+  expect(screen.queryByText('Old model')).toBeNull();
+  await act(async () => finishNew(value));
+  expect(create.disabled).toBe(false);
+  expect((screen.getByLabelText('모델') as HTMLSelectElement).value).toBe('new');
+  fireEvent.change(folder, { target: { value: '' } });
+  expect(create.disabled).toBe(true);
 });

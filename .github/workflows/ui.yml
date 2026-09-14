@@ -18,6 +18,8 @@ jobs:
           version: 10.34.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+        env:
+          WORKNARU_TEST_ROOT: ${{ runner.temp }}/worknaru-tests
   browser:
     runs-on: ubuntu-24.04
     container:

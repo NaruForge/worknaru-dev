@@ -1,9 +1,10 @@
+import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
 // Explicit opt-in: real Windows daemon, isolated source checkout and data roots.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -14,15 +15,17 @@ import { portOpen } from '../local-support.mjs';
 
 const exec = promisify(execFile);
 const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^WORKNARU_/i.test(key)));
-test('Windows cold bootstrap, terminal exit, lifecycle failures and identity preservation', { skip: process.platform !== 'win32', timeout: 300000 }, async t => {
+test('Windows cold bootstrap, terminal exit, lifecycle failures and identity preservation', { skip: process.platform !== 'win32', timeout: 480000 }, async t => {
   assert.equal(await portOpen(), false, 'Stop the current development environment before pnpm dev:verify.');
-  const parent = path.join(root, '.local/dev-integration');
+  const parent = await testDirectory('dev-integration');
   await mkdir(parent, { recursive: true });
   const fixture = await mkdtemp(path.join(parent, 'checkout-'));
-  const defaultData = path.join(fixture, '.local/paseo-dev');
-  const customData = path.join(fixture, '.local/team-data_2.0');
+  const project = path.join(parent, 'user-project');
+  await mkdir(project); await writeFile(path.join(project, 'keep.txt'), 'External work remains.');
+  const defaultData = path.join(parent, 'appdata/Worknaru-Dev');
+  const customData = path.join(parent, 'team-data_2.0');
   let data = defaultData;
-  const environment = () => ({ ...cleanEnv, CI: 'true', ...(data === defaultData ? {} : { WORKNARU_DATA_DIR: data }) });
+  const environment = () => ({ ...cleanEnv, LOCALAPPDATA: path.join(parent, 'appdata'), CI: 'true', ...(data === defaultData ? {} : { WORKNARU_DATA_DIR: data }) });
   async function execute(executable, args, timeout = 60000) {
     try { return { code: 0, ...await exec(executable, args, { cwd: fixture, env: environment(), windowsHide: true, timeout, maxBuffer: 4 * 1024 * 1024 }) }; }
     catch (error) { if (typeof error.code !== 'number' || error.killed) throw error; return { code: error.code, stdout: error.stdout, stderr: error.stderr }; }
@@ -41,7 +44,7 @@ test('Windows cold bootstrap, terminal exit, lifecycle failures and identity pre
   try {
     for (const name of ['apps', 'packages']) await cp(path.join(root, name), path.join(fixture, name), { recursive: true, filter: file => !['node_modules', 'dist'].includes(path.basename(file)) });
     for (const name of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'tsconfig.base.json']) await cp(path.join(root, name), path.join(fixture, name));
-    const installed = await shell('pnpm install --offline --frozen-lockfile');
+    const installed = await execute(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'pnpm install --frozen-lockfile'], 180000);
     assert.equal(installed.code, 0, installed.stdout + installed.stderr);
     const diagnosis = decoded(await cli('doctor'));
     assert.equal(diagnosis.checks.find(check => check.name === 'Build').ok, false);
@@ -125,7 +128,7 @@ test('Windows cold bootstrap, terminal exit, lifecycle failures and identity pre
       } finally { await writeFile(file, original); }
     });
     await t.test('foreign listener remains untouched and does not create a new data root', async () => {
-      data = path.join(fixture, '.local/foreign-port');
+      data = path.join(parent, 'foreign-port');
       const server = net.createServer(socket => socket.end());
       server.listen(6868, '127.0.0.1'); await once(server, 'listening');
       try {
@@ -141,6 +144,33 @@ test('Windows cold bootstrap, terminal exit, lifecycle failures and identity pre
       assert.equal(decoded(started).dataRoot, customData);
       assert.equal(decoded(await cli('status')).daemon.outcome, 'available');
       assert.equal((await cli('dev', 'stop')).code, 0); await stopped();
+    });
+    await t.test('reset previews are read-only and two clean instances receive new identities', async () => {
+      let previousId = (await readFile(path.join(data, 'server-id'), 'utf8')).trim();
+      for (let cycle = 0; cycle < 2; cycle++) {
+        const before = await snapshot();
+        const names = await readdir(data);
+        assert.equal(decoded(await cli('dev', 'reset')).confirmationRequired, true);
+        assert.equal((await cli('dev', 'reset', '--dry-run')).code, 0);
+        assert.deepEqual(await snapshot(), before); assert.deepEqual(await readdir(data), names);
+        assert.equal((await cli('dev', 'reset', '--yes')).code, 0);
+        assert.deepEqual(await readdir(data), ['worknaru-data.json']);
+        assert.equal((await cli('doctor')).code, 0);
+        assert.equal((await cli('dev', 'start')).code, 0);
+        const id = (await readFile(path.join(data, 'server-id'), 'utf8')).trim();
+        assert.notEqual(id, previousId); previousId = id;
+        const running = decoded(await cli('dev', 'reset', '--yes'));
+        assert.equal(running.error.code, 'reset_running');
+        assert.equal((await cli('status')).code, 0);
+        assert.equal((await cli('dev', 'stop')).code, 0); await stopped();
+      }
+      const disconnected = fixture + '-unavailable';
+      assert.ok([fixture, disconnected, project].every(directory => path.resolve(directory).startsWith(path.resolve(parent) + path.sep)));
+      await rename(fixture, disconnected);
+      try {
+        assert.ok(existsSync(path.join(data, 'server-id')), 'External data must survive an unavailable source checkout');
+        assert.equal(await readFile(path.join(project, 'keep.txt'), 'utf8'), 'External work remains.');
+      } finally { await rename(disconnected, fixture); }
     });
     await t.test('build timeout confirms cleanup or preserves locks for manual inspection', async () => {
       const file = path.join(fixture, 'apps/cli/local.mjs');

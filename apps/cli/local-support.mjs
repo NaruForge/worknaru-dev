@@ -5,11 +5,10 @@ import { existsSync } from 'node:fs';
 import { open, readFile, unlink } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
-import { root } from '../../packages/dev-environment/paths.mjs';
+import { root, DataError, samePath } from '../../packages/dev-environment/paths.mjs';
+export { acquireLock } from '../../packages/dev-environment/storage.mjs';
 
-export class LocalError extends Error {
-  constructor(code, message, exitCode = 1) { super(message); this.code = code; this.exitCode = exitCode; }
-}
+export class LocalError extends DataError {}
 export const pathsFor = paths => ({
   ...paths, record: path.join(paths.dataHome, 'dev-instance.json'),
   lock: path.join(paths.dataHome, 'dev-operation.lock'),
@@ -23,7 +22,7 @@ export async function readOwner(paths) {
     if (text.length > 4096) throw new Error();
     const value = JSON.parse(text);
     if (value.schema !== 1 || !/^[a-f0-9-]{36}$/.test(value.token)
-      || value.repository !== root || value.dataRoot !== paths.dataHome) throw new Error();
+      || !samePath(value.repository, root) || !samePath(value.dataRoot, paths.dataHome)) throw new Error();
     return value;
   } catch (error) {
     if (error.code === 'ENOENT') return null;
@@ -33,21 +32,6 @@ export async function readOwner(paths) {
 export async function removeOwner(paths, owner) {
   const current = await readOwner(paths);
   if (current?.token === owner.token) await unlink(paths.record);
-}
-export async function acquireLock(file) {
-  const token = randomUUID();
-  let handle;
-  try { handle = await open(file, 'wx'); }
-  catch (error) {
-    if (error.code === 'EEXIST') throw new LocalError('operation_busy', 'Another operation is running, or its lock remains. Retry after it finishes; run pnpm exec worknaru doctor if it persists.');
-    throw new LocalError('path_unwritable', 'Cannot create the operation lock. Check the data directory permissions.');
-  }
-  try { await handle.writeFile(JSON.stringify({ token, pid: process.pid, startedAt: new Date().toISOString() })); }
-  finally { await handle.close(); }
-  return async () => {
-    const value = JSON.parse(await readFile(file, 'utf8'));
-    if (value.token === token) await unlink(file);
-  };
 }
 export function request(owner, command, milliseconds = 2000) {
   return new Promise((resolve, reject) => {

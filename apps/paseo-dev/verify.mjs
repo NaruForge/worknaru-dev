@@ -1,3 +1,5 @@
+import { testDirectory } from '../../packages/dev-environment/testing.mjs';
+import { resolveDataPaths } from '../../packages/dev-environment/paths.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -37,7 +39,9 @@ async function worknaruStatus(serverId, expectedExitCode, paths) {
 }
 
 async function main() {
-  const daemon = await startDedicatedDaemon();
+  if (process.env.WORKNARU_DATA_DIR !== undefined) resolveDataPaths(process.env);
+  const directory = await testDirectory('paseo-verify');
+  const daemon = await startDedicatedDaemon({ paths: resolveDataPaths({ WORKNARU_DATA_DIR: directory }) });
   const { paths } = daemon;
   const { child, exited } = daemon;
   let connection = daemon.connection;

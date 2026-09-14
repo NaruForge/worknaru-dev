@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { inspect, localPaths } from './local.mjs';
@@ -45,7 +44,7 @@ export async function runAgents(args, env, output) {
     const command = p[1]; let result;
     if (command === 'create') {
       expect(2);
-      const cwd = path.resolve(o['--cwd'] ?? (interactive ? (await ask(`작업 폴더 [${process.cwd()}]: `) || process.cwd()) : process.cwd()));
+      const cwd = o['--cwd'] ?? (interactive ? (await ask(`작업 폴더 [${process.cwd()}]: `) || process.cwd()) : process.cwd());
       const options = await agents.options({ cwd });
       let model = o['--model'] ?? options.models.find(m => m.default)?.id;
       if (interactive && !o['--model']) {

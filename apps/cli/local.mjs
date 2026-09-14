@@ -3,15 +3,18 @@ import { existsSync } from 'node:fs';
 import { mkdir, open, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveDataPaths, prepareDataDirectories, root } from '../../packages/dev-environment/paths.mjs';
+import { resolveDataPaths, prepareDataDirectories, root, validateDataLocation, validateDirectory, legacyPaths } from '../../packages/dev-environment/paths.mjs';
 import { configState, agentsEnabled, endpoint, listen } from '../../packages/dev-environment/config.mjs';
 import { acquireLock, buildsPresent, LocalError, newOwner, pathsFor, pnpmCommand, portOpen, readOwner, request } from './local-support.mjs';
+
+import { acquireDataLock, assertStorage, assertNoLegacy, exists } from '../../packages/dev-environment/storage.mjs';
 
 export function localPaths(env = process.env) {
   try { return pathsFor(resolveDataPaths(env)); }
   catch (error) { throw new LocalError('invalid_configuration', error.message, 2); }
 }
 export async function inspect(paths) {
+  await validateDataLocation(paths);
   const owner = await readOwner(paths);
   if (owner) {
     if (process.platform !== 'win32') throw new LocalError('unsupported_platform', 'Managed development commands currently support Windows only.');
@@ -28,6 +31,8 @@ export async function inspect(paths) {
   return { state: 'stopped' };
 }
 export async function localStatus(paths) {
+  await assertNoLegacy(paths);
+  await assertStorage(paths);
   const current = await inspect(paths);
   const result = { kind: 'development', state: current.state, dataRoot: paths.dataHome, webUrl: `http://${listen}/`, daemon: null };
   if (current.state === 'running') {
@@ -71,6 +76,12 @@ export async function doctor(paths) {
     const valid = (await stat(directory)).isDirectory();
     checks.push({ name: 'Data root', ok: valid, detail: `${paths.dataHome} (${paths.source}; no write probe)`, next: 'Choose a supported directory in WORKNARU_DATA_DIR.' });
   } catch { checks.push({ name: 'Data root', ok: false, detail: 'unreadable', next: 'Check WORKNARU_DATA_DIR and directory permissions.' }); }
+  try {
+    await assertStorage(paths);
+    checks.push({ name: 'Storage layout', ok: true, detail: 'current or empty' });
+  } catch (error) { checks.push({ name: 'Storage layout', ok: false, detail: error.message, next: 'pnpm exec worknaru dev reset --dry-run' }); }
+  const legacy = await exists(legacyPaths(paths.repository).dataHome);
+  checks.push({ name: 'Legacy data', ok: !legacy, detail: legacy ? legacyPaths(paths.repository).dataHome : 'absent', next: 'pnpm exec worknaru dev reset --legacy --dry-run' });
   const config = await configState(paths);
   checks.push({ name: 'Agent setup', ok: true, detail: await agentsEnabled(paths) ? 'enabled; runtime checked at dev start' : 'optional; run pnpm exec worknaru agent setup while stopped' });
   checks.push({ name: 'Configuration', ok: config !== 'conflict', detail: config, next: `Inspect ${paths.config}; existing settings are never overwritten.` });
@@ -92,6 +103,8 @@ export async function doctor(paths) {
 }
 export async function start(paths) {
   if (process.platform !== 'win32') throw new LocalError('unsupported_platform', 'Managed development commands currently support Windows only.');
+  await assertNoLegacy(paths);
+  await validateDirectory(paths.repository, 'Development checkout');
   const previous = await localStatus(paths);
   if (previous.state === 'running') return { ...previous, reused: true };
   if (previous.state !== 'stopped') throw new LocalError('operation_busy', 'Development is busy or unhealthy. Run pnpm exec worknaru doctor.');
@@ -99,11 +112,12 @@ export async function start(paths) {
   const failed = checks.find(check => !check.ok);
   if (failed) throw new LocalError('prerequisite_failed', `${failed.name}: ${failed.detail}. ${failed.next}`);
   if (await configState(paths) === 'conflict') throw new LocalError('configuration_conflict', 'Existing configuration differs or is unreadable. Inspect config.json in the data root; it will not be overwritten.');
-  try { await prepareDataDirectories(paths); }
-  catch { throw new LocalError('path_unwritable', `Cannot prepare the data root: ${paths.dataHome}. Check directory permissions or WORKNARU_DATA_DIR.`); }
-  const release = await acquireLock(paths.lock);
+  const release = await acquireDataLock(paths);
   let retainLocks = false;
   try {
+    await assertNoLegacy(paths);
+    await assertStorage(paths, { claim: true, ignoreLock: true });
+    await prepareDataDirectories(paths);
     // Check again under the operation lock. Never rebuild a running instance.
     if (await readOwner(paths) || existsSync(paths.pid) || await portOpen()) throw new LocalError('ownership_conflict', 'The development environment changed during startup. Run pnpm exec worknaru doctor.');
     await mkdir(path.join(root, '.local'), { recursive: true });

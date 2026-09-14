@@ -1,3 +1,4 @@
+import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -6,7 +7,7 @@ import test from 'node:test';
 import { openStore } from '../server/store.mjs';
 
 test('SQLite survives reopen and refuses an obsolete concurrent writer', async () => {
-  const folder = await mkdtemp(path.join(os.tmpdir(), 'worknaru-agent-store-'));
+  const folder = await testDirectory('store');
   const filename = path.join(folder, 'state.sqlite');
   const a = openStore(filename); a.save({ settings: { sendMode: 'queue' }, requests: [{ id: 'durable' }] });
   const b = openStore(filename);

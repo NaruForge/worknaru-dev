@@ -1,5 +1,7 @@
 import { doctor, localPaths, localStatus, start, stop } from './local.mjs';
-import { LocalError } from './local-support.mjs';
+import { LocalError, pathsFor } from './local-support.mjs';
+import { DataError, legacyPaths } from '../../packages/dev-environment/paths.mjs';
+import { resetData, resetPlan } from './data-reset.mjs';
 
 const connectionFlags = ['--endpoint', '--server-id', '--target', '--timeout-ms'];
 const connectionKeys = ['WORKNARU_ENDPOINT', 'WORKNARU_SERVER_ID', 'WORKNARU_TARGET_ID', 'WORKNARU_TIMEOUT_MS', 'WORKNARU_PASSWORD'];
@@ -11,13 +13,18 @@ Usage (from the repository, after pnpm install --frozen-lockfile):
   pnpm exec worknaru dev start       Build and start Daemon + Web UI in background
   pnpm exec worknaru status          Check this development environment
   pnpm exec worknaru dev stop        Stop the owned development environment
+  pnpm exec worknaru dev reset           Show the reset plan without deleting
+  pnpm exec worknaru dev reset --dry-run  Preview complete user data reset
+  pnpm exec worknaru dev reset --yes      Delete stopped environment data
+  pnpm exec worknaru dev reset --legacy --yes  Delete old repository data
   pnpm exec worknaru agent setup     Prepare Agent features once, while stopped
   pnpm exec worknaru agent --help    Create, converse, queue and archive Agents
   pnpm exec worknaru settings get send-mode
 
 Use --json for one JSON document; --help or -h for help.
 Windows, one local environment at http://127.0.0.1:6868/.
-WORKNARU_DATA_DIR selects its data root. No global install is required.
+WORKNARU_DATA_DIR selects an external data root (default: %LOCALAPPDATA%/Worknaru-Dev).
+Reset requires a stopped, verified root; --dry-run and --yes cannot be combined.
 Start reuses a healthy instance. Stop is safe to repeat. Doctor never repairs.
 
 Advanced status (flags override their corresponding environment variables):
@@ -35,11 +42,13 @@ Exit codes: 0 success/healthy/help, 1 unavailable/check/operation failure,
 
 function parseLocal(args) {
   const command = args[0] === 'dev' ? `dev ${args[1] ?? ''}` : args[0];
-  const known = ['doctor', 'status', 'dev start', 'dev stop', 'dev --help', 'dev -h'];
+  const known = ['doctor', 'status', 'dev start', 'dev stop', 'dev reset', 'dev --help', 'dev -h'];
   if (!args.length || (args.length === 1 && ['--help', '-h'].includes(args[0]))) return 'help';
   if (!known.includes(command)) throw new LocalError('invalid_arguments', 'Unknown command. Use pnpm exec worknaru --help.', 2);
   const options = args.slice(args[0] === 'dev' ? 2 : 1);
-  if (new Set(options).size !== options.length || options.some(option => !['--json', '--help', '-h'].includes(option))) {
+  const allowed = ['--json', '--help', '-h', ...(command === 'dev reset' ? ['--dry-run', '--yes', '--legacy'] : command === 'dev stop' ? ['--legacy'] : [])];
+  if (options.includes('--dry-run') && options.includes('--yes')) throw new LocalError('invalid_arguments', 'Use --dry-run or --yes, not both.', 2);
+  if (new Set(options).size !== options.length || options.some(option => !allowed.includes(option))) {
     throw new LocalError('invalid_arguments', 'Unknown or repeated option. Use pnpm exec worknaru --help.', 2);
   }
   return command.includes('--help') || command.includes('-h') || options.some(option => ['--help', '-h'].includes(option)) ? 'help' : command;
@@ -78,7 +87,23 @@ export async function run(args, env, output = { stdout: text => process.stdout.w
     if (command.startsWith('dev ') && explicitTarget([], env)) {
       throw new LocalError('invalid_configuration', 'Development commands use WORKNARU_DATA_DIR. Unset explicit WORKNARU connection settings before managing the local environment.', 2);
     }
-    const paths = localPaths(env);
+    const paths = args.includes('--legacy') ? pathsFor(legacyPaths()) : localPaths(env);
+    if (command === 'dev reset') {
+      let result;
+      try { result = args.includes('--yes') ? await resetData(paths) : await resetPlan(paths); }
+      catch (error) { error.reset = await resetPlan(paths); throw error; }
+      if (args.includes('--json')) output.stdout(JSON.stringify(result) + '\n');
+      else {
+        output.stdout('Reset: ' + result.state + '\nData root (' + result.scope + '): ' + result.dataRoot + '\n'
+          + (result.ownerRepository ? 'Owned checkout: ' + result.ownerRepository + '\n' : '')
+          + result.items.map(item => 'Delete: ' + item).join('\n') + '\n'
+          + result.exclusions.map(item => 'Keep: ' + item).join('\n') + '\n'
+          + result.blockers.map(item => item.code + ': ' + item.message).join('\n') + '\n'
+          + (result.confirmationRequired ? 'Apply: pnpm exec worknaru dev reset ' + (paths.legacy ? '--legacy ' : '') + '--yes\n' : '')
+          + 'Next: ' + result.next + '\n');
+      }
+      return result.state === 'blocked' || (result.confirmationRequired && !args.includes('--dry-run')) ? 1 : 0;
+    }
     if (command === 'dev start' && !args.includes('--json')) output.stderr('Checking development environment; a stopped environment is built before startup...\n');
     const result = await ({ doctor, status: localStatus, 'dev start': start, 'dev stop': stop }[command])(paths);
     if (args.includes('--json')) output.stdout(`${JSON.stringify(result)}\n`);
@@ -91,9 +116,9 @@ export async function run(args, env, output = { stdout: text => process.stdout.w
     }
     return command === 'doctor' ? (result.ok ? 0 : 1) : (result.state === 'running' || (command === 'dev stop' && result.state === 'stopped') ? 0 : 1);
   } catch (error) {
-    const known = error instanceof LocalError;
+    const known = error instanceof DataError;
     const detail = { code: known ? error.code : 'internal_error', message: known ? error.message : 'Cannot complete the command. Run pnpm exec worknaru doctor and inspect the data root logs.' };
-    if (args.includes('--json')) output.stdout(`${JSON.stringify({ error: detail })}\n`);
+    if (args.includes('--json')) output.stdout(`${JSON.stringify({ ...(error.reset ?? {}), error: detail })}\n`);
     else output.stderr(`${detail.code}: ${detail.message}\n`);
     return known ? error.exitCode : 3;
   }

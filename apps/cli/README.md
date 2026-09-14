@@ -44,7 +44,7 @@ pnpm exec worknaru agent archive "문서 도우미"
 pnpm exec worknaru agent list --archived
 ```
 
-대화형 `create`는 작업 폴더·실제 사용 가능한 Codex 모델·이름을 묻는다. `--cwd`, `--model`, `--name`으로 생략할 수 있다. 비대화형에서는 현재 폴더·Provider의 기본 모델·`새 Agent`를 사용한다. 같은 폴더에서 서로 독립적인 Agent를 만들 수 있다. 모든 폴더 경로는 Daemon 컴퓨터 기준이다. 이름이 겹치면 전체 ID 또는 유일한 4자 이상 ID 접두사를 쓴다. 목록에는 이 제품에서 만든 Agent만 표시한다.
+대화형 `create`는 작업 폴더·실제 사용 가능한 Codex 모델·이름을 묻는다. `--cwd`, `--model`, `--name`으로 생략할 수 있다. 비대화형에서는 현재 폴더·Provider의 기본 모델·`새 Agent`를 사용한다. 같은 폴더에서 서로 독립적인 Agent를 만들 수 있다. 모든 폴더 경로는 Daemon 컴퓨터 기준이며 공백 없는 절대경로와 영문·숫자·`-_.` 폴더명만 지원한다. 작업 폴더가 사라지거나 실제 경로가 미지원이면 새 전송·대기열 실행·재개·권한 승인을 막는다. 해당 Agent만 보류하고 사유를 표시하며 조회·취소·보관은 계속 사용할 수 있다. 이름이 겹치면 전체 ID 또는 유일한 4자 이상 ID 접두사를 쓴다. 목록에는 이 제품에서 만든 Agent만 표시한다.
 
 `send`는 접수 후 기본 600초 동안 결과를 관찰한다. `--no-wait`는 접수 상태와 요청 ID를 바로 반환한다. `wait <agent> --request <요청ID>`로 다시 관찰할 수 있다. `--wait-timeout 60`은 관찰 시간만 제한한다. Ctrl+C도 관찰만 끝내며 Agent 작업을 중단하지 않는다. 후속 `send`는 같은 Agent 세션의 대화를 이어간다. `history`는 최근 최대 200개 원본 항목을 읽고, `--all`은 이전 페이지도 읽는다. `send`/`wait`의 완료 응답은 필요하면 이전 페이지까지 읽어 해당 요청의 응답을 표시한다. 조회 도중 기록이 교체돼 응답 범위를 확인하지 못하면 전체 기록 조회를 안내한다. 응답 조각은 사람용 출력에서 하나로 합친다.
 
@@ -87,7 +87,7 @@ pnpm exec worknaru agent permission respond "문서 도우미" <권한ID> --allo
 
 Provider가 명시적 action을 제공하면 `--action <ID>`를 함께 쓴다. 이미 처리된 요청은 다시 처리하지 않는다. 승인·거부를 기본값으로 자동 제출하지 않는다.
 
-`archive`는 대상·하위 Agent·진행 중인 작업·취소할 대기열을 먼저 보여 준다. 확인 후 작업을 중단하고 보관한다. 비대화형에서는 확인 필요 결과와 미리보기를 반환하며, 검토 후 `--yes`를 붙여 실행한다. 확인 사이에 영향 범위가 바뀌면 다시 확인해야 한다. 일부 보관 실패는 성공과 구분해 보고한다. 보관된 Agent는 이력만 조회하며 메시지 전송으로 자동 복구하지 않는다. 대화 기록·작업 폴더 파일은 남고 영구 삭제·복원은 지원하지 않는다.
+`archive`는 대상·하위 Agent·진행 중인 작업·취소할 대기열을 먼저 보여 준다. 확인 후 작업을 중단하고 보관한다. 비대화형에서는 확인 필요 결과와 미리보기를 반환하며, 검토 후 `--yes`를 붙여 실행한다. 확인 사이에 영향 범위가 바뀌면 다시 확인해야 한다. 일부 보관 실패는 성공과 구분해 보고한다. 보관된 Agent는 이력만 조회하며 메시지 전송으로 자동 복구하지 않는다. 대화 기록·작업 폴더 파일은 남고 개별 Agent 영구 삭제·복원은 지원하지 않는다. 개발용 전체 초기화는 아래 별도 명령으로 수행한다.
 
 ### 자동화 결과
 
@@ -97,9 +97,31 @@ Provider가 명시적 action을 제공하면 `--action <ID>`를 함께 쓴다. �
 
 기능 설계·검증 근거: [ADR 0006](../../docs/adr/0006-agent-lifecycle-and-durable-queue.md), [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17).
 
+## 사용자 데이터 전체 초기화
+
+`dev reset`은 정지한 Worknaru 전용 데이터 전체를 폐기한다. 실제 프로젝트·제품 소스·개인 Paseo 및 Provider 로그인 정보는 보존한다. 실행 중이면 먼저 `dev stop`을 수행한다. 열린 Web은 자동으로 전환하지 않으며 새 환경을 시작한 뒤 직접 새로고침한다.
+
+| 명령 | 동작 |
+| --- | --- |
+| `pnpm exec worknaru dev reset` | 삭제 계획과 적용 명령. 삭제하지 않으며 확인 필요 시 종료 코드 1 |
+| `pnpm exec worknaru dev reset --dry-run` | 읽기 전용 검사. 대상·제외·차단 사유 표시 |
+| `pnpm exec worknaru dev reset --yes` | 현재 전용 루트 전체 초기화 |
+| `pnpm exec worknaru dev reset --legacy --dry-run` | 현재 checkout의 이전 `.local/paseo-dev` 확인 |
+| `pnpm exec worknaru dev reset --legacy --yes` | 확인된 이전 전용 폴더 제거 |
+
+`--json`과 `--help`를 지원한다. `--dry-run`과 `--yes`를 함께 지정하면 입력 오류다. 범용 경로 옵션이나 강제 삭제는 없다. 정상 루트는 폴더와 빈 상태의 `worknaru-data.json`을 유지한다. legacy 폴더는 완전히 제거한다. 반복 실행은 가능하며 자동 setup/start는 수행하지 않는다.
+
+관리 파일 또는 구 Worknaru 전용 구성으로 소유권을 확인한다. 알 수 없는 폴더·실행 중 프로세스·확인되지 않는 PID/제어 기록·작업 잠금은 삭제를 차단한다. 다른 checkout의 정지한 전용 루트도 명시적 reset으로 폐기할 수 있지만 내용은 승계하지 않는다. 링크는 대상에 접근하지 않고 링크만 제거한다. managed Git worktree는 등록 관계를 확인한 후 Git으로 제거한다.
+
+삭제 직전에 `resetting`을 기록한다. 일부 파일 삭제가 실패하면 setup/start를 막고 `reset_incomplete`를 반환한다. 파일 잠금·권한 문제를 해결한 뒤 동일한 reset을 다시 실행한다. 강제 종료로 남은 작업 잠금은 자동으로 지우지 않는다. 잠금의 PID와 자식·로그를 확인하고 종료가 확실한 경우에만 그 잠금을 수동 제거한다. legacy 정리 중에는 대상 밖의 저장소 빌드 잠금도 유지한다.
+
+초기화 JSON은 `kind: "reset"`, 상태, current/legacy 구분, 절대 루트, 소유 checkout, 삭제·제외 항목, 차단 사유, 확인 필요 여부와 다음 명령을 담는다. 저장 구조가 달라도 이전하거나 복구하지 않는다.
+
+초기화 후 `doctor → agent setup → dev start → status` 순서로 새 환경을 준비한다. server ID·인증·Agent·대기열·공유 설정은 새로 생성한다. 정상 stop/start는 기존 ID와 데이터를 유지한다. 결정 근거는 [ADR 0011](../../docs/adr/0011-external-data-and-development-reset.md)이다.
+
 ## 대상 선택
 
-기본 대상은 `WORKNARU_DATA_DIR`로 정한 저장 루트이며 미설정 시 이 CLI가 속한 저장소의 `.local/paseo-dev/`다. 다른 터미널에서도 같은 사용자 지정 루트를 쓰려면 같은 변수를 설정한다. 폴더명은 기본 경로까지 영문·숫자·`-_.`만 허용한다. [저장 위치 설정](../paseo-dev/README.md#저장-위치-설정)
+기본 대상은 `WORKNARU_DATA_DIR`로 정한 저장 루트이며 미설정 시 `%LOCALAPPDATA%\Worknaru-Dev`다. 다른 터미널에서도 같은 사용자 지정 루트를 쓰려면 같은 변수를 설정한다. 폴더명은 기본 경로까지 영문·숫자·`-_.`만 허용한다. [저장 위치 설정](../paseo-dev/README.md#저장-위치-설정)
 
 명시적인 접속 옵션 또는 아래 연결 환경 변수 중 하나라도 있으면 기존 명시적 조회 모드를 사용한다. 빈 값도 명시한 설정으로 취급한다. 주소와 예상 서버 ID를 모두 제공해야 하며, 누락한 값을 로컬 환경에서 보충하지 않는다.
 
@@ -143,7 +165,7 @@ pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id <확인�
 
 먼저 `pnpm exec worknaru doctor`를 실행한다. `build.log`는 마지막 빌드, `dev-runner.log`는 관리 실행기, `launcher.log`와 `daemon.log`는 Daemon 시작·실행 로그다. 모두 선택한 데이터 루트에 있다. 로그 원문에는 로컬 정보가 있을 수 있으므로 공개 이슈에는 필요한 진단만 정리한다.
 
-`dev-operation.lock`은 데이터 루트의 시작·종료 동시 작업을 막고, 저장소의 `.local/dev-build.lock`은 같은 소스의 동시 빌드를 막는다. 실행이 끝나면 자신이 만든 잠금만 지운다. `dev-instance.json`과 임의 토큰을 가진 Windows named pipe로 관리 실행기의 소유권을 확인한다. 저장된 PID만으로 다른 프로세스를 종료하지 않는다.
+`dev-operation.lock`은 데이터 루트의 setup·시작·종료·초기화 동시 작업을 막고, 저장소의 `.local/dev-build.lock`은 같은 소스의 동시 빌드를 막는다. 실행이 끝나면 자신이 만든 잠금만 지운다. `dev-instance.json`과 임의 토큰을 가진 Windows named pipe로 관리 실행기의 소유권을 확인한다. 저장된 PID만으로 다른 프로세스를 종료하지 않는다.
 
 중단된 명령의 잠금이나 응답 없는 실행 기록은 자동 삭제하지 않는다. 원래 작업·실행기·자식 프로세스가 종료됐는지 먼저 확인하고, 해당 로그와 기록을 검토한 뒤 남은 잠금·실행 기록·PID 파일을 수동 정리한다. 프로세스가 살아 있거나 소유권을 확정할 수 없으면 파일을 제거하지 않는다. 기존 `web:dev`는 원래 터미널에서 종료한다.
 
@@ -155,6 +177,6 @@ pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id <확인�
 
 [경량 진입점](entry.mjs)이 로컬 환경 관리와 제품 조회를 분기한다. [로컬 환경 관리](local.mjs)와 [백그라운드 실행기](dev-runner.mjs)는 [공통 개발 라이브러리](../../packages/dev-environment/README.md)를 사용한다. 제품 상태 조회는 기존 [시작 코드](src/bootstrap.ts)와 [명령 처리](src/cli.ts)를 통해 Core → Runtime → Adapter를 유지한다. [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)
 
-`pnpm test`는 명령·출력·대상 선택·읽기 전용 진단·잠금·손상 기록과 기존 제품 계약을 검사한다. `pnpm dev:verify`는 Windows에서 별도 소스 복사본과 데이터 루트를 만들고 실제 Daemon으로 최초 빌드·셸 종료 후 유지·동시 명령·충돌·실패 정리·ID 보존을 확인한다. 검증 전에 개발 환경을 종료한다. 최초 설치로 캐시에 받은 의존성을 offline 설치해 사용하며 검증 자료는 `.local/` 안에 둔다. `pnpm paseo:verify`는 SDK·Adapter·명시적 CLI 조회를 기존 방식으로 검증한다.
+`pnpm test`는 명령·출력·대상 선택·읽기 전용 진단·잠금·손상 기록과 기존 제품 계약을 검사한다. `pnpm dev:verify`는 Windows에서 별도 소스 복사본과 데이터 루트를 만들고 실제 Daemon으로 최초 빌드·셸 종료 후 유지·동시 명령·충돌·실패 정리·ID 보존을 확인한다. 검증 전에 개발 환경을 종료한다. 고정 lockfile로 격리 checkout에 의존성을 설치하고 캐시에 없는 패키지만 내려받으며 [검증 전용 외부 루트](../paseo-dev/README.md#검증-데이터-격리)를 사용한다. `pnpm paseo:verify`는 SDK·Adapter·명시적 CLI 조회를 기존 방식으로 검증한다.
 
 작업 범위와 검증 증거는 [Issue #15](https://github.com/NaruForge/worknaru-dev/issues/15)에 둔다.

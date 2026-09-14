@@ -146,7 +146,6 @@ export function createFixture(scenario: Scenario = 'conversation') {
     agents: {
       health: async () => ({ ready: true, version: 1 }),
       options: async () => ({
-        defaultCwd: 'C:\\Projects\\my-work',
         models: [{ id: 'codex', name: 'Codex', default: true }],
         available: true,
       }),

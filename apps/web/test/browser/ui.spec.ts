@@ -85,6 +85,7 @@ test('a person can create, converse, follow up and archive', async ({ page }) =>
   await story(page, 'empty');
   await page.getByRole('button', { name: '새 Agent', exact: true }).click();
   await page.getByLabel('이름', { exact: true }).fill('새로운 업무');
+  await page.getByLabel('작업 폴더', { exact: true }).fill('C:\\Projects\\my-work');
   await page.getByRole('button', { name: '만들기', exact: true }).click();
   await expect(page.getByLabel('메시지', { exact: true })).toBeFocused();
   await page.getByLabel('메시지', { exact: true }).fill('첫 번째 요청');
