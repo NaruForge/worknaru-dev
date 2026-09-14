@@ -31,6 +31,7 @@ export async function inspect(paths) {
   return { state: 'stopped' };
 }
 export async function localStatus(paths) {
+  await assertNoLegacy(paths);
   await assertStorage(paths);
   const current = await inspect(paths);
   const result = { kind: 'development', state: current.state, dataRoot: paths.dataHome, webUrl: `http://${listen}/`, daemon: null };

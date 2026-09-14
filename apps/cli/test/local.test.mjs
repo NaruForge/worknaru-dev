@@ -60,6 +60,29 @@ test('missing local environment and repeated stop do not create a data root', ()
   assert.equal(stop.code, value.state === 'stopped' ? 0 : 1);
   assert.equal(existsSync(data), false);
 }));
+test('status reports legacy cleanup without changing either data root', () => fixture(async directory => {
+  const checkout = path.join(directory, 'checkout');
+  await cp(path.join(root, 'apps/cli'), path.join(checkout, 'apps/cli'), { recursive: true, filter: file => !['node_modules', 'dist', 'test'].includes(path.basename(file)) });
+  await cp(path.join(root, 'packages/dev-environment'), path.join(checkout, 'packages/dev-environment'), { recursive: true, filter: file => path.basename(file) !== 'node_modules' });
+  const entry = path.join(checkout, 'apps/cli/bin/worknaru.mjs');
+  const data = path.join(directory, 'absent');
+  const legacy = path.join(checkout, '.local/paseo-dev');
+  await mkdir(legacy, { recursive: true });
+  await writeFile(path.join(legacy, 'keep.txt'), 'legacy data');
+  const before = await readdir(legacy, { recursive: true });
+  const json = await invoke(['status', '--json'], data, entry);
+  assert.equal(json.code, 1); assert.equal(json.stderr, '');
+  const result = JSON.parse(json.stdout);
+  assert.equal(result.error.code, 'legacy_data_present');
+  assert.match(result.error.message, /dev reset --legacy --dry-run/);
+  const human = await invoke(['status'], data, entry);
+  assert.equal(human.code, 1); assert.equal(human.stdout, '');
+  assert.match(human.stderr, /legacy_data_present:.*dev reset --legacy --dry-run/);
+  assert.equal(existsSync(data), false);
+  assert.equal(existsSync(path.join(checkout, '.local/dev-build.lock')), false);
+  assert.deepEqual(await readdir(legacy, { recursive: true }), before);
+  assert.equal(await readFile(path.join(legacy, 'keep.txt'), 'utf8'), 'legacy data');
+}));
 test('incomplete explicit settings and invalid local arguments never fall back or echo secrets', () => fixture(async directory => {
   for (const [args, extra] of [
     [['status', '--json'], { WORKNARU_ENDPOINT: 'ws://127.0.0.1:6868/ws' }],
