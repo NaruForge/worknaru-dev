@@ -50,7 +50,7 @@ export async function prerequisites() {
     const { createRequire } = await import('node:module');
     const require = createRequire(import.meta.url);
     require.resolve('typescript', { paths: [root] });
-    require.resolve('esbuild', { paths: [path.join(root, 'apps/web')] });
+    require.resolve('vite', { paths: [path.join(root, 'apps/web')] });
     checks.push({ name: 'Dependencies', ok: true, detail: 'installed; pinned Paseo verified' });
   } catch { checks.push({ name: 'Dependencies', ok: false, detail: 'missing or incompatible', next: 'pnpm install --frozen-lockfile' }); }
   return checks;

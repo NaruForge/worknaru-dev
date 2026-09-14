@@ -11,7 +11,7 @@ test('HTML branding escapes text and attributes without changing runtime IDs or 
   assert.ok(html.includes(`<title>Agent · ${escapeHtml(name)}</title>`));
   assert.ok(!html.includes('<script>alert(1)</script>'));
   assert.ok(html.includes('href="https://example.com/?a=1&amp;b=&quot;2&quot;"'));
-  assert.ok(html.includes('id="server-id"'));
+  assert.ok(html.includes('id="root"'));
   assert.ok(html.includes('{{brand.links}}'));
 });
 

@@ -3,3 +3,6 @@ node_modules/
 .local/
 .playwright-cli/
 dist/
+storybook-static/
+test-results/
+playwright-report/

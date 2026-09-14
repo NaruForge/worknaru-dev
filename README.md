@@ -6,6 +6,8 @@
 
 [용어집](docs/glossary.md)은 제품과 실행 기반의 핵심 용어를 정의한다. [개념 아키텍처](docs/architecture.md)는 CLI와 Web UI의 공통 구성요소, 호출 흐름과 실행 환경의 경계를 설명한다.
 
+Web은 공통 디자인 시스템을 사용하며 밝게·어둡게·시스템 테마와 작은 화면의 목록/대화 전환을 제공한다. UI를 개발하는 사람과 AI는 [UI 조립 안내](docs/ui-design.md)에서 공개 부품과 실제 예제를 찾는다. 개발용 카탈로그는 `pnpm ui:storybook`, 브라우저·접근성·화면 검증은 `pnpm ui:verify`로 실행한다.
+
 개발 환경에서 CLI를 사용하려면 [Worknaru CLI 실행 안내](apps/cli/README.md)를 참고한다. Daemon 연결과 CLI 연동은 [Paseo 개발 환경 검증](apps/paseo-dev/README.md)에서 확인한다.
 
 Windows·Node.js 24 LTS와 루트 `packageManager`의 pnpm을 준비한 뒤, 저장소 루트에서 실행한다.

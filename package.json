@@ -5,7 +5,11 @@
   "scripts": {
     "worknaru": "node apps/cli/bin/worknaru.mjs",
     "build": "pnpm -r --if-present build",
-    "test": "pnpm build && pnpm -r --if-present test",
+    "test": "pnpm build && pnpm ui:lint && pnpm -r --if-present test",
+    "ui:lint": "pnpm --filter @worknaru/web ui:lint",
+    "ui:verify": "pnpm --filter @worknaru/web ui:verify",
+    "ui:storybook": "pnpm --filter @worknaru/web storybook",
+    "ui:live": "pnpm build && node apps/web/test/live-browser.mjs",
     "dev:verify": "node --test apps/cli/test/dev.integration.mjs",
     "agent:verify": "pnpm build && node --test apps/cli/test/agent.integration.mjs",
     "paseo:verify": "pnpm build && pnpm --filter @worknaru/paseo-dev verify",
@@ -13,8 +17,12 @@
     "web:dev": "pnpm build && pnpm --filter @worknaru/paseo-dev web"
   },
   "devDependencies": {
-    "@worknaru/cli": "workspace:*",
     "@types/node": "24.13.4",
-    "typescript": "5.9.3"
+    "@worknaru/cli": "workspace:*",
+    "eslint": "10.10.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0"
   }
 }
