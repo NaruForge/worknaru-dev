@@ -19,3 +19,7 @@ RPC envelope는 Adapter와 이 앱의 통신 구현에 한정한다. `operation`
 Agent 생성과 `options({ cwd })`는 명시적인 유효 작업 폴더를 요구한다. 제품 저장소를 기본 작업 폴더로 전달하지 않는다. 서버 경계가 공통 ASCII·절대경로·실제 디렉터리 검증을 주입하며 새 전송·dispatch·재개·실행을 이어가는 권한 승인 직전에도 다시 확인한다. 오류는 Provider 호출과 `sending` 기록 전에 발생한다. 자동 dispatch 오류는 해당 Agent의 대기열만 보류하고 사유를 남긴다. 기존 요청 ID 결과 조회·취소·보관과 정상 Agent 실행은 유지한다.
 
 개발용 전체 초기화는 서버 정지 후 [CLI reset](../cli/README.md#사용자-데이터-전체-초기화)으로 수행한다. SQLite·WAL/SHM·Paseo 세션·전용 인증을 모두 폐기하고 새 setup/start에서 빈 상태와 새 server ID를 만든다. 정상 재시작의 지속성·중복 전송 방지 계약은 유지한다. 저장 구조 변경에 마이그레이션·이전 이력 호환·복구를 추가하지 않는다.
+
+## 개발 데이터 관리 중계
+
+별도의 `development.data` RPC는 `snapshot`·`open`·`preview`·`reset`의 제한된 입력만 받는다. `server/data-management.mjs`는 전용 루트·소유 checkout·관리 실행기 기록·현재 서버 ID를 확인한 뒤 기존 Windows named pipe에 전달한다. 응답에서 제어 채널의 인증 토큰·PID·소유권 envelope를 제외한다. 실제 폴더 열기·정지·삭제·재시작은 CLI 관리 실행기가 수행한다. 제품 Agent API나 Core/Runtime에 파일·프로세스 관리 책임을 추가하지 않는다. [ADR 0012](../../docs/adr/0012-settings-data-management.md)

@@ -226,3 +226,38 @@
     display: none;
   }
 }
+.dataGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border-top: var(--stroke) solid var(--border);
+  padding-top: var(--space-6);
+}
+.dataRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--stroke) solid var(--border);
+}
+.dataDetails {
+  flex: 1;
+  min-width: 0;
+}
+.dataDetails h4 {
+  margin: 0;
+  font-size: var(--text-body);
+}
+.dataDetails p {
+  margin: var(--space-2) 0 0;
+}
+.dataPath {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: var(--text-small);
+  margin-top: var(--space-2);
+}
+.resetItems {
+  overflow: auto;
+}

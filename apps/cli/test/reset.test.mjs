@@ -84,6 +84,21 @@ test('a concurrent operation cannot prepare or reset the deleting root', async t
   } }), { code: 'reset_incomplete' });
 });
 
+test('controller-held reset keeps its lock across deletion and rejects a foreign holder', async t => {
+  const f = await fixture(t); await claim(f.paths);
+  await writeFile(path.join(f.paths.dataHome, 'old'), 'old');
+  const release = await acquireDataLock(f.paths);
+  try {
+    const before = await readFile(f.paths.lock, 'utf8');
+    await resetData(f.paths, { stopped, lockHeld: true });
+    assert.equal(await readFile(f.paths.lock, 'utf8'), before);
+    await assert.rejects(acquireDataLock(f.paths), { code: 'operation_busy' });
+    await writeFile(f.paths.lock, JSON.stringify({ ...JSON.parse(before), pid: process.pid + 1 }));
+    await assert.rejects(resetData(f.paths, { stopped, lockHeld: true }), { code: 'operation_busy' });
+    await writeFile(f.paths.lock, before);
+  } finally { await release(); }
+});
+
 test('reset unlinks external junctions and rejects a data root alias into the checkout', async t => {
   const f = await fixture(t); await claim(f.paths);
   const external = path.join(f.directory, 'project'); await mkdir(external);

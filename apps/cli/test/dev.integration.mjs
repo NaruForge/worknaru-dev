@@ -42,7 +42,7 @@ test('Windows cold bootstrap, terminal exit, lifecycle failures and identity pre
   };
   const snapshot = async () => Object.fromEntries(await Promise.all(['config.json', 'server-id', 'daemon-keypair.json'].map(async name => [name, await readFile(path.join(data, name), 'utf8')])));
   try {
-    for (const name of ['apps', 'packages']) await cp(path.join(root, name), path.join(fixture, name), { recursive: true, filter: file => !['node_modules', 'dist'].includes(path.basename(file)) });
+    for (const name of ['apps', 'packages']) await cp(path.join(root, name), path.join(fixture, name), { recursive: true, filter: file => !['node_modules', 'dist', 'storybook-static', 'test-results', 'playwright-report'].includes(path.basename(file)) });
     for (const name of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'tsconfig.base.json']) await cp(path.join(root, name), path.join(fixture, name));
     const installed = await execute(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'pnpm install --frozen-lockfile'], 180000);
     assert.equal(installed.code, 0, installed.stdout + installed.stderr);

@@ -1,7 +1,8 @@
 # 0005. 제품 호출 경계를 유지하며 CLI에서 로컬 개발 환경 관리
 
 - 날짜: 2026-09-11
-- 상태: Accepted
+- 상태: Superseded
+- 후속 결정: [ADR 0012](0012-settings-data-management.md)가 Web 설정의 개발 관리 요청을 기존 실행기로 연결한다. 제품 호출 경계와 나머지 로컬 개발 환경 결정은 후속 ADR에서 유지한다.
 - 승인 근거: 사용자가 doctor / dev start / dev stop / status 계획에 대해 다른 프로젝트의 범용적 방법인지 검토한 뒤 구현하고 PR까지 진행하도록 지시했다.
 - 관련 Work Item: [CLI 개발 환경 통합 #15](https://github.com/NaruForge/worknaru-dev/issues/15).
 - 대체 결정: [ADR 0001](0001-runtime-interface-and-paseo-adapter.md), [ADR 0003](0003-shared-core-and-adapter-in-cli-and-browser.md). 제품 기능의 Core·Runtime·Adapter와 브라우저 실행 구조는 유지하고, CLI 명령 전체를 제품 API 호출로 한정했던 경계를 구분한다.

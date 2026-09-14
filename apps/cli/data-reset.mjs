@@ -130,14 +130,18 @@ async function removeEntry(file, boundary) {
   } else { await unlink(file); }
 }
 
-export async function resetData(paths, { stopped = verifyStopped, remove = removeEntry } = {}) {
-  const plan = await resetPlan(paths, { stopped });
+export async function resetData(paths, { stopped = verifyStopped, remove = removeEntry, lockHeld = false } = {}) {
+  // The Web reset sequence keeps its controller's lock through stop, deletion and restart.
+  if (lockHeld && (await regularJson(paths.lock)).pid !== process.pid) {
+    throw new DataError('operation_busy', 'The reset caller does not own the operation lock.');
+  }
+  const plan = await resetPlan(paths, { stopped, ignoreLock: lockHeld });
   if (plan.blockers.length) throw new DataError(plan.blockers[0].code, plan.blockers[0].message);
   if (!await exists(paths.dataHome)) return { ...plan, confirmationRequired: false };
   let releaseBuild; let release;
   try {
     if (paths.legacy) releaseBuild = await acquireLock(path.join(paths.repository, '.local/dev-build.lock'));
-    release = await acquireLock(paths.lock);
+    if (!lockHeld) release = await acquireLock(paths.lock);
     const current = await resetPlan(paths, { ignoreLock: true, stopped });
     if (current.blockers.length) throw new DataError(current.blockers[0].code, current.blockers[0].message);
     const boundary = await validateDataLocation(paths);
@@ -154,7 +158,7 @@ export async function resetData(paths, { stopped = verifyStopped, remove = remov
       }
       if (!paths.legacy) await writeMarker(paths, 'empty');
     } catch { throw new DataError('reset_incomplete', 'Some data could not be deleted. Setup/start remain blocked. Resolve file locks or permissions and repeat dev reset --yes.'); }
-    await release(); release = null;
+    await release?.(); release = null;
     if (paths.legacy) {
       try {
         await unlink(paths.marker);

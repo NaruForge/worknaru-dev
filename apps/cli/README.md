@@ -183,3 +183,9 @@ pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id <확인�
 `pnpm test`는 명령·출력·대상 선택·읽기 전용 진단·잠금·손상 기록과 기존 제품 계약을 검사한다. `pnpm dev:verify`는 Windows에서 별도 소스 복사본과 데이터 루트를 만들고 실제 Daemon으로 최초 빌드·셸 종료 후 유지·동시 명령·충돌·실패 정리·ID 보존을 확인한다. 검증 전에 개발 환경을 종료한다. 고정 lockfile로 격리 checkout에 의존성을 설치하고 캐시에 없는 패키지만 내려받으며 [검증 전용 외부 루트](../paseo-dev/README.md#검증-데이터-격리)를 사용한다. `pnpm paseo:verify`는 SDK·Adapter·명시적 CLI 조회를 기존 방식으로 검증한다.
 
 작업 범위와 검증 증거는 [Issue #15](https://github.com/NaruForge/worknaru-dev/issues/15)에 둔다.
+
+### Web에서 요청한 데이터 초기화
+
+Agent 설정을 마친 관리형 `dev start` 환경은 **설정 → 데이터 관리**에서 저장 위치 조회·폴더 열기·초기화를 요청할 수 있다. 기존 Daemon RPC가 실행기 제어 채널에 전달하고, 실행기가 소유권·서버 ID와 60초짜리 미리보기를 확인한다. 정지·삭제·새 환경 시작 전체에서 같은 데이터 작업 잠금을 보유한다. 삭제는 `data-reset.mjs`를 재사용하며 정지 확인을 생략하지 않는다.
+
+Web에서 확인한 **삭제하고 다시 시작**은 새 기본 설정·Agent 서비스와 기존 빌드로 재시작까지 수행한다. 일반 `dev reset --yes`는 기존대로 삭제만 수행하고 setup/start를 자동 실행하지 않는다. 정상 stop/start의 보존 정책과 Provider 기록 보호는 유지한다. 실행 도중 실패하면 자동 삭제 재시도나 다른 환경으로의 접속을 하지 않는다. [Web 사용·실연동 검증](../web/README.md#데이터-관리), [ADR 0012](../../docs/adr/0012-settings-data-management.md)

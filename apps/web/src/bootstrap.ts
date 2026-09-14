@@ -1,5 +1,6 @@
 import { createWorknaruCore } from '@worknaru/core';
 import { createPaseoRuntime } from '@worknaru/paseo-adapter';
+import { createDataClient } from './shell/dataClient.js';
 import { prepareStorageIdentity } from './shell/storageIdentity.js';
 
 /** The development launcher writes public target metadata after verifying its daemon. */
@@ -32,6 +33,7 @@ export async function loadCore() {
   );
   if (storage.changed) window.history.replaceState(null, '', '#/agents?list=active');
   return {
+    dataClient: createDataClient(endpoint.href, configuration.expectedServerId),
     storagePrefix: storage.storagePrefix,
     core: createWorknaruCore({ runtime }),
     endpoint: endpoint.href,
