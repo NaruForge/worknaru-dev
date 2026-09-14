@@ -23,6 +23,12 @@ import {
   X,
 } from 'lucide-react';
 import styles from './ui.module.css';
+export {
+  PanelGroup,
+  ResizablePanel,
+  normalizePanelWidth,
+  type ResizablePanelProps,
+} from './ResizablePanel.js';
 
 const cx = (...values: (string | false | undefined)[]) => values.filter(Boolean).join(' ');
 export type ButtonProps = ComponentPropsWithRef<'button'> & {

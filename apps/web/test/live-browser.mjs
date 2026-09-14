@@ -78,20 +78,46 @@ try {
     /RIVER.*FOLLOWUP/s,
   );
   await page.screenshot({ path: path.join(folder, 'desktop.png') });
-  await page.getByRole('button', { name: '연결 확인', exact: true }).click();
+  const message = page.getByLabel('메시지', { exact: true });
+  await message.fill('설정 왕복 후 이어 쓸 초안');
+  await page.getByRole('button', { name: '설정', exact: true }).click();
+  await page.getByLabel('화면 테마').selectOption('dark');
+  await page.getByRole('button', { name: 'Agent 동작', exact: true }).click();
+  await page.getByLabel('기본 전송 방식').selectOption('steer');
+  await cli('settings', 'set', 'send-mode', 'steer');
+  await expect(
+    page.getByText('다른 화면에서 설정이 변경됐습니다. 편집 내용은 유지했습니다.', {
+      exact: false,
+    }),
+  ).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await expect(
+    page.getByText('설정이 변경됐습니다. 다시 불러와 주세요.', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: '최신 설정 다시 불러오기' }).click();
+  await expect(page.getByText('최신 설정을 불러왔습니다.')).toBeVisible();
+  await page.getByLabel('기본 전송 방식').selectOption('queue');
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await expect(page.getByText('기본 전송 방식을 저장했습니다.', { exact: false })).toBeVisible();
+  assert.equal((await cli('settings', 'get', 'send-mode')).sendMode, 'queue');
+  await page.getByRole('button', { name: '연결', exact: true }).click();
   await page.getByRole('button', { name: '상태 확인', exact: true }).click();
   await expect(page.getByText('전용 Daemon이 정상적으로 응답했습니다.')).toBeVisible();
   await cli('dev', 'stop');
   started = false;
   await page.getByRole('button', { name: '상태 확인', exact: true }).click();
-  await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('region', { name: '환경설정' }).getByRole('alert')).toBeVisible({
+    timeout: 15000,
+  });
   await cli('dev', 'start');
   started = true;
   await page.getByRole('button', { name: '상태 확인', exact: true }).click();
   await expect(page.getByText('전용 Daemon이 정상적으로 응답했습니다.')).toBeVisible({
     timeout: 15000,
   });
-  await page.getByRole('button', { name: '창 닫기' }).click();
+  await page.getByRole('button', { name: '작업으로 돌아가기' }).click();
+  await expect(message).toHaveValue('설정 왕복 후 이어 쓸 초안');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await cli('agent', 'archive', agent.id, '--yes');
   await expect(page.getByLabel('메시지', { exact: true })).toHaveCount(0, { timeout: 15000 });
   assert.deepEqual(errors, []);
@@ -99,6 +125,8 @@ try {
     ...result,
     cliWebCrossover: true,
     reconnection: true,
+    settingsContextRetained: true,
+    sharedSettingsConflict: true,
     pageErrors: errors,
     folder: path.relative(root, folder),
   };

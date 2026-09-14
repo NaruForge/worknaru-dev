@@ -1,8 +1,9 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
-  width: var(--sidebar-width);
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   box-sizing: border-box;
   padding: var(--space-6) var(--space-4) var(--space-4);
   border-right: var(--stroke) solid var(--border);
@@ -24,8 +25,8 @@
 }
 .agentRow {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
   gap: var(--space-1);
   width: 100%;
   text-align: left;
@@ -188,8 +189,9 @@
   white-space: pre-wrap;
 }
 .details {
-  width: var(--details-width);
-  flex-shrink: 0;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
   padding: var(--space-4);
   box-sizing: border-box;
   border-left: var(--stroke) solid var(--border);
@@ -224,4 +226,42 @@
   .notice {
     padding: var(--space-2) var(--space-3);
   }
+}
+
+.agentLayout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.agentNavigation {
+  display: flex;
+}
+.restoreList {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--stroke) solid var(--border);
+}
+@media (width < 768px) {
+  .agentNavigation {
+    width: 100%;
+  }
+  .agentLayout[data-pane='conversation'] .agentNavigation,
+  .agentLayout[data-pane='list'] .main {
+    display: none;
+  }
+  .desktopOnly,
+  .restoreList {
+    display: none;
+  }
+}
+.agentRow {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.agentRowName {
+  min-width: 0;
+}
+.agentRow .muted {
+  flex-shrink: 0;
+  white-space: nowrap;
 }

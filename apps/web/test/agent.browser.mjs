@@ -4,8 +4,16 @@ async (page) => {
   const name = `Browser check ${Date.now()}`;
   await page.goto('http://127.0.0.1:6868/');
   await page.getByRole('button', { name: '전송 설정', exact: true }).click();
-  await page.getByLabel('기본 전송 방식', { exact: true }).selectOption('queue');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
+  const mode = page.getByLabel('기본 전송 방식', { exact: true });
+  await mode.waitFor();
+  if ((await mode.inputValue()) !== 'queue') {
+    await mode.selectOption('queue');
+    await page.getByRole('button', { name: '저장', exact: true }).click();
+    await page
+      .getByText('기본 전송 방식을 저장했습니다. 새로 접수하는 메시지부터 적용합니다.')
+      .waitFor();
+  }
+  await page.getByRole('button', { name: '작업으로 돌아가기', exact: true }).click();
   await page.getByRole('button', { name: '새 Agent', exact: true }).click();
   await page.getByLabel('이름', { exact: true }).fill(name);
   await page.getByRole('button', { name: '만들기', exact: true }).click();

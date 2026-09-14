@@ -6,7 +6,7 @@
 
 [용어집](docs/glossary.md)은 제품과 실행 기반의 핵심 용어를 정의한다. [개념 아키텍처](docs/architecture.md)는 CLI와 Web UI의 공통 구성요소, 호출 흐름과 실행 환경의 경계를 설명한다.
 
-Web은 공통 디자인 시스템을 사용하며 밝게·어둡게·시스템 테마와 작은 화면의 목록/대화 전환을 제공한다. UI를 개발하는 사람과 AI는 [UI 조립 안내](docs/ui-design.md)에서 공개 부품과 실제 예제를 찾는다. 개발용 카탈로그는 `pnpm ui:storybook`, 브라우저·접근성·화면 검증은 `pnpm ui:verify`로 실행한다.
+Web은 앱 탐색·Agent 목록·대화·상세 정보를 구분하고, 통합 설정에서 화면 테마·전송 방식·연결 진단을 제공한다. 같은 탭에서 설정과 다른 Agent를 오가도 초안과 읽던 위치를 유지한다. 패널 너비·접힘은 브라우저에 기억하며 작은 화면에서는 목록과 대화를 전환한다. UI를 개발하는 사람과 AI는 [UI 조립 안내](docs/ui-design.md)에서 공개 부품과 실제 예제를 찾는다. 개발용 카탈로그는 `pnpm ui:storybook`, 브라우저·접근성·화면 검증은 `pnpm ui:verify`로 실행한다.
 
 개발 환경에서 CLI를 사용하려면 [Worknaru CLI 실행 안내](apps/cli/README.md)를 참고한다. Daemon 연결과 CLI 연동은 [Paseo 개발 환경 검증](apps/paseo-dev/README.md)에서 확인한다.
 
@@ -27,7 +27,7 @@ pnpm exec worknaru dev stop
 
 `dev start`는 빌드 후 Daemon과 Web UI를 백그라운드에서 시작한다. 준비 완료 뒤 `http://127.0.0.1:6868/`를 열고, 종료는 `dev stop`으로 한다. 실행 중인 환경은 재사용하며 `doctor`와 `status`는 읽기 전용이다. 전역 설치와 별도 Daemon 터미널은 필요하지 않다. 상세 옵션·실패 해결은 [CLI 안내](apps/cli/README.md), 화면 확인은 [Web UI 안내](apps/web/README.md)를 따른다.
 
-`agent setup`은 개발 환경이 정지했을 때 최초 한 번 실행한다. 전용 Daemon에 Agent 실행 플러그인을 준비하며 기존 기본 설정은 백업한다. Codex가 설치되고 로그인된 환경이 필요하다. Agent 생성 시 모델 목록을 조회하고 작업 폴더를 선택한다. 전송 방식은 CLI의 `settings set send-mode queue|steer` 또는 Web의 **전송 설정**에서만 변경한다. 기본 전송 방식은 대기열이며, 터미널·탭을 닫아도 Daemon이 살아 있는 동안 순서대로 실행한다. 보관은 실행 중인 작업과 하위 Agent에 미치는 영향을 확인한 뒤 진행하고 기록·파일을 보존한다.
+`agent setup`은 개발 환경이 정지했을 때 최초 한 번 실행한다. 전용 Daemon에 Agent 실행 플러그인을 준비하며 기존 기본 설정은 백업한다. Codex가 설치되고 로그인된 환경이 필요하다. Agent 생성 시 모델 목록을 조회하고 작업 폴더를 선택한다. 전송 방식은 CLI의 `settings set send-mode queue|steer` 또는 Web의 **설정 → Agent 동작**에서만 변경한다. 기본 전송 방식은 대기열이며, 터미널·탭을 닫아도 Daemon이 살아 있는 동안 순서대로 실행한다. 보관은 실행 중인 작업과 하위 Agent에 미치는 영향을 확인한 뒤 진행하고 기록·파일을 보존한다.
 
 설정으로 자신의 브랜드를 쉽게 적용할 수 있다. 표시 이름·로고·파비콘·대표 색상·홈페이지/문서/지원 링크를 바꾸고 `pnpm build`로 반영한다. 저장 위치는 `WORKNARU_DATA_DIR`로 루트 하나를 지정한다. [리브랜딩 설정](packages/branding/README.md) · [저장 위치 설정](apps/paseo-dev/README.md#저장-위치-설정)
 

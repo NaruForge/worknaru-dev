@@ -215,15 +215,17 @@ it('retains a settings conflict and reloads the current revision before saving',
   const fixture = await opened();
   fireEvent.click(screen.getByRole('button', { name: '전송 설정' }));
   await screen.findByLabelText('기본 전송 방식');
-  await act(() => fixture.core.agents.saveSettings({ sendMode: 'steer', revision: 0 }));
+  fireEvent.change(screen.getByLabelText('기본 전송 방식'), { target: { value: 'steer' } });
+  await act(() => fixture.core.agents.saveSettings({ sendMode: 'queue', revision: 0 }));
   fireEvent.click(screen.getByRole('button', { name: '저장' }));
   await screen.findByRole('alert');
   fireEvent.click(screen.getByRole('button', { name: '최신 설정 다시 불러오기' }));
   await waitFor(() =>
-    expect((screen.getByLabelText('기본 전송 방식') as HTMLSelectElement).value).toBe('steer'),
+    expect((screen.getByLabelText('기본 전송 방식') as HTMLSelectElement).value).toBe('queue'),
   );
+  fireEvent.change(screen.getByLabelText('기본 전송 방식'), { target: { value: 'steer' } });
   fireEvent.click(screen.getByRole('button', { name: '저장' }));
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await screen.findByText('기본 전송 방식을 저장했습니다. 새로 접수하는 메시지부터 적용합니다.');
 });
 it('only sends an explicit permission response and keeps entered answers during refresh', async () => {
   const fixture = createFixture('permission');
@@ -257,9 +259,8 @@ it('returns focus to the opener on cancel and offers theme selection', async () 
   await screen.findByRole('dialog');
   await user.keyboard('{Escape}');
   await waitFor(() => expect(document.activeElement).toBe(opener));
-  await user.click(screen.getByRole('button', { name: '화면: 시스템' }));
-  await user.click(screen.getByRole('menuitem', { name: '어둡게' }));
+  await user.click(screen.getByRole('button', { name: '설정' }));
+  await user.selectOptions(screen.getByLabelText('화면 테마'), 'dark');
   expect(document.documentElement.dataset.theme).toBe('dark');
   expect(localStorage.getItem('worknaru.ui.theme')).toBe('dark');
 });
-

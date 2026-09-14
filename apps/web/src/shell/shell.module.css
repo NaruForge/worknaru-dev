@@ -1,41 +1,224 @@
 .app {
+  display: flex;
   height: 100dvh;
+  min-height: 0;
+}
+.appRail {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   flex-shrink: 0;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border-bottom: var(--stroke) solid var(--border);
+  align-items: center;
+  width: var(--app-navigation-width);
+  padding: var(--space-4) var(--space-2);
+  gap: var(--space-6);
   background: var(--surface-subtle);
+  border-right: var(--stroke) solid var(--border);
+}
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  overflow-wrap: anywhere;
+  text-align: center;
+  max-width: 100%;
 }
 .logo {
   width: var(--logo-size);
   height: var(--logo-size);
   object-fit: contain;
 }
-.start {
+.appNavigation {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+.railItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-direction: column;
+}
+.railFooter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+.workArea {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.featureView {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.featureView[hidden] {
+  display: none;
+}
+.start {
+  min-height: 100dvh;
+  display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--space-6);
+}
+.settingsLayout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.settingsSidebar {
+  display: flex;
+}
+.contextSidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3);
+  background: var(--surface-subtle);
+  overflow: auto;
+}
+.contextSidebar h2 {
+  font-size: var(--text-body);
+  margin: 0;
+}
+.settingsCategories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.settingsCategories button {
+  justify-content: flex-start;
+}
+.settingsMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.viewHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: var(--stroke) solid var(--border);
+}
+.viewHeading h1 {
+  margin: 0;
+  font-size: var(--text-message);
+}
+.settingsContent {
+  overflow: auto;
+  padding: var(--space-8);
+  flex: 1;
+}
+.settingsContent > * {
+  max-width: var(--reading-width);
+  margin-inline: auto;
+}
+.settingsContent h2,
+.settingsContent h3 {
+  margin: 0;
+}
+.settingsContent h2 {
+  font-size: var(--text-heading);
+}
+.settingsContent h3 {
+  font-size: var(--text-body);
+}
+.settingGroup {
+  border-top: var(--stroke) solid var(--border);
+  padding-top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.connection {
+  margin: 0;
 }
 .connection dt {
   color: var(--text-muted);
   font-size: var(--text-small);
-  margin-top: var(--space-3);
+  margin-top: var(--space-4);
 }
 .connection dd {
-  margin: var(--space-1) 0;
+  margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
 }
+.muted {
+  color: var(--text-muted);
+  font-size: var(--text-small);
+}
+.compactCategories {
+  display: none;
+}
+.compactCategories[data-collapsed='true'] {
+  display: block;
+  padding: var(--space-3);
+}
+.compactCategories .settingsCategories {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
 @media (width < 768px) {
-  .header {
-    flex-wrap: wrap;
+  .app {
+    flex-direction: column;
+  }
+  .appRail {
+    flex-direction: row;
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-3);
+    border-right: 0;
+    border-bottom: var(--stroke) solid var(--border);
+  }
+  .brand {
+    flex-direction: row;
+    text-align: left;
+  }
+  .appNavigation {
+    flex-direction: row;
+    margin-left: auto;
+    width: auto;
+  }
+  .railItem {
+    flex-direction: row;
+  }
+  .railFooter {
+    display: none;
+  }
+  .settingsSidebar {
+    display: none;
+  }
+  .compactCategories {
+    display: block;
+    padding: var(--space-3);
+  }
+  .viewHeading {
+    padding: var(--space-3);
+  }
+  .settingsContent {
+    padding: var(--space-4);
+  }
+}
+@media (width < 768px) {
+  .desktopOnly {
+    display: none;
   }
 }
