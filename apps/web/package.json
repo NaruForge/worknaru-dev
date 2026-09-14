@@ -11,6 +11,7 @@
     "ui:lint": "eslint src ../../packages/ui/src && stylelint \"src/**/*.css\" \"../../packages/ui/src/**/*.css\""
   },
   "dependencies": {
+    "@getpaseo/client": "0.8.0",
     "@worknaru/branding": "workspace:*",
     "@worknaru/core": "workspace:*",
     "@worknaru/paseo-adapter": "workspace:*",

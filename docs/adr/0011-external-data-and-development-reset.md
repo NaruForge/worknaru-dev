@@ -1,7 +1,8 @@
 # ADR 0011: 외부 사용자 데이터와 개발용 전체 초기화
 
 - 날짜: 2026-09-14
-- 상태: Accepted
+- 상태: Superseded
+- 후속 결정: [ADR 0012](0012-settings-data-management.md)가 Web에서 확인한 초기화의 재준비·새로고침만 자동으로 수행하도록 확장한다. 저장 위치·삭제 범위·데이터 보호와 CLI 초기화 절차는 유지한다.
 - 관련 작업: [#29](https://github.com/NaruForge/worknaru-dev/issues/29)
 - 승인 근거: 사용자가 개발 단계의 마이그레이션 금지·기존 데이터 삭제·전체 초기화와 수동 Web 새로고침을 선택하고 구현 계획 전체를 승인함.
 - 이전 결정: [ADR 0004](0004-build-time-branding-and-data-root.md)의 저장 위치·기존 데이터 처리 결정을 대체한다. 빌드 시 브랜딩과 단일 저장 설정, 브랜드와 내부 ID의 독립성은 유지한다.

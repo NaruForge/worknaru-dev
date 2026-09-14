@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./control": "./control.mjs",
     "./daemon": "./daemon.mjs",
     "./paths": "./paths.mjs",
     "./web-files": "./web-files.mjs",

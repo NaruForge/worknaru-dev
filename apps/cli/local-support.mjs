@@ -14,7 +14,7 @@ export const pathsFor = paths => ({
   lock: path.join(paths.dataHome, 'dev-operation.lock'),
   runnerLog: path.join(paths.dataHome, 'dev-runner.log'), buildLog: path.join(paths.dataHome, 'build.log'),
 });
-export const pipeFor = token => `\\\\.\\pipe\\worknaru-dev-${token}`;
+export { pipeFor, request } from '../../packages/dev-environment/control.mjs';
 export const newOwner = paths => ({ schema: 1, token: randomUUID(), repository: root, dataRoot: paths.dataHome });
 export async function readOwner(paths) {
   try {
@@ -32,29 +32,6 @@ export async function readOwner(paths) {
 export async function removeOwner(paths, owner) {
   const current = await readOwner(paths);
   if (current?.token === owner.token) await unlink(paths.record);
-}
-export function request(owner, command, milliseconds = 2000) {
-  return new Promise((resolve, reject) => {
-    const socket = net.connect(pipeFor(owner.token));
-    let buffer = '';
-    const timer = setTimeout(() => finish(new LocalError('controller_unavailable', 'The development controller did not respond. Run pnpm exec worknaru doctor; do not kill a process using the saved PID alone.')), milliseconds);
-    function finish(error, result) {
-      clearTimeout(timer); socket.destroy(); error ? reject(error) : resolve(result);
-    }
-    socket.on('error', () => finish(new LocalError('controller_unavailable', 'The saved development controller is unreachable. Run pnpm exec worknaru doctor and inspect the record and logs.')));
-    socket.on('connect', () => socket.write(`${JSON.stringify({ token: owner.token, command })}\n`));
-    socket.on('data', data => {
-      buffer += data;
-      if (buffer.length > 16384) return finish(new LocalError('ownership_conflict', 'Invalid controller response.'));
-      if (!buffer.includes('\n')) return;
-      try {
-        const result = JSON.parse(buffer.split('\n')[0]);
-        if (result.token !== owner.token || result.repository !== owner.repository || result.dataRoot !== owner.dataRoot) throw new Error();
-        finish(null, result);
-      } catch { finish(new LocalError('ownership_conflict', 'Development controller identity does not match.')); }
-    });
-    socket.on('end', () => finish(new LocalError('controller_unavailable', 'Development controller closed before replying.')));
-  });
 }
 export function portOpen() {
   return new Promise(resolve => {

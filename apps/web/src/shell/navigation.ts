@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type SettingsSection = 'appearance' | 'behavior' | 'connection';
+export type SettingsSection = 'appearance' | 'behavior' | 'connection' | 'data';
 export type AgentView = {
   kind: 'agents';
   archived: boolean;
@@ -40,7 +40,10 @@ export function parseView(hash: string): View {
     };
   }
   const section = path?.slice('/settings/'.length);
-  if (path?.startsWith('/settings/') && ['appearance', 'behavior', 'connection'].includes(section!))
+  if (
+    path?.startsWith('/settings/') &&
+    ['appearance', 'behavior', 'connection', 'data'].includes(section!)
+  )
     return { kind: 'settings', section: section as SettingsSection };
   return { kind: 'invalid' };
 }

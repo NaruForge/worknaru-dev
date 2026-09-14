@@ -1,3 +1,5 @@
+import { DataSettings } from './DataSettings.js';
+import type { DataClient } from './dataClient.js';
 import { useEffect, useRef, useState } from 'react';
 import type { AgentSettings, DaemonStatus, WorknaruCore } from '@worknaru/core';
 import {
@@ -17,7 +19,7 @@ import type { Theme } from './theme.js';
 import type { usePanelLayout } from './layout.js';
 import styles from './shell.module.css';
 
-export function useSharedSettings(core: WorknaruCore, observed: AgentSettings) {
+export function useSharedSettings(core: WorknaruCore, observed: AgentSettings, resetting = false) {
   const [base, setBase] = useState<AgentSettings | null>(null);
   const [latest, setLatest] = useState<AgentSettings | null>(null);
   const [mode, setMode] = useState<AgentSettings['sendMode']>('queue');
@@ -56,14 +58,14 @@ export function useSharedSettings(core: WorknaruCore, observed: AgentSettings) {
     }
   }, [observed, base, latest, dirty, busy]);
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty || resetting) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  }, [dirty, resetting]);
   async function reload() {
     if (guard.current) return;
     const generation = ++loadGeneration.current;
@@ -148,6 +150,10 @@ export function SettingsView({
   endpoint,
   section,
   onSection,
+  dataClient,
+  active,
+  resetting,
+  onResetting,
   onReturn,
   theme,
   setTheme,
@@ -155,6 +161,10 @@ export function SettingsView({
   shared,
 }: {
   core: WorknaruCore;
+  dataClient?: DataClient | undefined;
+  active: boolean;
+  resetting: boolean;
+  onResetting: (resetting: boolean) => void;
   endpoint: string;
   section: SettingsSection;
   onSection: (section: SettingsSection) => void;
@@ -194,14 +204,19 @@ export function SettingsView({
   }
   const categories = (
     <nav className={styles.settingsCategories} aria-label="설정 섹션">
-      {(['appearance', 'behavior', 'connection'] as const).map((value) => (
+      {(['appearance', 'behavior', 'connection', 'data'] as const).map((value) => (
         <Button
           key={value}
+          disabled={resetting}
           variant={section === value ? 'secondary' : 'ghost'}
           aria-current={section === value ? 'page' : undefined}
           onClick={() => onSection(value)}
         >
-          {{ appearance: '화면', behavior: 'Agent 동작', connection: '연결' }[value]}
+          {
+            { appearance: '화면', behavior: 'Agent 동작', connection: '연결', data: '데이터 관리' }[
+              value
+            ]
+          }
           {value === 'behavior' && shared.dirty && <Badge tone="warning">미저장</Badge>}
         </Button>
       ))}
@@ -237,7 +252,7 @@ export function SettingsView({
       <section className={styles.settingsMain} aria-label="환경설정">
         <header className={styles.viewHeading}>
           <Inline>
-            <Button variant="ghost" onClick={onReturn}>
+            <Button variant="ghost" disabled={resetting} onClick={onReturn}>
               작업으로 돌아가기
             </Button>
             <h1>설정</h1>
@@ -259,6 +274,13 @@ export function SettingsView({
           {categories}
         </div>
         <div className={styles.settingsContent}>
+          <div hidden={section !== 'data'}>
+            <DataSettings
+              client={dataClient}
+              active={active && section === 'data'}
+              onResetting={onResetting}
+            />
+          </div>
           {section === 'appearance' && (
             <Stack>
               <h2>화면</h2>

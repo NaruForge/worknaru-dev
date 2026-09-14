@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, open, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveDataPaths, prepareDataDirectories, root, validateDataLocation, validateDirectory, legacyPaths } from '../../packages/dev-environment/paths.mjs';
+import { resolveDataPaths, prepareDataDirectories, root, DataError, validateDataLocation, validateDirectory, legacyPaths } from '../../packages/dev-environment/paths.mjs';
 import { configState, agentsEnabled, endpoint, listen } from '../../packages/dev-environment/config.mjs';
 import { acquireLock, buildsPresent, LocalError, newOwner, pathsFor, pnpmCommand, portOpen, readOwner, request } from './local-support.mjs';
 
@@ -98,7 +98,7 @@ export async function doctor(paths) {
         checks.push({ name: 'Agent service', ok: health.ready, detail: health.ready ? 'ready' : 'not ready', next: 'Inspect daemon.log and agent-state.sqlite availability, then dev stop/start.' });
       } catch { checks.push({ name: 'Agent service', ok: false, detail: 'unavailable', next: 'Inspect daemon.log, then dev stop/start.' }); }
     }
-  } catch (error) { checks.push({ name: 'Development environment', ok: false, detail: error instanceof LocalError ? error.message : 'Unable to verify identity files.', next: 'Inspect dev-instance.json, paseo.pid, dev-runner.log and daemon.log in the data root; do not remove files while their owner is running.' }); }
+  } catch (error) { checks.push({ name: 'Development environment', ok: false, detail: error instanceof DataError ? error.message : 'Unable to verify identity files.', next: 'Inspect dev-instance.json, paseo.pid, dev-runner.log and daemon.log in the data root; do not remove files while their owner is running.' }); }
   return { kind: 'doctor', ok: checks.every(check => check.ok), dataRoot: paths.dataHome, checks };
 }
 export async function start(paths) {
@@ -145,7 +145,7 @@ export async function start(paths) {
         child.once('error', () => finish(new LocalError('startup_failed', 'Cannot launch the development controller. Inspect dev-runner.log.')));
         child.once('exit', () => finish(new LocalError('startup_failed', 'Development controller exited during startup. Inspect dev-runner.log.')));
         child.once('message', result => finish(result?.ready === true && result.token === owner.token ? null : new LocalError('startup_failed', 'Development startup failed. Inspect dev-runner.log and daemon.log; run pnpm exec worknaru doctor.')));
-        child.send({ command: 'start', owner });
+        child.send({ command: 'start', owner, source: paths.source });
       });
     } finally {
       if (child?.connected) child.disconnect();

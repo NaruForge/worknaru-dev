@@ -94,6 +94,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@getpaseo/client':
+        specifier: 0.8.0
+        version: 0.8.0
       '@worknaru/branding':
         specifier: workspace:*
         version: link:../../packages/branding

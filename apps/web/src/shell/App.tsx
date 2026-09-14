@@ -1,3 +1,4 @@
+import type { DataClient } from './dataClient.js';
 import { useEffect, useRef, useState } from 'react';
 import { brand } from '@worknaru/branding';
 import type { WorknaruCore } from '@worknaru/core';
@@ -31,9 +32,11 @@ function suppliedIdentity(core: WorknaruCore) {
 function ConnectedApp({
   core,
   endpoint,
+  dataClient,
   storagePrefix = 'worknaru.ui',
 }: {
   core: WorknaruCore;
+  dataClient?: DataClient | undefined;
   endpoint: string;
   storagePrefix?: string;
 }) {
@@ -41,12 +44,13 @@ function ConnectedApp({
   const ui = useAgentSession(core, navigation.agentView);
   const panels = usePanelLayout(storagePrefix);
   const { theme, setTheme } = useTheme(storagePrefix);
-  const shared = useSharedSettings(core, ui.settings);
+  const [resetting, setResetting] = useState(false);
+  const shared = useSharedSettings(core, ui.settings, resetting);
   const [help, setHelp] = useState(false);
   const [routeNotice, setRouteNotice] = useState('');
   const lastFocus = useRef<HTMLElement | null>(null);
   const lastSection = useRef<SettingsSection>('appearance');
-  const active = navigation.view.kind !== 'settings';
+  const active = !resetting && navigation.view.kind !== 'settings';
   if (navigation.view.kind === 'settings') lastSection.current = navigation.view.section;
   useEffect(() => {
     if (navigation.view.kind === 'invalid' || (navigation.view.kind === 'agents' && ui.missing)) {
@@ -122,6 +126,7 @@ function ConnectedApp({
           <IconButton
             icon="message"
             label="Agent"
+            disabled={resetting}
             variant={active ? 'secondary' : 'ghost'}
             aria-current={active ? 'page' : undefined}
             onClick={returnToAgent}
@@ -129,6 +134,7 @@ function ConnectedApp({
           <div className={styles.settingsNavigation}>
             <IconButton
               icon="settings"
+              disabled={resetting}
               label={shared.dirty ? '설정 (미저장)' : '설정'}
               variant={!active ? 'secondary' : 'ghost'}
               aria-current={!active ? 'page' : undefined}
@@ -151,7 +157,7 @@ function ConnectedApp({
         </div>
       </aside>
       <main className={styles.workArea}>
-        {ui.readError && (
+        {ui.readError && !resetting && (
           <Alert tone="error">
             {ui.readError}
             <Inline>
@@ -191,9 +197,17 @@ function ConnectedApp({
         <div className={styles.featureView} hidden={active}>
           <SettingsView
             core={core}
+            dataClient={dataClient}
+            active={!active}
+            resetting={resetting}
+            onResetting={setResetting}
             endpoint={endpoint}
             section={
-              navigation.view.kind === 'settings' ? navigation.view.section : lastSection.current
+              resetting
+                ? 'data'
+                : navigation.view.kind === 'settings'
+                  ? navigation.view.section
+                  : lastSection.current
             }
             onSection={openSettings}
             onReturn={returnToAgent}
@@ -223,9 +237,11 @@ function ConnectedApp({
 }
 export function App({
   core: suppliedCore,
+  dataClient: suppliedDataClient,
   endpoint: suppliedEndpoint = '견본 환경',
 }: {
   core?: WorknaruCore;
+  dataClient?: DataClient | undefined;
   endpoint?: string;
 }) {
   const [loaded, setLoaded] = useState<Awaited<ReturnType<typeof loadCore>> | null>(null);
@@ -252,6 +268,7 @@ export function App({
   const connection = suppliedCore
     ? {
         core: suppliedCore,
+        dataClient: suppliedDataClient,
         endpoint: suppliedEndpoint,
         storagePrefix: 'worknaru.ui',
         identity: `${suppliedEndpoint}:${suppliedIdentity(suppliedCore)}`,
@@ -263,6 +280,7 @@ export function App({
         key={connection.identity}
         core={connection.core}
         endpoint={connection.endpoint}
+        dataClient={connection.dataClient}
         storagePrefix={connection.storagePrefix}
       />
     );
