@@ -33,6 +33,8 @@ Agent 기능은 `pnpm exec worknaru agent setup` 후 관리형 `dev start`로 �
 
 ## 저장 위치 설정
 
+데이터별 경로·폴더 구조·보존 범위는 [데이터 저장 위치](../../docs/data-storage.md)에 모아 설명한다. 이 절은 저장 루트 입력 규칙과 실행 절차를 다룬다.
+
 `WORKNARU_DATA_DIR`로 외부 루트 하나를 지정한다. 미설정 시 Windows의 `%LOCALAPPDATA%\Worknaru-Dev`를 사용한다. CLI·실행기·Agent 서비스는 [공통 경로 해석](../../packages/dev-environment/paths.mjs)을 사용한다. 실행 시작 시 적용 루트와 출처를 stderr에 출력하며 조회 JSON은 stdout에 둔다.
 
 ```powershell
