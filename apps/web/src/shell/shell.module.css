@@ -33,13 +33,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  width: 100%;
-}
-.railItem {
-  display: flex;
   align-items: center;
-  gap: var(--space-2);
-  flex-direction: column;
+}
+.settingsNavigation {
+  position: relative;
+}
+.unsavedIndicator {
+  position: absolute;
+  top: calc(-1 * var(--space-1));
+  right: calc(-1 * var(--space-1));
+  display: flex;
+  border-radius: var(--radius-pill);
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  pointer-events: none;
 }
 .railFooter {
   display: flex;
@@ -196,9 +203,6 @@
     flex-direction: row;
     margin-left: auto;
     width: auto;
-  }
-  .railItem {
-    flex-direction: row;
   }
   .railFooter {
     display: none;

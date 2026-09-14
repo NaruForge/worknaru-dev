@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AgentError, type AgentRequest } from '@worknaru/core';
@@ -172,48 +172,91 @@ it('does not permit creation when models are unavailable', async () => {
   expect((screen.getByRole('button', { name: '만들기' }) as HTMLButtonElement).disabled).toBe(true);
   expect(create).not.toHaveBeenCalled();
 });
-it('requires a fresh archive preview after partial failure and preserves archived history', async () => {
-  const fixture = await opened();
-  const original = fixture.core.agents.archive;
-  let first = true;
-  const archive = vi
-    .spyOn(fixture.core.agents, 'archive')
-    .mockImplementation(async (input) =>
-      first ? ((first = false), { archived: [], failed: ['sample-agent'] }) : original(input),
+it.each(['header', 'list'])(
+  'requires a fresh archive preview after partial failure from %s and preserves history',
+  async (source) => {
+    const fixture = await opened();
+    const original = fixture.core.agents.archive;
+    let first = true;
+    const archive = vi
+      .spyOn(fixture.core.agents, 'archive')
+      .mockImplementation(async (input) =>
+        first ? ((first = false), { archived: [], failed: ['sample-agent'] }) : original(input),
+      );
+    fireEvent.click(
+      screen.getByRole('button', { name: source === 'list' ? 'Agent 보관' : '보관' }),
     );
-  fireEvent.click(screen.getByRole('button', { name: '보관' }));
-  await waitFor(() =>
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole('button', {
+            name: '확인하고 보관',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '확인하고 보관' }));
+    await screen.findByRole('button', { name: '보관 대상 다시 확인' });
     expect(
-      (
-        screen.getByRole('button', {
-          name: '확인하고 보관',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false),
-  );
-  fireEvent.click(screen.getByRole('button', { name: '확인하고 보관' }));
-  await screen.findByRole('button', { name: '보관 대상 다시 확인' });
-  expect(
-    (screen.getByRole('button', { name: '확인하고 보관' }) as HTMLButtonElement).disabled,
-  ).toBe(true);
-  fireEvent.click(screen.getByRole('button', { name: '보관 대상 다시 확인' }));
-  await waitFor(() =>
-    expect(
-      (
-        screen.getByRole('button', {
-          name: '확인하고 보관',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false),
-  );
-  fireEvent.click(screen.getByRole('button', { name: '확인하고 보관' }));
-  await waitFor(() => expect(screen.queryByLabelText('메시지')).toBeNull());
-  expect(archive).toHaveBeenCalledTimes(2);
-  expect(screen.getByText(/이번 주에는 Agent 생성/)).toBeTruthy();
+      (screen.getByRole('button', { name: '확인하고 보관' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '보관 대상 다시 확인' }));
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole('button', {
+            name: '확인하고 보관',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole('button', { name: '확인하고 보관' }));
+    await waitFor(() => expect(screen.queryByLabelText('메시지')).toBeNull());
+    expect(archive).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/이번 주에는 Agent 생성/)).toBeTruthy();
+  },
+);
+it('archives an unselected Agent without changing the current draft and sends only once', async () => {
+  const fixture = await opened(createFixture('continuity'));
+  const user = userEvent.setup();
+  const preview = vi.spyOn(fixture.core.agents, 'archivePreview');
+  const original = fixture.core.agents.archive;
+  let finish!: () => void;
+  const archive = vi.spyOn(fixture.core.agents, 'archive').mockImplementation(async (input) => {
+    await new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    return original(input);
+  });
+  fireEvent.change(screen.getByLabelText('메시지'), { target: { value: '현재 작업 초안' } });
+  const opener = within(screen.getByRole('group', { name: '고객 미팅 준비' })).getByRole('button', {
+    name: 'Agent 보관',
+  });
+  await user.click(opener);
+  await waitFor(() => expect(preview).toHaveBeenCalledWith({ agent: 'second-agent' }));
+  await user.click(screen.getByRole('button', { name: '취소' }));
+  await waitFor(() => expect(document.activeElement).toBe(opener));
+  expect(archive).not.toHaveBeenCalled();
+  await user.click(opener);
+  const confirm = screen.getByRole('button', { name: '확인하고 보관' });
+  await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(confirm);
+  fireEvent.click(confirm);
+  expect(archive).toHaveBeenCalledTimes(1);
+  expect(archive).toHaveBeenCalledWith({ token: 'second-agent' });
+  await act(async () => finish());
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await waitFor(() => expect(screen.queryByRole('group', { name: '고객 미팅 준비' })).toBeNull());
+  expect(screen.getByRole('heading', { name: '주간 업무 정리' })).toBeTruthy();
+  expect((screen.getByLabelText('메시지') as HTMLTextAreaElement).value).toBe('현재 작업 초안');
+  expect(fixture.agents[0]!.archivedAt).toBeNull();
+  expect(fixture.agents[1]!.archivedAt).toBeTruthy();
+  expect(document.activeElement).toBe(screen.getByRole('navigation', { name: 'Agent 선택' }));
 });
 it('retains a settings conflict and reloads the current revision before saving', async () => {
   const fixture = await opened();
-  fireEvent.click(screen.getByRole('button', { name: '전송 설정' }));
+  fireEvent.click(screen.getByRole('button', { name: '설정' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Agent 동작' })[0]!);
   await screen.findByLabelText('기본 전송 방식');
   fireEvent.change(screen.getByLabelText('기본 전송 방식'), { target: { value: 'steer' } });
   await act(() => fixture.core.agents.saveSettings({ sendMode: 'queue', revision: 0 }));

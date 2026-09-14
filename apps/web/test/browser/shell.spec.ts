@@ -10,6 +10,117 @@ const settings = (page: Page) =>
     .getByRole('navigation', { name: '앱 탐색', exact: true })
     .getByRole('button', { name: /^설정/ })
     .click();
+
+test('icon navigation exposes names, hover titles and unsaved settings without duplicate shortcuts', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page);
+  const rail = page.getByRole('complementary', { name: '앱 탐색 영역' });
+  const nav = page.getByRole('navigation', { name: '앱 탐색', exact: true });
+  expect(await rail.innerText()).toBe('');
+  expect((await rail.boundingBox())!.width).toBe(64);
+  await expect(page.getByRole('button', { name: '전송 설정', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '전송 방식 변경' })).toHaveCount(0);
+  await expect(page.getByText('전송 방식: 대기열', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '보관', exact: true })).toBeVisible();
+  for (const label of ['Agent', '설정']) {
+    const button = nav.getByRole('button', { name: label, exact: true });
+    await button.hover();
+    await expect(button).toHaveAttribute('title', label);
+    expect(await button.innerText()).toBe('');
+    expect((await button.locator('svg').boundingBox())!.width).toBe(16);
+  }
+  await nav.getByRole('button', { name: '설정', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Agent 동작', exact: true }).click();
+  await page.getByLabel('기본 전송 방식').selectOption('steer');
+  await page.getByRole('button', { name: '작업으로 돌아가기' }).click();
+  await expect(nav.getByRole('button', { name: '설정 (미저장)', exact: true })).toHaveAttribute(
+    'title',
+    '설정 (미저장)',
+  );
+  await settings(page);
+  await expect(page.getByText('저장하지 않은 변경', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '변경 취소' }).click();
+  await expect(nav.getByRole('button', { name: '설정', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+});
+
+for (const width of [390, 1440])
+  test(`list archive preserves the selected Agent, draft and reading position ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page);
+    const history = page.getByLabel('대화 기록', { exact: true });
+    await history.evaluate((element) => {
+      element.scrollTop = 200;
+    });
+    await page.getByLabel('메시지', { exact: true }).fill('진행 중인 작업');
+    if (width < 768) await page.getByRole('button', { name: 'Agent 목록으로' }).click();
+    const url = page.url();
+    const opener = page
+      .getByRole('group', { name: '고객 미팅 준비', exact: true })
+      .getByRole('button', { name: 'Agent 보관' });
+    await expect(opener).toHaveAccessibleDescription('고객 미팅 준비');
+    await opener.click();
+    const dialog = page.getByRole('dialog', { name: 'Agent 보관' });
+    await expect(dialog.getByText('고객 미팅 준비', { exact: false })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(opener).toBeFocused();
+    await opener.click();
+    await dialog.getByRole('button', { name: '확인하고 보관' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('group', { name: '고객 미팅 준비', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Agent 선택' })).toBeFocused();
+    expect(page.url()).toBe(url);
+    if (width < 768) await page.getByRole('button', { name: /주간 업무 정리/ }).click();
+    await expect(page.getByLabel('메시지', { exact: true })).toHaveValue('진행 중인 작업');
+    expect(await history.evaluate((element) => element.scrollTop)).toBe(200);
+    if (width < 768) await page.getByRole('button', { name: 'Agent 목록으로' }).click();
+    await page.getByRole('button', { name: '보관함', exact: true }).click();
+    await expect(page.getByRole('group', { name: '고객 미팅 준비', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Agent 보관', exact: true })).toHaveCount(0);
+  });
+
+test('an Agent can be archived from the list before selecting a conversation', async ({ page }) => {
+  await page.goto('/iframe.html?id=product-agents--conversation&viewMode=story');
+  await page.getByRole('button', { name: 'Agent 보관', exact: true }).click();
+  await page.getByRole('button', { name: '확인하고 보관' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('아직 Agent가 없습니다.', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Agent를 보관했습니다: 주간 업무 정리.', { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Agent 선택' })).toBeFocused();
+});
+
+test.describe('touch controls', () => {
+  test.use({ hasTouch: true });
+  test('icon-only navigation and list archive keep the shared touch target', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/iframe.html?id=product-agents--conversation&viewMode=story');
+    for (const button of [
+      page
+        .getByRole('navigation', { name: '앱 탐색', exact: true })
+        .getByRole('button', { name: 'Agent', exact: true }),
+      page.getByRole('button', { name: '설정', exact: true }),
+      page.getByRole('button', { name: 'Agent 보관', exact: true }),
+    ]) {
+      await expect(button).toBeVisible();
+      const box = (await button.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  });
+});
 test('hidden Agent dialogs do not obstruct settings after navigation or resize', async ({
   page,
 }) => {
@@ -44,7 +155,11 @@ for (const width of [390, 1440])
     const position = await list.evaluate((element) => element.scrollTop);
     expect(position).toBeGreaterThan(0);
     await expect(list.getByRole('button', { name: /^작업 40 / })).toBeInViewport({ ratio: 1 });
-    await expect(page.getByRole('button', { name: '전송 설정', exact: true })).toBeInViewport({
+    await expect(
+      page
+        .getByRole('group', { name: '작업 40', exact: true })
+        .getByRole('button', { name: 'Agent 보관' }),
+    ).toBeInViewport({
       ratio: 1,
     });
     await settings(page);
@@ -156,7 +271,8 @@ test('panel mouse and keyboard sizing persists, collapses, resets and adapts to 
 });
 test('unsaved settings remain local to the tab and commit only on Save', async ({ page }) => {
   await open(page);
-  await page.getByRole('button', { name: '전송 설정', exact: true }).click();
+  await settings(page);
+  await page.getByRole('button', { name: 'Agent 동작', exact: true }).click();
   await page.getByLabel('기본 전송 방식').selectOption('steer');
   await page.getByRole('button', { name: '작업으로 돌아가기' }).click();
   await expect(page.getByText('전송 방식: 대기열', { exact: true })).toBeVisible();

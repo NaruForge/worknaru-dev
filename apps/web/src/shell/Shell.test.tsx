@@ -128,7 +128,8 @@ it('retains the lost-ack request ID after settings and another Agent', async () 
 it('keeps unsaved settings through navigation and does not save automatically', async () => {
   const { fixture } = await open();
   const save = vi.spyOn(fixture.core.agents, 'saveSettings');
-  fireEvent.click(screen.getByRole('button', { name: '전송 설정' }));
+  fireEvent.click(screen.getByRole('button', { name: '설정' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Agent 동작' })[0]!);
   fireEvent.change(screen.getByLabelText('기본 전송 방식'), { target: { value: 'steer' } });
   back();
   settings();
