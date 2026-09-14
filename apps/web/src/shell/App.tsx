@@ -50,7 +50,7 @@ function ConnectedApp({
   const [routeNotice, setRouteNotice] = useState('');
   const lastFocus = useRef<HTMLElement | null>(null);
   const lastSection = useRef<SettingsSection>('appearance');
-  const active = navigation.view.kind !== 'settings';
+  const active = !resetting && navigation.view.kind !== 'settings';
   if (navigation.view.kind === 'settings') lastSection.current = navigation.view.section;
   useEffect(() => {
     if (navigation.view.kind === 'invalid' || (navigation.view.kind === 'agents' && ui.missing)) {
@@ -203,7 +203,11 @@ function ConnectedApp({
             onResetting={setResetting}
             endpoint={endpoint}
             section={
-              navigation.view.kind === 'settings' ? navigation.view.section : lastSection.current
+              resetting
+                ? 'data'
+                : navigation.view.kind === 'settings'
+                  ? navigation.view.section
+                  : lastSection.current
             }
             onSection={openSettings}
             onReturn={returnToAgent}
