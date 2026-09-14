@@ -13,7 +13,7 @@ export function agentRpc(options: PaseoAdapterOptions): AgentAPI {
     try {
       await client.connect();
       const info = client.getLastServerInfoMessage();
-      if (info?.serverId !== options.expectedServerId) throw new AgentError('target_mismatch', '접속 대상의 서버 ID가 일치하지 않습니다.');
+      if (info?.serverId !== options.expectedServerId) throw new AgentError('target_mismatch', '실행 환경이 초기화되었거나 바뀌었습니다. Web은 새로고침하고 CLI는 현재 환경으로 다시 실행해 주세요.');
       if (info.version !== '0.8.0') throw new AgentError('unsupported_version', '지원하지 않는 Daemon 버전입니다.');
       const response = await client.invokePluginRpc('worknaru-agent-service', 'agents.execute', { operation, input }) as
         { ok: true; data: never } | { ok: false; error: { code: string; message: string } };
@@ -27,7 +27,7 @@ export function agentRpc(options: PaseoAdapterOptions): AgentAPI {
   };
   return {
     health: (input = {}) => invoke('health', input),
-    options: (input = {}) => invoke('options', input),
+    options: input => invoke('options', input),
     directories: input => invoke('directories', input),
     create: input => invoke('create', input),
     list: (input = {}) => invoke('list', input),

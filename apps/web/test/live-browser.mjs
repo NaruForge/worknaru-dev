@@ -1,3 +1,4 @@
+import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
 // Opt-in real Provider verification. Creates and stops its own managed instance.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -9,7 +10,7 @@ import { root } from '../../../packages/dev-environment/paths.mjs';
 import { portOpen } from '../../cli/local-support.mjs';
 if (process.platform !== 'win32') throw Error('Real managed UI verification requires Windows.');
 assert.equal(await portOpen(), false, 'The managed development port must be free.');
-const parent = path.join(root, '.local/ui-browser');
+const parent = await testDirectory('ui-browser');
 await mkdir(parent, { recursive: true });
 const folder = await mkdtemp(path.join(parent, 'run-'));
 const project = path.join(folder, 'project');
@@ -41,7 +42,7 @@ try {
   page.on('pageerror', (error) => errors.push(error.message));
   const source = await readFile(new URL('./agent.browser.mjs', import.meta.url), 'utf8');
   const flow = new Function(`return (${source.trim().replace(/;$/, '')}\n)`)();
-  const result = await flow(page);
+  const result = await flow(page, project, path.join(folder, 'mobile.png'));
   assert.equal(result.historyRetained, true);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('http://127.0.0.1:6868/');
@@ -120,11 +121,72 @@ try {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await cli('agent', 'archive', agent.id, '--yes');
   await expect(page.getByLabel('메시지', { exact: true })).toHaveCount(0, { timeout: 15000 });
+  await page.getByRole('button', { name: '활성', exact: true }).click();
+  await cli('agent', 'create', '--name', '초기화 전 초안', '--cwd', project);
+  await page.getByRole('button', { name: /초기화 전 초안/ }).click();
+  await message.fill('초기화 후 절대 재전송하지 않을 초안');
+  const priorUrl = page.url();
+  const oldId = (await readFile(path.join(env.WORKNARU_DATA_DIR, 'server-id'), 'utf8')).trim();
+  await page.evaluate((id) => {
+    localStorage.setItem(
+      'worknaru.ui.server.' + encodeURIComponent(id) + '.layout.v1',
+      JSON.stringify({
+        sidebarWidth: 410,
+        detailsWidth: 430,
+        detailsOpen: true,
+        sidebarCollapsed: true,
+      }),
+    );
+  }, oldId);
+  await cli('dev', 'stop');
+  started = false;
+  await cli('dev', 'reset', '--yes');
+  await cli('agent', 'setup');
+  await cli('dev', 'start');
+  started = true;
+  assert.notEqual(
+    (await readFile(path.join(env.WORKNARU_DATA_DIR, 'server-id'), 'utf8')).trim(),
+    oldId,
+  );
+  assert.equal(page.url(), priorUrl, 'An open Web must not automatically transition on reset');
+  await expect(message).toHaveValue('초기화 후 절대 재전송하지 않을 초안');
+  await page.getByRole('button', { name: '보내기', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: '새로고침' }).first()).toBeVisible();
+  assert.deepEqual(
+    await cli('agent', 'list'),
+    [],
+    'A stale tab must not create or send to the new instance',
+  );
+  await page.reload();
+  await expect(page).toHaveURL(/#\/agents\?list=active$/);
+  await expect(page.getByLabel('메시지', { exact: true })).toHaveCount(0);
+  assert.equal(
+    await page.evaluate(
+      (id) => localStorage.getItem('worknaru.ui.server.' + encodeURIComponent(id) + '.theme'),
+      oldId,
+    ),
+    null,
+  );
+  assert.equal(
+    await page.evaluate(
+      (id) => localStorage.getItem('worknaru.ui.server.' + encodeURIComponent(id) + '.layout.v1'),
+      oldId,
+    ),
+    null,
+  );
+  await page.getByRole('button', { name: '설정', exact: true }).click();
+  await expect(page.getByLabel('화면 테마')).toHaveValue('system');
+  await page.getByRole('button', { name: 'Agent 동작', exact: true }).click();
+  await expect(page.getByLabel('기본 전송 방식')).toHaveValue('queue');
+  assert.deepEqual(await cli('agent', 'list'), []);
   assert.deepEqual(errors, []);
   const evidence = {
     ...result,
     cliWebCrossover: true,
     reconnection: true,
+    manualRefreshReset: true,
+    staleTabSendBlocked: true,
+    newInstancePreferencesReset: true,
     settingsContextRetained: true,
     sharedSettingsConflict: true,
     pageErrors: errors,

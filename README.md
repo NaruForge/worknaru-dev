@@ -29,10 +29,12 @@ pnpm exec worknaru dev stop
 
 `agent setup`은 개발 환경이 정지했을 때 최초 한 번 실행한다. 전용 Daemon에 Agent 실행 플러그인을 준비하며 기존 기본 설정은 백업한다. Codex가 설치되고 로그인된 환경이 필요하다. Agent 생성 시 모델 목록을 조회하고 작업 폴더를 선택한다. 전송 방식은 CLI의 `settings set send-mode queue|steer` 또는 Web의 **설정 → Agent 동작**에서만 변경한다. 기본 전송 방식은 대기열이며, 터미널·탭을 닫아도 Daemon이 살아 있는 동안 순서대로 실행한다. 보관은 실행 중인 작업과 하위 Agent에 미치는 영향을 확인한 뒤 진행하고 기록·파일을 보존한다.
 
-설정으로 자신의 브랜드를 쉽게 적용할 수 있다. 표시 이름·로고·파비콘·대표 색상·홈페이지/문서/지원 링크를 바꾸고 `pnpm build`로 반영한다. 저장 위치는 `WORKNARU_DATA_DIR`로 루트 하나를 지정한다. [리브랜딩 설정](packages/branding/README.md) · [저장 위치 설정](apps/paseo-dev/README.md#저장-위치-설정)
+설정으로 자신의 브랜드를 쉽게 적용할 수 있다. 표시 이름·로고·파비콘·대표 색상·홈페이지/문서/지원 링크를 바꾸고 `pnpm build`로 반영한다. 기본 사용자 데이터는 `%LOCALAPPDATA%\Worknaru-Dev`에 저장하며 `WORKNARU_DATA_DIR`로 외부 루트 하나를 지정한다. [리브랜딩 설정](packages/branding/README.md) · [저장 위치 설정](apps/paseo-dev/README.md#저장-위치-설정)
 
-표시 이름에는 한글과 일반 공백을 쓸 수 있다. 이미지 파일명은 `logo.png`와 `favicon.png`/`favicon.ico`, 링크 입력은 ASCII URL로 제한한다. 데이터 루트는 기본값까지 포함해 폴더명에 영문·숫자·`-_.`만 허용한다. 저장소 상위 경로에 한글·공백이 있으면 지원되는 절대경로를 별도 루트로 지정해야 한다.
+표시 이름에는 한글과 일반 공백을 쓸 수 있다. 이미지 파일명은 `logo.png`와 `favicon.png`/`favicon.ico`, 링크 입력은 ASCII URL로 제한한다. 데이터 루트는 기본값까지 포함해 폴더명에 영문·숫자·`-_.`만 허용한다. 실행 checkout과 Agent 작업 폴더도 같은 경로 규칙을 따른다. 기본 사용자 경로가 미지원이면 지원되는 외부 루트를 명시한다.
 
 CLI 명령 `worknaru`, 환경 변수 접두사, 패키지·API·내부 식별자 변경은 지원하지 않는다. 실행 중 브랜드 전환, 개별 저장 경로 지정, 기존 데이터 자동 이전과 OS 서비스 이름 변경도 지원 범위에 포함하지 않는다.
 
 코드나 문서를 변경하기 전에 [프로젝트 기록 규약](docs/project-records.md)을 읽는다. 파일·패키지의 배치는 [저장소 구조 규칙](docs/repository-structure.md)을 따른다. 전체 빌드와 자동 테스트는 루트에서 `pnpm test`로 실행한다. 실제 Windows 개발 환경의 전체 시작·종료 검증은 개발 환경을 끈 뒤 `pnpm dev:verify`로 실행한다.
+
+개발 단계의 저장 구조 변경은 마이그레이션하지 않는다. `dev stop` 후 `pnpm exec worknaru dev reset --dry-run`으로 대상을 확인하고 `--yes`로 전용 데이터 전체를 초기화한다. 실제 작업 프로젝트·소스·개인 Paseo 및 Provider 로그인은 보존한다. 초기화 후 `doctor → agent setup → dev start → status`로 새 환경을 만들고 열린 Web을 새로고침한다. [초기화 안내](apps/cli/README.md#사용자-데이터-전체-초기화)

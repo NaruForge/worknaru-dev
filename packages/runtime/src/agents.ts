@@ -18,12 +18,12 @@ export interface HistoryEntry {
 }
 export interface AgentHistory { entries: HistoryEntry[]; cursor: unknown; epoch: string | null }
 export interface AgentSettings { sendMode: SendMode; revision: number }
-export interface AgentOptions { defaultCwd: string; models: { id: string; name: string; default: boolean }[]; available: boolean }
+export interface AgentOptions { models: { id: string; name: string; default: boolean }[]; available: boolean }
 export interface ArchivePreview { token: string; agents: Agent[]; queued: AgentRequest[] }
 /** Agent-only capabilities. Transport operation names and envelopes are adapter details. */
 export interface AgentAPI {
   health(input?: Record<string, never>): Promise<{ ready: boolean; version: number }>;
-  options(input?: { cwd?: string }): Promise<AgentOptions>;
+  options(input: { cwd: string }): Promise<AgentOptions>;
   directories(input: { query: string }): Promise<{ paths: string[] }>;
   create(input: { id: string; name: string; cwd: string; model: string }): Promise<Agent>;
   list(input?: { archived?: boolean }): Promise<Agent[]>;

@@ -38,36 +38,30 @@ export function CreateAgentDialog({
   const guard = useRef(false);
   useEffect(() => {
     let stopped = false;
-    void core.agents
-      .options({})
-      .then((value) => {
-        if (stopped) return;
-        setOptions(value);
-        setCwd(value.defaultCwd);
-        setModel(value.models.find((item) => item.default)?.id ?? value.models[0]?.id ?? '');
-        if (!value.available)
-          setError(
-            'Codex 모델을 불러올 수 없습니다. 이 컴퓨터의 Codex 로그인 상태를 확인해 주세요.',
-          );
-      })
-      .catch((e) => {
-        if (!stopped) setError(messageOf(e));
-      });
-    return () => {
-      stopped = true;
-    };
-  }, [core]);
-  useEffect(() => {
-    let stopped = false;
+    setOptions(null);
+    setModel('');
     setPaths([]);
+    setError('');
+    if (!cwd.trim()) return;
     const timer = setTimeout(() => {
-      if (!cwd.trim()) return;
       void core.agents
         .directories({ query: cwd })
         .then((value) => {
           if (!stopped) setPaths(value.paths);
         })
         .catch(() => {});
+      void core.agents
+        .options({ cwd })
+        .then((value) => {
+          if (stopped) return;
+          setOptions(value);
+          setModel(value.models.find((item) => item.default)?.id ?? value.models[0]?.id ?? '');
+          if (!value.available)
+            setError('Codex 모델을 불러올 수 없습니다. 로그인 상태를 확인해 주세요.');
+        })
+        .catch((error) => {
+          if (!stopped) setError(messageOf(error));
+        });
     }, 350);
     return () => {
       stopped = true;
@@ -116,11 +110,15 @@ export function CreateAgentDialog({
             label="작업 폴더"
             hint="Daemon이 실행되는 컴퓨터의 폴더입니다. 경로를 직접 입력할 수도 있습니다."
             value={cwd}
-            onChange={(event) => setCwd(event.target.value)}
+            onChange={(event) => {
+              setOptions(null);
+              setModel('');
+              setCwd(event.target.value);
+            }}
             list="directory-suggestions"
             autoComplete="off"
             required
-            disabled={busy || !options}
+            disabled={busy}
           />
           <datalist id="directory-suggestions">
             {paths.map((path) => (
@@ -141,7 +139,9 @@ export function CreateAgentDialog({
                 </option>
               ))
             ) : (
-              <option value="">모델 불러오는 중…</option>
+              <option value="">
+                {cwd ? '모델 불러오는 중…' : '작업 폴더를 먼저 입력해 주세요'}
+              </option>
             )}
           </Select>
           {error && <Alert tone="error">{error}</Alert>}

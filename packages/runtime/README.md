@@ -28,7 +28,7 @@ Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. `
 
 | 작업 | 계약 |
 | --- | --- |
-| `health`, `options`, `directories` | 실행부 준비, Codex 모델·기본 폴더, 디렉터리 후보 |
+| `health`, `options`, `directories` | 실행부 준비, 명시적 `options({ cwd })`의 Codex 모델, 절대경로 기반 디렉터리 후보 |
 | `create`, `list`, `show` | 멱등 생성, 활성/보관 목록, 이름·ID로 선택한 Agent 상태·권한 |
 | `history` | 순서 번호·턴·메시지 ID와 텍스트, 이전 페이지 cursor·epoch |
 | `send`, `requests` | 영속 접수와 실행 상태. 접수는 완료를 의미하지 않음 |

@@ -13,7 +13,7 @@ const agent = value => ({
     description: p.description ?? '', input: p.input ?? {}, actions: (p.actions ?? []).map(a => ({ id: a.id, label: a.label, behavior: a.behavior })) })),
 });
 
-export async function connectAgentDriver({ endpoint, serverId, defaultCwd }) {
+export async function connectAgentDriver({ endpoint, serverId }) {
   const client = new DaemonClient({ url: endpoint, clientId: `worknaru-agent-worker-${crypto.randomUUID()}`,
     clientType: 'cli', appVersion: '0.8.0', connectTimeoutMs: 5000, reconnect: { enabled: true }, logger, webSocketFactory: createStatusWebSocket });
   try { await client.connect(); } catch (error) { await client.close().catch(() => {}); throw error; }
@@ -35,15 +35,13 @@ export async function connectAgentDriver({ endpoint, serverId, defaultCwd }) {
   };
   return {
     connected,
-    async options(cwd = defaultCwd) {
+    async options(cwd) {
       const value = await safe(() => client.listProviderModels('codex', { cwd }));
-      return { defaultCwd, available: !value.error && value.models?.length > 0,
+      return { available: !value.error && value.models?.length > 0,
         models: (value.models ?? []).filter(m => m.isSelectable !== false).map(m => ({ id: m.id, name: m.label ?? m.id, default: m.isDefault === true })) };
     },
-    async directories(query) {
-      const resolved = path.resolve(defaultCwd, query); const trailing = /[\\/]$/.test(query);
-      const cwd = trailing ? resolved : path.dirname(resolved);
-      const value = await safe(() => client.getDirectorySuggestions({ query: trailing ? '' : path.basename(resolved), cwd, includeFiles: false, includeDirectories: true, limit: 20 }));
+    async directories({ cwd, query }) {
+      const value = await safe(() => client.getDirectorySuggestions({ query, cwd, includeFiles: false, includeDirectories: true, limit: 20 }));
       return { paths: (value.entries ?? []).filter(e => e.kind === 'directory').map(e => path.resolve(cwd, e.path)) };
     },
     async list() {

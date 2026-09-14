@@ -2,16 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createAgentService, initialAgentState } from '@worknaru/core/agent-service';
-import { conversationMessages } from '@worknaru/core';
+import { AgentError, conversationMessages } from '@worknaru/core';
 
 const snapshot = (id = 'agent-one', extra = {}) => ({ id, name: id, cwd: '/project', model: 'codex-model', managed: true, status: 'idle', turnId: null, archivedAt: null, permissions: [], parentId: null, ...extra });
-async function fixture(t, seed = initialAgentState(), extra = {}) {
+async function fixture(t, seed = initialAgentState(), extra = {}, validateDirectory = async () => {}) {
   let stored = structuredClone(seed); const listeners = new Map(); const calls = [];
   const agents = new Map([['agent-one', snapshot()]]);
   let turn = 0;
   const driver = {
     list: async () => structuredClone([...agents.values()]), get: async id => structuredClone(agents.get(id)),
-    options: async () => ({ models: [{ id: 'codex-model', default: true }], available: true, defaultCwd: '/project' }),
+    options: async () => ({ models: [{ id: 'codex-model', default: true }], available: true }),
     create: async input => { calls.push(['create', input.id]); const a = snapshot('created-agent', { name: input.name, createId: input.id }); agents.set(a.id, a); return structuredClone(a); },
     watch: async (id, fn) => { listeners.set(id, fn); },
     send: async (id, text, messageId, mode) => {
@@ -23,7 +23,7 @@ async function fixture(t, seed = initialAgentState(), extra = {}) {
     archive: async id => { calls.push(['archive', id]); Object.assign(agents.get(id), { archivedAt: '2026-09-11T00:00:00Z', turnId: null, status: 'closed', permissions: [] }); },
     history: async () => ({ entries: [], epoch: 'epoch', cursor: null }), close: async () => {}, ...extra,
   };
-  const service = createAgentService({ driver, store: { load: () => structuredClone(stored), save: value => { stored = structuredClone(value); }, close() {} }, validateDirectory: async () => {} });
+  const service = createAgentService({ driver, store: { load: () => structuredClone(stored), save: value => { stored = structuredClone(value); }, close() {} }, validateDirectory });
   await service.initialize(); t.after(() => service.close());
   const call = (op, input = {}) => service[op](input);
   const send = id => call('send', { agent: 'agent-one', id, text: id });
@@ -180,4 +180,61 @@ test('storage write failure prevents execution and marks health unavailable', as
   await service.initialize(); fail = true;
   await assert.rejects(service.send({ agent: 'agent-one', id: 'unsaved', text: 'must not execute' }), { code: 'storage_unavailable' });
   assert.equal((await service.health({})).ready, false); assert.equal(sent, false); await service.close();
+});
+
+test('working directory validation precedes model lookup, creation, admission and permission allow', async t => {
+  let valid = true, modelCalls = 0;
+  const check = async () => { if (!valid) throw new AgentError('invalid_directory', 'Folder is missing'); };
+  const f = await fixture(t, initialAgentState(), { options: async () => { modelCalls++; return { available: true, models: [{ id: 'codex-model' }] }; } }, check);
+  await f.send('accepted'); await f.settle(); f.finish(); await f.settle();
+  valid = false;
+  await assert.rejects(f.call('options'), { code: 'invalid_input' });
+  await assert.rejects(f.call('options', { cwd: '/project' }), { code: 'invalid_directory' });
+  await assert.rejects(f.call('create', { id: 'new', name: 'New', cwd: '/project', model: 'codex-model' }), { code: 'invalid_directory' });
+  await assert.rejects(f.send('new-send'), { code: 'invalid_directory' });
+  await assert.rejects(f.call('resume', { agent: 'agent-one' }), { code: 'invalid_directory' });
+  assert.equal(modelCalls, 0);
+  assert.equal(f.state().requests.length, 1);
+  assert.equal((await f.send('accepted')).state, 'completed', 'Existing request lookup must remain idempotent');
+  f.agents.get('agent-one').permissions = [{ id: 'permission', actions: [], input: {} }];
+  await assert.rejects(f.call('permission', { agent: 'agent-one', id: 'permission', behavior: 'allow' }), { code: 'invalid_directory' });
+  assert.equal(f.calls.filter(c => c[0] === 'permission').length, 0);
+  await f.call('permission', { agent: 'agent-one', id: 'permission', behavior: 'deny' });
+  assert.equal(f.calls.filter(c => c[0] === 'permission').length, 1);
+  assert.equal((await f.call('show', { agent: 'agent-one' })).id, 'agent-one');
+});
+
+test('a changed folder pauses only its queued Agent before sending and permits cancellation and archive', async t => {
+  const invalid = new Set();
+  const f = await fixture(t, initialAgentState(), {}, async cwd => {
+    if (invalid.has(cwd)) throw new AgentError('invalid_directory', 'Folder is missing');
+  });
+  await f.send('first'); await f.settle();
+  await f.send('pending'); await f.send('cancelable');
+  invalid.add('/project'); f.finish(); await f.settle();
+  const pending = f.state().requests.find(r => r.id === 'pending');
+  assert.equal(pending.state, 'queued'); assert.match(pending.error, /Folder is missing/);
+  assert.equal(f.state().paused['agent-one'], true);
+  assert.equal(f.calls.filter(c => c[0] === 'send').length, 1);
+  f.agents.set('healthy', snapshot('healthy', { cwd: '/healthy' }));
+  await f.call('send', { agent: 'healthy', id: 'healthy-message', text: 'hello' }); await f.settle();
+  assert.equal(f.calls.filter(c => c[0] === 'send').length, 2);
+  await f.call('cancel', { agent: 'agent-one', id: 'cancelable' });
+  invalid.clear();
+  await f.call('resume', { agent: 'agent-one' }); await f.settle();
+  assert.equal(f.calls.filter(c => c[0] === 'send').length, 3);
+  assert.equal(f.state().requests.find(r => r.id === 'pending').error, null);
+  invalid.add('/project');
+  const preview = await f.call('archivePreview', { agent: 'agent-one' });
+  assert.deepEqual((await f.call('archive', { token: preview.token })).failed, []);
+});
+
+test('restart pauses a queued Agent with an invalid folder without introducing an uncertain send', async t => {
+  const state = initialAgentState();
+  state.requests.push({ id: 'persisted', agentId: 'agent-one', text: 'hello', state: 'queued', mode: 'queue' });
+  const f = await fixture(t, state, {}, async () => { throw new AgentError('invalid_directory', 'Folder is missing'); });
+  await f.settle();
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.state().requests[0].state, 'queued');
+  assert.equal(f.state().paused['agent-one'], true);
 });

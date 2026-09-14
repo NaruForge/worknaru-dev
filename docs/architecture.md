@@ -139,7 +139,7 @@ Worknaru 전용 Paseo는 현재 PC의 개인용 Paseo와 실행 인스턴스, Da
 | Git 저장소 | 소스, 문서, 패키지 의존성과 개발 환경 재현 절차 |
 | CLI 프로세스 | 명령·관찰 중인 클라이언트·결과. 종료해도 Agent·대기열을 삭제하지 않음 |
 | 브라우저 | 웹 코드·대상 설정·선택된 Agent·화면 결과·입력 중 초안. Agent·대기열의 원본은 Daemon에 있음 |
-| 전용 Daemon 데이터 디렉터리 | 식별 정보·설정·로그·Agent 기록·worktree·임시 파일·CLI 관리 기록과 `agent-state.sqlite`의 전송·설정. `WORKNARU_DATA_DIR`로 지정하며 기본값은 Git에서 제외된 `.local/paseo-dev/` |
+| 전용 Daemon 데이터 디렉터리 | 식별 정보·설정·로그·Agent 기록·worktree·임시 파일·CLI 관리 기록과 `agent-state.sqlite`의 전송·설정. `WORKNARU_DATA_DIR`로 지정하며 기본값은 저장소 밖의 `%LOCALAPPDATA%\Worknaru-Dev` |
 | 임시 웹 제공 디렉터리 | 데이터 루트의 `tmp/web-*`. 공개 빌드 자산과 실행용 `connection.json`만 제공하고 해당 실행 종료 시 정리 |
 | 기존 사용자 환경 | 공유하여 사용할 수 있는 Provider 설정과 인증 정보 |
 
@@ -149,13 +149,17 @@ Worknaru 전용 Paseo는 현재 PC의 개인용 Paseo와 실행 인스턴스, Da
 
 ## 로컬 개발 환경 관리
 
-`doctor`, `dev start`, `dev stop`과 기본 대상 선택은 CLI 앱 계층의 책임이다. Core와 Runtime에 파일·프로세스 관리 API를 추가하지 않는다. 실제 Daemon 상태 조회는 기본 대상에서도 Core → Runtime → Adapter를 거친다.
+`doctor`, `dev start`, `dev stop`, `dev reset`과 기본 대상 선택은 CLI 앱 계층의 책임이다. Core와 Runtime에 파일·프로세스 관리 API를 추가하지 않는다. 실제 Daemon 상태 조회는 기본 대상에서도 Core → Runtime → Adapter를 거친다.
 
 빌드 없이 읽을 수 있는 [진입점](../apps/cli/entry.mjs)이 진단·로컬 관리와 제품 조회를 분기한다. [공통 개발 라이브러리](../packages/dev-environment/README.md)는 기존 검증 앱과 CLI가 같은 경로·설정·실행·웹 파일 준비를 사용하게 한다. CLI가 검증 앱에 의존하지 않으므로 검증 앱 → CLI 의존성과 순환하지 않는다.
 
 시작 명령은 데이터 루트의 작업 잠금과 저장소의 빌드 잠금을 사용한다. 정상 실행 중이면 재사용하고, 정지 상태에서만 빌드 후 숨겨진 detached 실행기를 시작한다. 실행기는 자신이 만든 Daemon 자식 핸들을 보유하며, 최초 CLI와는 Node IPC로 준비 완료를 주고받는다. 이후 CLI는 실행 기록의 임의 토큰과 Windows named pipe를 통해 같은 실행기에 연결한다. 기록의 저장소·데이터 루트와 응답의 소유권, 서버 ID·PID 기록을 대조한다. 웹 자산과 접속 설정, Core 응답까지 준비돼야 성공한다.
 
 종료 명령은 이 실행기에 정상 종료를 요청한다. 저장된 PID만으로 프로세스를 종료하거나 불명확한 기록을 자동 삭제하지 않는다. 제한 시간·실패 정리·수동 확인 방법과 제외 범위는 [CLI 안내](../apps/cli/README.md)를 따른다. 이 제어 채널은 Windows 로컬 개발 실행기 내부용이며 제품 HTTP API·원격 관리 서비스가 아니다.
+
+저장 루트의 `worknaru-data.json`은 사용자 DB를 열지 않고 제품·소유 checkout·저장 구조 버전·초기화 상태를 확인한다. 구조 변경은 `reset_required`로 중단하며 마이그레이션하지 않는다. 명시적 전체 초기화는 전용 데이터만 지우고 실제 프로젝트·소스·개인 로그인 정보를 보존한다. 실패 시 `resetting`을 남겨 재시도 전 실행을 막는다. 새 checkout은 기존 루트를 재사용하지 않는다. [ADR 0011](adr/0011-external-data-and-development-reset.md)
+
+Agent의 작업 폴더는 호출자가 명시하고 서버 경계에서 실제 경로를 검증한다. 생성·모델 조회·새 전송·dispatch·재개·권한 승인 시 검증하며 공통 Core에는 파일 시스템 구현을 주입한다. Web은 유효한 작업 폴더를 입력한 후 모델을 조회한다. 초기화 후 Web은 수동 새로고침으로 새 server ID를 적용하고 UI 선호·선택·임시 상태를 새로 시작한다.
 
 ## 개발 검증 도구의 위치
 

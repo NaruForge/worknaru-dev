@@ -5,7 +5,8 @@
   "exports": {
     "./daemon": "./daemon.mjs",
     "./paths": "./paths.mjs",
-    "./web-files": "./web-files.mjs"
+    "./web-files": "./web-files.mjs",
+    "./storage": "./storage.mjs"
   },
   "dependencies": {
     "@getpaseo/cli": "0.8.0",

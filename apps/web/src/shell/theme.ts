@@ -11,10 +11,11 @@ export function useMediaQuery(query: string) {
   }, [query]);
   return matches;
 }
-export function useTheme() {
+export function useTheme(prefix = 'worknaru.ui') {
+  const key = prefix + '.theme';
   const [theme, update] = useState<Theme>(() => {
     try {
-      const value = localStorage.getItem('worknaru.ui.theme');
+      const value = localStorage.getItem(key);
       if (value === 'light' || value === 'dark') return value;
     } catch {
       /* Storage may be unavailable. */
@@ -30,7 +31,7 @@ export function useTheme() {
     setTheme: (value: Theme) => {
       update(value);
       try {
-        localStorage.setItem('worknaru.ui.theme', value);
+        localStorage.setItem(key, value);
       } catch {
         /* Keep the session preference. */
       }

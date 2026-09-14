@@ -8,15 +8,17 @@ import { describeDataPaths, prepareDataDirectories, resolveDataPaths, root } fro
 import { prepareWebFiles } from '../web-files.mjs';
 import { childEnvironment } from '../daemon.mjs';
 
-const testRoot = path.join(root, '.local', 'path-tests');
+import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
+const testRoot = await testDirectory('paths');
 
 test('one absolute root owns all paths; unrelated environment cannot select it', () => {
-  assert.equal(resolveDataPaths({ PASEO_HOME: 'elsewhere', TEAM_DATA_DIR: 'elsewhere' }).dataHome, path.join(root, '.local', 'paseo-dev'));
+  if (process.platform === 'win32') assert.equal(resolveDataPaths({ LOCALAPPDATA: testRoot, PASEO_HOME: 'elsewhere', TEAM_DATA_DIR: 'elsewhere' }).dataHome, path.join(testRoot, 'Worknaru-Dev'));
+  else assert.throws(() => resolveDataPaths({}), /WORKNARU_DATA_DIR/);
   const dataHome = path.join(testRoot, 'team-data_2.0');
   const paths = resolveDataPaths({ WORKNARU_DATA_DIR: dataHome });
   assert.equal(paths.source, 'WORKNARU_DATA_DIR');
   for (const [key, value] of Object.entries(paths)) {
-    if (!['dataHome', 'source'].includes(key)) assert.ok(value.startsWith(dataHome + path.sep));
+    if (!['dataHome', 'source', 'repository', 'legacy'].includes(key)) assert.ok(value.startsWith(dataHome + path.sep));
   }
   for (const value of ['', ' ', '.', './relative', 'C:relative', '\n', dataHome + ' ']) {
     assert.throws(() => resolveDataPaths({ WORKNARU_DATA_DIR: value }), /WORKNARU_DATA_DIR/);
@@ -39,7 +41,7 @@ test('explicit and default roots reject unsupported folder names before filesyst
   for (const name of ['우리팀', 'team data', 'team\u00a0data', 'team&data', 'team(data)', 'team\n', 'team\u007f']) {
     const unsupported = path.join(testRoot, name);
     assert.throws(() => resolveDataPaths({ WORKNARU_DATA_DIR: unsupported }), /Data root \(WORKNARU_DATA_DIR\).*ASCII/);
-    assert.throws(() => resolveDataPaths({}, unsupported), /Data root \(default\).*Set WORKNARU_DATA_DIR/);
+    if (process.platform === 'win32') assert.throws(() => resolveDataPaths({ LOCALAPPDATA: unsupported }), /LOCALAPPDATA.*Set WORKNARU_DATA_DIR/);
     assert.equal(resolveDataPaths({ WORKNARU_DATA_DIR: supported }, unsupported).dataHome, supported);
     assert.equal(existsSync(unsupported), false);
   }
@@ -76,7 +78,7 @@ test('invalid directory cannot fall back; preparation preserves identity and con
     assert.ok(!(await readdir(paths.dataHome)).some(name => name.startsWith('.worknaru-write-')));
     const file = path.join(directory, 'not-a-directory');
     await writeFile(file, 'sentinel');
-    await assert.rejects(prepareDataDirectories(resolveDataPaths({ WORKNARU_DATA_DIR: file }, directory)), /not writable/);
+    await assert.rejects(prepareDataDirectories(resolveDataPaths({ WORKNARU_DATA_DIR: file })), /Not a directory/);
     assert.equal(await readFile(file, 'utf8'), 'sentinel');
     assert.equal(existsSync(path.join(directory, '.local')), false);
   } finally { await rm(directory, { recursive: true, force: true }); }

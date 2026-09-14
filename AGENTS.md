@@ -12,6 +12,10 @@ Worknaru는 설정으로 쉽게 리브랜딩할 수 있다. 지원 범위는 빌
 
 사용자용 제품 문구는 [공통 브랜드 정의](packages/branding/README.md), 개발 실행기의 데이터 경로는 [공통 경로 해석](packages/dev-environment/paths.mjs)을 사용한다. 이름 변경이 데이터·서버 ID·인증 정보에 영향을 주지 않게 한다.
 
+사용자 데이터는 저장소 밖의 `%LOCALAPPDATA%\Worknaru-Dev` 또는 명시적 `WORKNARU_DATA_DIR`에 둔다. 개발 단계의 저장 구조 변경은 마이그레이션하지 않고 전용 데이터를 삭제해 시작한다. 기존 데이터를 다른 checkout에 연결하지 않는다. 전체 초기화는 정지 후 `dev reset --dry-run`으로 확인하고 `--yes`로 실행한다. 실제 작업 프로젝트·제품 소스·개인 Paseo 및 Provider 로그인 정보는 삭제하지 않는다. [외부 저장·초기화 결정](docs/adr/0011-external-data-and-development-reset.md)을 따른다.
+
+실행 checkout·데이터·Agent 작업 폴더는 공백 없는 ASCII 절대경로를 사용한다. 새 Agent 작업 폴더에 제품 저장소를 자동 입력하지 않는다. 실제 검증은 저장소 밖의 실행별 데이터와 작업 fixture를 사용하며 테스트 전용 `WORKNARU_TEST_ROOT`를 지원한다.
+
 기본 개발 흐름은 `pnpm exec worknaru doctor` → `dev start` → `status` → `dev stop`이다. 로컬 개발 환경 관리는 앱 계층이 맡고 제품 조회는 Core → Runtime → Adapter를 유지한다. [CLI 사용 범위](apps/cli/README.md)와 [의존 경계](docs/adr/0005-local-development-cli-boundary.md)를 따른다.
 
 Repository work와 architecture decision의 기록은

@@ -18,7 +18,11 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
   let stopped = false; let ready = false; let timer;
   const archiving = new Set();
   const save = () => { try { store.save(state); } catch { ready = false; fail('storage_unavailable', '대기열 저장소를 기록하지 못해 자동 실행을 멈췄습니다. 저장 공간을 확인한 뒤 개발 환경을 다시 시작해 주세요.'); } };
-  const pause = id => { state.paused[id] = true; try { save(); } catch { /* fail closed */ } };
+  const pause = (id, error) => {
+    state.paused[id] = true;
+    if (error) for (const request of state.requests.filter(r => r.agentId === id && r.state === 'queued')) request.error = error.message;
+    try { save(); } catch { /* fail closed */ }
+  };
   const requests = id => state.requests.filter(r => r.agentId === id);
   const serial = (id, fn) => {
     const current = (locks.get(id) ?? Promise.resolve()).catch(() => {}).then(fn);
@@ -73,7 +77,7 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     });
     watching.add(id);
   }
-  function schedule(id) { if (!stopped && ready) void serial(id, () => dispatch(id)).catch(() => pause(id)); }
+  function schedule(id) { if (!stopped && ready) void serial(id, () => dispatch(id)).catch(error => pause(id, error)); }
   async function dispatch(id) {
     if (stopped || !ready || state.paused[id]) return;
     const current = await get(id);
@@ -84,6 +88,8 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     if (next) await transmit(current, next);
   }
   async function transmit(current, request) {
+    await validateDirectory(current.cwd);
+    request.error = null;
     await observe(current.id);
     request.state = 'sending'; save();
     try {
@@ -107,7 +113,7 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     if (!input || typeof input !== 'object' || Array.isArray(input)) fail('invalid_input', '잘못된 요청입니다.');
     if (operation === 'health') return { ready: ready && !stopped && (driver.connected?.() ?? true), version: 1 };
     if (!ready || stopped) fail('not_ready', 'Agent 실행부가 준비 중입니다. 잠시 후 다시 시도해 주세요.');
-    if (operation === 'options') return driver.options(input.cwd);
+    if (operation === 'options') { text(input.cwd, '작업 폴더', 4096); await validateDirectory(input.cwd); return driver.options(input.cwd); }
     if (operation === 'directories') return driver.directories(text(input.query, '폴더', 4096));
     if (operation === 'settings') return { ...state.settings };
     if (operation === 'saveSettings') {
@@ -117,7 +123,6 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     if (operation === 'list') return (await driver.list()).filter(a => a.managed && (input.archived ? !!a.archivedAt : !a.archivedAt));
     if (operation === 'create') return serial('creation', async () => {
       key(input.id); text(input.name, '이름', 120); text(input.model, '모델', 300); text(input.cwd, '작업 폴더', 4096);
-      await validateDirectory(input.cwd);
       const prior = state.creations[input.id]; const signature = JSON.stringify([input.name, input.cwd, input.model]);
       if (prior && prior.signature !== signature) fail('id_conflict', '같은 요청 ID의 생성 내용이 다릅니다.');
       if (prior?.agentId) return get(prior.agentId);
@@ -126,6 +131,7 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
         if (found) { prior.agentId = found.id; save(); return found; }
         fail('creation_uncertain', '이전 생성 결과를 확정할 수 없습니다. Agent 목록을 확인해 주세요.');
       }
+      await validateDirectory(input.cwd);
       const options = await driver.options(input.cwd);
       if (!options.models.some(m => m.id === input.model)) fail('invalid_model', '사용 가능한 Codex 모델을 선택해 주세요.');
       state.creations[input.id] = { signature, agentId: null }; save();
@@ -168,12 +174,13 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
         if (Object.hasOwn(input, 'mode')) fail('invalid_input', '전송 방식은 공통 설정에서 변경해 주세요. settings set send-mode queue 또는 steer');
         const prior = state.requests.find(r => r.id === input.id);
         if (prior) { if (prior.agentId !== current.id || prior.text !== input.text) fail('id_conflict', '같은 요청 ID에 다른 내용이 전달됐습니다.'); return { ...prior }; }
+        await validateDirectory(current.cwd);
         const chosen = state.settings.sendMode;
         if (chosen === 'steer' && (current.permissions.length || state.paused[current.id] || requests(current.id).some(r => r.state === 'queued'))) fail('steer_blocked', '권한 요청이나 앞선 대기열을 먼저 처리하거나 공통 전송 설정을 queue로 변경해 주세요.');
         const effective = chosen === 'steer' && !current.turnId && current.status !== 'running' ? 'queue' : chosen;
         const request = { id: input.id, agentId: current.id, text: input.text, mode: effective, state: 'queued', turnId: null, createdAt: now(), error: null };
         state.requests.push(request); save(); await observe(current.id);
-        if (effective === 'steer') await transmit(current, request); else schedule(current.id);
+        if (effective === 'steer') { try { await transmit(current, request); } catch (error) { pause(current.id, error); throw error; } } else schedule(current.id);
         return { ...request };
       }
       if (operation === 'cancel') {
@@ -183,6 +190,7 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
         r.state = 'canceled'; save(); return { ...r };
       }
       if (operation === 'resume') {
+        await validateDirectory(current.cwd);
         if (requests(current.id).some(r => r.state === 'uncertain')) fail('uncertain_request', '결과가 불명확한 요청이 있어 자동 실행을 재개할 수 없습니다. 기록과 상태를 확인해 주세요.');
         state.paused[current.id] = false; save(); schedule(current.id); return { resumed: true };
       }
@@ -200,6 +208,7 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
         if (input.behavior === 'allow' && Array.isArray(permission.input?.questions)) {
           for (const question of permission.input.questions) text(input.answers?.answers?.[question.header], '질문 답변');
         }
+        if (input.behavior === 'allow') await validateDirectory(current.cwd);
         await driver.permission(current.id, input); return get(current.id);
       }
       fail('invalid_operation', '지원하지 않는 Agent 명령입니다.');

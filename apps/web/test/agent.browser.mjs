@@ -1,6 +1,6 @@
 // Run with playwright-cli run-code --filename=apps/web/test/agent.browser.mjs
 // Requires the owned daemon + Agent setup and Codex login. Incurs Provider usage.
-async (page) => {
+async (page, cwd, screenshotPath) => {
   const name = `Browser check ${Date.now()}`;
   await page.goto('http://127.0.0.1:6868/');
   await page.getByRole('button', { name: '설정', exact: true }).click();
@@ -17,6 +17,7 @@ async (page) => {
   await page.getByRole('button', { name: '작업으로 돌아가기', exact: true }).click();
   await page.getByRole('button', { name: '새 Agent', exact: true }).click();
   await page.getByLabel('이름', { exact: true }).fill(name);
+  await page.getByLabel('작업 폴더', { exact: true }).fill(cwd);
   await page.getByRole('button', { name: '만들기', exact: true }).click();
   await page.getByRole('heading', { name, exact: true }).waitFor();
   const message = page.getByLabel('메시지', { exact: true });
@@ -58,7 +59,7 @@ async (page) => {
       .evaluate((element) => element.getBoundingClientRect().right > innerWidth)
   )
     throw Error('Conversation is clipped on a narrow viewport');
-  await page.screenshot({ path: '.local/agent-browser-mobile.png', fullPage: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
   // A streamed reply can appear before the durable request settles. Confirm the
   // execution state before taking an archive preview that must remain current.
   await page

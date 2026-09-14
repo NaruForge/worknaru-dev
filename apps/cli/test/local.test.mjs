@@ -11,7 +11,8 @@ import { acquireLock, newOwner, pathsFor, readOwner, request } from '../local-su
 import { resolveDataPaths, root } from '../../../packages/dev-environment/paths.mjs';
 
 const exec = promisify(execFile);
-const testRoot = path.join(root, '.local/cli-tests');
+import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
+const testRoot = await testDirectory('cli');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^WORKNARU_/i.test(key)));
 async function fixture(callback) {
   await mkdir(testRoot, { recursive: true });
@@ -28,12 +29,13 @@ test('any explicit connection setting selects the complete explicit contract, in
   assert.equal(explicitTarget([], { WORKNARU_DATA_DIR: 'data', PASEO_HOST: 'personal' }), false);
 });
 test('bootstrap help and doctor run without dist or installed dependencies and do not create data', () => fixture(async directory => {
-  await cp(path.join(root, 'apps/cli'), path.join(directory, 'apps/cli'), { recursive: true, filter: file => !['node_modules', 'dist', 'test'].includes(path.basename(file)) });
-  await cp(path.join(root, 'packages/dev-environment'), path.join(directory, 'packages/dev-environment'), { recursive: true, filter: file => path.basename(file) !== 'node_modules' });
-  await cp(path.join(root, 'package.json'), path.join(directory, 'package.json'));
-  const entry = path.join(directory, 'apps/cli/bin/worknaru.mjs');
+  const checkout = path.join(directory, 'checkout');
+  await cp(path.join(root, 'apps/cli'), path.join(checkout, 'apps/cli'), { recursive: true, filter: file => !['node_modules', 'dist', 'test'].includes(path.basename(file)) });
+  await cp(path.join(root, 'packages/dev-environment'), path.join(checkout, 'packages/dev-environment'), { recursive: true, filter: file => path.basename(file) !== 'node_modules' });
+  await cp(path.join(root, 'package.json'), path.join(checkout, 'package.json'));
+  const entry = path.join(checkout, 'apps/cli/bin/worknaru.mjs');
   const data = path.join(directory, 'data');
-  for (const args of [['--help'], ['doctor', '--help'], ['dev', 'start', '--help'], ['dev', 'stop', '--help'], ['status', '--help']]) {
+  for (const args of [['--help'], ['doctor', '--help'], ['dev', 'start', '--help'], ['dev', 'stop', '--help'], ['dev', 'reset', '--help'], ['status', '--help']]) {
     const result = await invoke(args, data, entry);
     assert.equal(result.code, 0, result.stderr); assert.match(result.stdout, /doctor/);
   }
@@ -110,3 +112,27 @@ test('doctor finishes when the selected Windows drive does not exist', { skip: p
   assert.equal(result.code, 1);
   assert.equal(JSON.parse(result.stdout).checks.find(check => check.name === 'Data root').ok, false);
 });
+
+test('reset flags are explicit and previews never create or delete data', () => fixture(async directory => {
+  const data = path.join(directory, 'absent');
+  for (const args of [
+    ['dev', 'reset', '--dry-run', '--yes'], ['dev', 'reset', '--force'],
+    ['dev', 'reset', '--path', directory], ['dev', 'reset', '--yes', '--yes'],
+  ]) {
+    const value = await invoke([...args, '--json'], data);
+    assert.equal(value.code, 2);
+    assert.equal(JSON.parse(value.stdout).error.code, 'invalid_arguments');
+    assert.equal(existsSync(data), false);
+  }
+  const preview = await invoke(['dev', 'reset', '--dry-run', '--json'], data);
+  const result = JSON.parse(preview.stdout);
+  assert.equal(result.kind, 'reset');
+  assert.equal(result.scope, 'current');
+  assert.equal(result.dataRoot, data);
+  assert.ok(Array.isArray(result.exclusions));
+  assert.equal(existsSync(data), false);
+  await mkdir(data); await writeFile(path.join(data, 'keep'), 'unrelated');
+  const refused = await invoke(['dev', 'reset', '--yes', '--json'], data);
+  assert.equal(JSON.parse(refused.stdout).error.code, 'unowned_data_root');
+  assert.equal(await readFile(path.join(data, 'keep'), 'utf8'), 'unrelated');
+}));

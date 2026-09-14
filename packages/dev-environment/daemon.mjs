@@ -6,11 +6,13 @@ import { open, readFile, unlink, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import net from 'node:net';
 import path from 'node:path';
+import os from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
 import { describeDataPaths, prepareDataDirectories, resolveDataPaths, root } from './paths.mjs';
 import { prepareWebFiles } from './web-files.mjs';
 
+import { acquireDataLock, assertStorage, assertNoLegacy } from './storage.mjs';
 export { root } from './paths.mjs';
 import { configState, expectedConfig, agentsEnabled, listen, endpoint, version } from './config.mjs';
 export { listen, endpoint, version } from './config.mjs';
@@ -87,8 +89,9 @@ export function childEnvironment(paths, inherited = process.env) {
   }
   return {
     ...env, PASEO_HOME: paths.dataHome, PASEO_HOST: listen, PASEO_LISTEN: listen,
-    WORKNARU_AGENT_DATA_ROOT: paths.dataHome, WORKNARU_AGENT_DEFAULT_CWD: root,
+    WORKNARU_AGENT_DATA_ROOT: paths.dataHome, WORKNARU_REPOSITORY_ROOT: paths.repository,
     WORKNARU_AGENT_STATE_FILE: paths.agentState,
+    WORKNARU_PERSONAL_PASEO_HOME: inherited.PASEO_HOME || path.join(os.homedir(), '.paseo'),
     TEMP: paths.temporary, TMP: paths.temporary,
   };
 }
@@ -115,10 +118,17 @@ export async function connectOwned(ownerPid, paths) {
   }
 }
 
-export async function startDedicatedDaemon({ webDist, paths = resolveDataPaths(), signal } = {}) {
+export async function startDedicatedDaemon({ webDist, paths = resolveDataPaths(), signal, storageLocked = false } = {}) {
   console.error(describeDataPaths(paths));
-  await prepare(paths);
-  const launchLog = await open(paths.launcherLog, 'a');
+  await assertNoLegacy(paths);
+  let releaseStorage = storageLocked ? null : await acquireDataLock(paths);
+  let launchLog;
+  try {
+    await assertNoLegacy(paths);
+    await assertStorage(paths, { claim: true, ignoreLock: true });
+    await prepare(paths);
+    launchLog = await open(paths.launcherLog, 'a');
+  } catch (error) { await releaseStorage?.(); throw error; }
   let webFiles;
   let child;
   let exited;
@@ -186,6 +196,7 @@ export async function startDedicatedDaemon({ webDist, paths = resolveDataPaths()
         await delay(500);
       }
     }
+    await releaseStorage?.(); releaseStorage = null;
     return {
       child, exited, connection, cleanup, paths, webDirectory: webFiles?.directory,
       async stop() {
@@ -199,5 +210,5 @@ export async function startDedicatedDaemon({ webDist, paths = resolveDataPaths()
         assert.equal(existsSync(paths.pid), false, 'Dedicated PID lock remains');
       },
     };
-  } catch (error) { await cleanup(); throw error; }
+  } catch (error) { try { await cleanup(); } finally { await releaseStorage?.(); } throw error; }
 }

@@ -28,11 +28,19 @@ function suppliedIdentity(core: WorknaruCore) {
   if (!coreIds.has(core)) coreIds.set(core, ++nextCoreId);
   return `injected-${coreIds.get(core)}`;
 }
-function ConnectedApp({ core, endpoint }: { core: WorknaruCore; endpoint: string }) {
+function ConnectedApp({
+  core,
+  endpoint,
+  storagePrefix = 'worknaru.ui',
+}: {
+  core: WorknaruCore;
+  endpoint: string;
+  storagePrefix?: string;
+}) {
   const navigation = useNavigation();
   const ui = useAgentSession(core, navigation.agentView);
-  const panels = usePanelLayout();
-  const { theme, setTheme } = useTheme();
+  const panels = usePanelLayout(storagePrefix);
+  const { theme, setTheme } = useTheme(storagePrefix);
   const shared = useSharedSettings(core, ui.settings);
   const [help, setHelp] = useState(false);
   const [routeNotice, setRouteNotice] = useState('');
@@ -245,6 +253,7 @@ export function App({
     ? {
         core: suppliedCore,
         endpoint: suppliedEndpoint,
+        storagePrefix: 'worknaru.ui',
         identity: `${suppliedEndpoint}:${suppliedIdentity(suppliedCore)}`,
       }
     : loaded;
@@ -254,6 +263,7 @@ export function App({
         key={connection.identity}
         core={connection.core}
         endpoint={connection.endpoint}
+        storagePrefix={connection.storagePrefix}
       />
     );
   return (
