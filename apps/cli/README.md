@@ -34,7 +34,8 @@ Codex 설치·로그인을 준비한 뒤 정지된 개발 환경에서 `pnpm exe
 ```powershell
 pnpm exec worknaru agent setup
 pnpm exec worknaru dev start
-pnpm exec worknaru agent create --name "문서 도우미"
+# 실제 작업할 기존 폴더로 바꿉니다.
+pnpm exec worknaru agent create --name "문서 도우미" --cwd C:\Projects\MyWork
 pnpm exec worknaru agent list
 pnpm exec worknaru agent show "문서 도우미"
 pnpm exec worknaru agent send "문서 도우미" "이 폴더의 문서 구성을 설명해 주세요."
@@ -44,7 +45,7 @@ pnpm exec worknaru agent archive "문서 도우미"
 pnpm exec worknaru agent list --archived
 ```
 
-대화형 `create`는 작업 폴더·실제 사용 가능한 Codex 모델·이름을 묻는다. `--cwd`, `--model`, `--name`으로 생략할 수 있다. 비대화형에서는 현재 폴더·Provider의 기본 모델·`새 Agent`를 사용한다. 같은 폴더에서 서로 독립적인 Agent를 만들 수 있다. 모든 폴더 경로는 Daemon 컴퓨터 기준이며 공백 없는 절대경로와 영문·숫자·`-_.` 폴더명만 지원한다. 작업 폴더가 사라지거나 실제 경로가 미지원이면 새 전송·대기열 실행·재개·권한 승인을 막는다. 해당 Agent만 보류하고 사유를 표시하며 조회·취소·보관은 계속 사용할 수 있다. 이름이 겹치면 전체 ID 또는 유일한 4자 이상 ID 접두사를 쓴다. 목록에는 이 제품에서 만든 Agent만 표시한다.
+대화형 `create`는 작업 폴더·실제 사용 가능한 Codex 모델·이름을 묻는다. `--cwd`, `--model`, `--name`으로 해당 질문을 생략할 수 있다. 작업 폴더에는 기본값이 없으며 빈 응답에는 다시 입력을 요청한다. 비대화형과 `--json`에서는 `--cwd`가 필수이고, 모델·이름을 생략하면 Provider의 기본 모델과 `새 Agent`를 사용한다. 위 예시의 `C:\Projects\MyWork`는 실제 작업할 기존 폴더로 바꾼다. 폴더가 확인된 뒤 모델을 조회하며 같은 폴더에서 서로 독립적인 Agent를 만들 수 있다. 모든 폴더 경로는 Daemon 컴퓨터 기준이며 공백 없는 절대경로와 영문·숫자·`-_.` 폴더명만 지원한다. 작업 폴더가 사라지거나 실제 경로가 미지원이면 새 전송·대기열 실행·재개·권한 승인을 막는다. 해당 Agent만 보류하고 사유를 표시하며 조회·취소·보관은 계속 사용할 수 있다. 이름이 겹치면 전체 ID 또는 유일한 4자 이상 ID 접두사를 쓴다. 목록에는 이 제품에서 만든 Agent만 표시한다.
 
 `send`는 접수 후 기본 600초 동안 결과를 관찰한다. `--no-wait`는 접수 상태와 요청 ID를 바로 반환한다. `wait <agent> --request <요청ID>`로 다시 관찰할 수 있다. `--wait-timeout 60`은 관찰 시간만 제한한다. Ctrl+C도 관찰만 끝내며 Agent 작업을 중단하지 않는다. 후속 `send`는 같은 Agent 세션의 대화를 이어간다. `history`는 최근 최대 200개 원본 항목을 읽고, `--all`은 이전 페이지도 읽는다. `send`/`wait`의 완료 응답은 필요하면 이전 페이지까지 읽어 해당 요청의 응답을 표시한다. 조회 도중 기록이 교체돼 응답 범위를 확인하지 못하면 전체 기록 조회를 안내한다. 응답 조각은 사람용 출력에서 하나로 합친다.
 
