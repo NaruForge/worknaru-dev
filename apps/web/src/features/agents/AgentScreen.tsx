@@ -133,6 +133,17 @@ export function AgentScreen({
       return;
     }
     if (!ui.history || !selected) return;
+    const savedPosition = positions.current.get(selected.id);
+    // A scroll event can still be queued when incoming data commits. Read the
+    // actual movement before following the bottom, so a user's upward scroll
+    // cannot be overwritten by the stale atBottom flag.
+    if (
+      previousAgent.current === selected.id &&
+      wasVisible.current &&
+      savedPosition?.epoch === ui.history.epoch &&
+      box.scrollTop < savedPosition.top - 1
+    )
+      atBottom.current = false;
     if (
       previousAgent.current !== selected.id ||
       !wasVisible.current ||

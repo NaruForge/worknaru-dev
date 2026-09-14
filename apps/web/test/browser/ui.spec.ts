@@ -29,8 +29,9 @@ for (const width of [390, 1440]) {
     });
     await history.evaluate((element) => {
       element.scrollTop = 200;
+      // Deliver incoming data before the browser's queued scroll event.
+      window.dispatchEvent(new Event('worknaru:fixture-permission'));
     });
-    await page.evaluate(() => window.dispatchEvent(new Event('worknaru:fixture-permission')));
     await expect(page.getByRole('button', { name: '이번 요청 승인' })).toHaveCount(2);
     expect(await history.evaluate((element) => element.scrollTop)).toBe(200);
     await page.getByRole('button', { name: '보관', exact: true }).click();

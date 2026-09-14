@@ -141,7 +141,9 @@ test('panel mouse and keyboard sizing persists, collapses, resets and adapts to 
   await expect(inspector).toHaveAttribute('aria-valuenow', '400');
   await page.setViewportSize({ width: 390, height: 844 });
   // The open desktop inspector becomes a keyboard-dismissable sheet.
+  await expect(page.getByRole('dialog', { name: 'Agent 상세 정보' })).toBeVisible();
   await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Agent 목록으로' }).click();
   await page.getByRole('button', { name: /주간 업무 정리/ }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
