@@ -24,6 +24,11 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     try { save(); } catch { /* fail closed */ }
   };
   const requests = id => state.requests.filter(r => r.agentId === id);
+  const priorRequest = (id, agentId, message) => {
+    const prior = state.requests.find(r => r.id === id);
+    if (prior && (prior.agentId !== agentId || prior.text !== message)) fail('id_conflict', '같은 요청 ID에 다른 내용이 전달됐습니다.');
+    return prior ? { ...prior } : null;
+  };
   const serial = (id, fn) => {
     const current = (locks.get(id) ?? Promise.resolve()).catch(() => {}).then(fn);
     locks.set(id, current);
@@ -172,9 +177,13 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
         if (archiving.has(current.id)) fail('archiving', '보관 중인 Agent에는 전송할 수 없습니다.');
         key(input.id); text(input.text, '메시지');
         if (Object.hasOwn(input, 'mode')) fail('invalid_input', '전송 방식은 공통 설정에서 변경해 주세요. settings set send-mode queue 또는 steer');
-        const prior = state.requests.find(r => r.id === input.id);
-        if (prior) { if (prior.agentId !== current.id || prior.text !== input.text) fail('id_conflict', '같은 요청 ID에 다른 내용이 전달됐습니다.'); return { ...prior }; }
+        const prior = priorRequest(input.id, current.id, input.text);
+        if (prior) return prior;
         await validateDirectory(current.cwd);
+        // Request IDs are global; another Agent can admit this ID during validation.
+        // Keep this recheck through registration/save synchronous.
+        const admitted = priorRequest(input.id, current.id, input.text);
+        if (admitted) return admitted;
         const chosen = state.settings.sendMode;
         if (chosen === 'steer' && (current.permissions.length || state.paused[current.id] || requests(current.id).some(r => r.state === 'queued'))) fail('steer_blocked', '권한 요청이나 앞선 대기열을 먼저 처리하거나 공통 전송 설정을 queue로 변경해 주세요.');
         const effective = chosen === 'steer' && !current.turnId && current.status !== 'running' ? 'queue' : chosen;

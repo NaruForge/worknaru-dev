@@ -44,17 +44,7 @@ export async function runAgents(args, env, output) {
     const command = p[1]; let result;
     if (command === 'create') {
       expect(2);
-      const cwd = o['--cwd'] ?? (interactive ? (await ask(`작업 폴더 [${process.cwd()}]: `) || process.cwd()) : process.cwd());
-      const options = await agents.options({ cwd });
-      let model = o['--model'] ?? options.models.find(m => m.default)?.id;
-      if (interactive && !o['--model']) {
-        output.stderr(options.models.map((m, i) => `${i + 1}. ${m.name}${m.id === model ? ' (기본)' : ''}`).join('\n') + '\n');
-        const choice = await ask('모델 번호 또는 ID [기본값]: ');
-        if (choice) model = options.models[Number(choice) - 1]?.id ?? choice;
-      }
-      if (!model) throw Object.assign(Error('사용 가능한 기본 모델이 없습니다. --model을 지정해 주세요.'), { code: 'invalid_model' });
-      const name = (o['--name'] ?? (interactive ? await ask('Agent 이름 [새 Agent]: ') : '')) || '새 Agent';
-      result = await agents.create({ id: o['--id'] ?? crypto.randomUUID(), name, cwd, model });
+      result = await createAgent(agents, o, { interactive, ask, output });
     } else if (command === 'list') { expect(2); result = await agents.list({ archived: !!o['--archived'] }); }
     else if (command === 'show' || command === 'permissions') {
       expect(3); result = await agents.show({ agent: p[2] }); if (command === 'permissions') result = result.permissions;
@@ -127,6 +117,29 @@ export async function runAgents(args, env, output) {
     emitError({ code: error.code ?? 'invalid_arguments', message: error.code ? error.message : '입력값을 확인해 주세요. agent --help' });
     return ['invalid_arguments', 'invalid_input', 'invalid_configuration'].includes(error.code ?? 'invalid_arguments') ? 2 : 1;
   } finally { rl?.close(); }
+}
+
+export async function createAgent(agents, o, { interactive, ask, output }) {
+  let cwd = o['--cwd'];
+  if (cwd === undefined && interactive) {
+    do {
+      cwd = await ask('작업 폴더 (절대경로): ');
+      if (!cwd.trim()) output.stderr('작업 폴더를 입력해 주세요.\n');
+    } while (!cwd.trim());
+  }
+  if (typeof cwd !== 'string' || !cwd.trim()) {
+    throw Object.assign(Error('작업 폴더를 --cwd로 지정해 주세요. 예: pnpm exec worknaru agent create --cwd C:\\Projects\\MyWork'), { code: 'invalid_arguments' });
+  }
+  const options = await agents.options({ cwd });
+  let model = o['--model'] ?? options.models.find(m => m.default)?.id;
+  if (interactive && !o['--model']) {
+    output.stderr(options.models.map((m, i) => `${i + 1}. ${m.name}${m.id === model ? ' (기본)' : ''}`).join('\n') + '\n');
+    const choice = await ask('모델 번호 또는 ID [기본값]: ');
+    if (choice) model = options.models[Number(choice) - 1]?.id ?? choice;
+  }
+  if (!model) throw Object.assign(Error('사용 가능한 기본 모델이 없습니다. --model을 지정해 주세요.'), { code: 'invalid_model' });
+  const name = (o['--name'] ?? (interactive ? await ask('Agent 이름 [새 Agent]: ') : '')) || '새 Agent';
+  return agents.create({ id: o['--id'] ?? crypto.randomUUID(), name, cwd, model });
 }
 
 export async function requestReply(agents, agent, request) {

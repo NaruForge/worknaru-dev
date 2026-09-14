@@ -50,6 +50,39 @@ test('fast completion events received before send acknowledgement still settle t
   await f.send('fast'); await f.settle(); assert.equal(f.state().requests[0].state, 'completed');
 });
 
+test('concurrent sends to different Agents reserve a request ID only once', { timeout: 5000 }, async t => {
+  for (const secondText of ['shared message', 'different message']) await t.test(secondText, async t => {
+    const entered = Promise.withResolvers(); const release = Promise.withResolvers();
+    let validations = 0;
+    const f = await fixture(t, initialAgentState(), {}, async () => {
+      if (++validations <= 2) {
+        if (validations === 2) entered.resolve();
+        await release.promise;
+      }
+    });
+    t.signal.addEventListener('abort', () => release.resolve(), { once: true });
+    f.agents.set('agent-two', snapshot('agent-two'));
+    const inputs = [
+      { agent: 'agent-one', id: 'shared-id', text: 'shared message' },
+      { agent: 'agent-two', id: 'shared-id', text: secondText },
+    ];
+    const pending = Promise.allSettled(inputs.map(input => f.service.send(input)));
+    await entered.promise;
+    assert.equal(f.state().requests.length, 0);
+    release.resolve();
+    const results = await pending; await f.settle();
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+    const rejected = results.findIndex(result => result.status === 'rejected');
+    assert.equal(results[rejected].reason.code, 'id_conflict');
+    assert.equal(f.state().requests.length, 1);
+    assert.equal(f.calls.filter(([method]) => method === 'send').length, 1);
+    assert.equal((await f.service.requests({ agent: inputs[rejected].agent })).requests.length, 0);
+    await f.service.send(inputs[1 - rejected]); await f.settle();
+    assert.equal(f.calls.filter(([method]) => method === 'send').length, 1, 'Winner retry must not send again');
+    await assert.rejects(f.service.send(inputs[rejected]), { code: 'id_conflict' });
+  });
+});
+
 test('failure pauses remaining queue; explicit resume and cancel operate only on pending messages', async t => {
   const f = await fixture(t); await f.send('first'); await f.send('second'); await f.send('third'); await f.settle();
   f.finish('turn_failed'); await f.settle(); assert.equal(f.calls.length, 1); assert.equal(f.state().paused['agent-one'], true);

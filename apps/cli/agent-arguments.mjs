@@ -17,6 +17,7 @@ export const agentHelp = `Agent 사용법 (pnpm exec worknaru ...)
   settings set send-mode queue|steer
 
 이름이 겹치면 agent list에서 전체 ID 또는 유일한 4자 이상 접두사를 선택하세요.
+create의 작업 폴더에는 기본값이 없습니다. 대화형에서는 직접 입력하고, 비대화형/--json에서는 --cwd가 필수입니다.
 전송 방식은 settings set send-mode queue|steer에서 변경합니다.
 send는 기본 600초 대기합니다. --wait-timeout은 관찰만 제한하며 작업을 중단하지 않습니다.
 --id로 생성/전송 요청 ID를 지정할 수 있습니다. 기본은 자동 생성입니다.
