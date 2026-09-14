@@ -12,7 +12,7 @@ import { prepareDataDirectories } from '../../packages/dev-environment/paths.mjs
 import { agentConfig, agentsEnabled } from '../../packages/dev-environment/config.mjs';
 import { resetData, resetPlan } from './data-reset.mjs';
 import { createDataManagement } from './data-management.mjs';
-import { root } from '../../packages/dev-environment/paths.mjs';
+import { root, DataError } from '../../packages/dev-environment/paths.mjs';
 import { localPaths } from './local.mjs';
 import { pipeFor, removeOwner } from './local-support.mjs';
 import { createCore } from './dist/bootstrap.js';
@@ -69,7 +69,9 @@ async function start(message) {
           if (input.input?.serverId !== serverId) throw Error('Server identity differs');
           let data;
           try { data = { ok: true, value: await management[input.command.slice(5)](input.input) }; }
-          catch (error) { data = { ok: false, error: { code: error.code ?? 'management_failed', message: error.code ? error.message : '데이터 관리 요청을 처리하지 못했습니다. doctor로 확인해 주세요.' } }; }
+          catch (error) { data = { ok: false, error: error instanceof DataError
+            ? { code: error.code, message: error.message }
+            : { code: 'management_failed', message: '데이터 관리 요청을 처리하지 못했습니다. doctor로 확인해 주세요.' } }; }
           socket.end(`${JSON.stringify({ ...owner, data })}\n`);
           return;
         }
@@ -128,7 +130,7 @@ async function queueReset(id) {
   try {
     await verifyOwner();
     const plan = await resetPlan(paths, { ignoreLock: true, stopped: verifyOwner });
-    if (plan.blockers.length) throw Object.assign(new Error(plan.blockers[0].message), { code: plan.blockers[0].code });
+    if (plan.blockers.length) throw new DataError(plan.blockers[0].code, plan.blockers[0].message);
     const enableAgents = await agentsEnabled(paths);
     resetting = true;
     // Let the existing RPC acknowledge acceptance before its daemon is shut down.
