@@ -4,6 +4,8 @@
 
 >누구나 자신의 업무를 AI 기반 Module로 만들고, 그것들을 하나의 Workspace에서 조합·실행할 수 있게 하는 플랫폼.
 
+현재 구성요소와 호출 흐름은 [개념 아키텍처](docs/architecture.md)에서 확인한다.
+
 ## 관리 규칙
 
 Worknaru는 설정으로 쉽게 리브랜딩할 수 있다. 지원 범위는 빌드 시 고정하는 표시 이름·로고·파비콘·대표 색상·홈페이지/문서/지원 링크와 `WORKNARU_DATA_DIR`로 지정하는 단일 저장 루트다. CLI 명령 `worknaru`, 환경 변수 접두사, 패키지·API·내부 식별자 변경과 실행 중 브랜드 전환·개별 저장 경로·자동 데이터 이전·OS 서비스 이름 변경은 지원하지 않는다.
@@ -16,7 +18,7 @@ Worknaru는 설정으로 쉽게 리브랜딩할 수 있다. 지원 범위는 빌
 
 실행 checkout·데이터·Agent 작업 폴더는 공백 없는 ASCII 절대경로를 사용한다. 새 Agent 작업 폴더에 제품 저장소를 자동 입력하지 않는다. 실제 검증은 저장소 밖의 실행별 데이터와 작업 fixture를 사용하며 테스트 전용 `WORKNARU_TEST_ROOT`를 지원한다.
 
-기본 개발 흐름은 `pnpm exec worknaru doctor` → `dev start` → `status` → `dev stop`이다. 로컬 개발 환경 관리는 앱 계층이 맡고 제품 조회는 Core → Runtime → Adapter를 유지한다. [CLI 사용 범위](apps/cli/README.md)와 [의존 경계](docs/adr/0005-local-development-cli-boundary.md)를 따른다.
+기본 개발 흐름은 `pnpm exec worknaru doctor` → `dev start` → `status` → `dev stop`이다. 로컬 개발 환경 관리는 앱 계층이 맡고 제품 기능은 Core → Runtime → Adapter를 따른다. [CLI 사용 범위](apps/cli/README.md)와 [의존 경계](docs/adr/0005-local-development-cli-boundary.md)를 따른다.
 
 Repository work와 architecture decision의 기록은
 [프로젝트 기록 규약](docs/project-records.md)을 먼저 읽고 따른다.
@@ -25,6 +27,8 @@ Repository work와 architecture decision의 기록은
 [저장소 구조 규칙](docs/repository-structure.md)을 먼저 읽고 따른다.
 
 패키지 관리는 루트 [package.json](package.json)의 `packageManager`에 지정된 pnpm을 사용한다.
+
+전체 빌드와 자동 테스트는 저장소 루트에서 `pnpm test`로 실행한다. 실제 개발 환경·Paseo·Agent 연동 검증은 [검증 데이터 격리](apps/paseo-dev/README.md#검증-데이터-격리)의 사전 조건과 실행 순서를 따른다.
 
 제품 UI 작업은 [UI 표준과 조립 절차](docs/ui-design.md)에서 공개 부품·실행 예제·검증 명령을 찾는다.
 
