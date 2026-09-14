@@ -1,35 +1,215 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { brand } from '@worknaru/branding';
-import type { DaemonStatus, WorknaruCore } from '@worknaru/core';
+import type { WorknaruCore } from '@worknaru/core';
 import {
   Alert,
   Badge,
   Button,
   Dialog,
   EmptyState,
+  Icon,
   Inline,
   Link,
   Loading,
-  Menu,
   Stack,
 } from '@worknaru/ui';
 import { loadCore } from '../bootstrap.js';
 import { AgentScreen } from '../features/agents/AgentScreen.js';
+import { useAgentSession } from '../features/agents/useAgentSession.js';
 import { useTheme } from './theme.js';
+import { initialAgentView, useNavigation, type SettingsSection } from './navigation.js';
+import { usePanelLayout } from './layout.js';
+import { SettingsView, useSharedSettings } from './SettingsView.js';
 import styles from './shell.module.css';
 
-const failures: Record<NonNullable<DaemonStatus['failure']>['code'], string> = {
-  connection_failed: '연결할 수 없습니다. 전용 Daemon이 실행 중인지 확인해 주세요.',
-  authentication_required: '이 Daemon은 인증이 필요합니다.',
-  authentication_failed: 'Daemon 인증에 실패했습니다.',
-  timeout: '응답을 기다리는 시간이 초과됐습니다. 다시 확인해 주세요.',
-  target_mismatch: '응답한 서버가 설정된 전용 Daemon과 다릅니다.',
-  unsupported_version: '현재 지원하는 Paseo 버전과 다릅니다.',
-  invalid_response: 'Daemon의 응답을 확인할 수 없습니다.',
-  request_failed: 'Daemon이 상태 조회 요청을 처리하지 못했습니다.',
-  cleanup_failed: '조회 연결을 정리하지 못했습니다.',
-  unknown: '상태를 확인하지 못했습니다. 잠시 후 다시 확인해 주세요.',
-};
+const coreIds = new WeakMap<WorknaruCore, number>();
+let nextCoreId = 0;
+function suppliedIdentity(core: WorknaruCore) {
+  if (!coreIds.has(core)) coreIds.set(core, ++nextCoreId);
+  return `injected-${coreIds.get(core)}`;
+}
+function ConnectedApp({ core, endpoint }: { core: WorknaruCore; endpoint: string }) {
+  const navigation = useNavigation();
+  const ui = useAgentSession(core, navigation.agentView);
+  const panels = usePanelLayout();
+  const { theme, setTheme } = useTheme();
+  const shared = useSharedSettings(core, ui.settings);
+  const [help, setHelp] = useState(false);
+  const [routeNotice, setRouteNotice] = useState('');
+  const lastFocus = useRef<HTMLElement | null>(null);
+  const lastSection = useRef<SettingsSection>('appearance');
+  const active = navigation.view.kind !== 'settings';
+  if (navigation.view.kind === 'settings') lastSection.current = navigation.view.section;
+  useEffect(() => {
+    if (navigation.view.kind === 'invalid' || (navigation.view.kind === 'agents' && ui.missing)) {
+      setRouteNotice('사용할 수 없는 주소 또는 Agent입니다. 목록에서 작업을 선택해 주세요.');
+      navigation.navigate(initialAgentView, true);
+    }
+  }, [navigation.view, navigation.navigate, ui.missing]);
+  useEffect(() => {
+    if (navigation.view.kind !== 'legacy') return;
+    let stopped = false;
+    void core.agents
+      .show({ agent: navigation.view.agentId })
+      .then((agent) => {
+        if (!stopped) {
+          ui.remember(agent);
+          navigation.navigate(
+            {
+              kind: 'agents',
+              agentId: agent.id,
+              archived: !!agent.archivedAt,
+              pane: 'conversation',
+            },
+            true,
+          );
+        }
+      })
+      .catch(() => {
+        if (!stopped) {
+          setRouteNotice('링크의 Agent를 찾을 수 없습니다. 목록에서 작업을 선택해 주세요.');
+          navigation.navigate(initialAgentView, true);
+        }
+      });
+    return () => {
+      stopped = true;
+    };
+  }, [core, navigation.view, navigation.navigate]);
+  useEffect(() => {
+    const view = navigation.view;
+    if (
+      view.kind === 'agents' &&
+      ui.selected?.id === view.agentId &&
+      !!ui.selected.archivedAt !== view.archived
+    )
+      navigation.navigate({ ...view, archived: !!ui.selected.archivedAt }, true);
+  }, [navigation.view, navigation.navigate, ui.selected]);
+  const openSettings = (section = lastSection.current) =>
+    navigation.navigate({ kind: 'settings', section });
+  const returnToAgent = () => {
+    navigation.navigate(navigation.agentView);
+    requestAnimationFrame(() => {
+      const target = lastFocus.current;
+      if (target?.isConnected && target.getClientRects().length && !target.matches(':disabled'))
+        target.focus({ preventScroll: true });
+      else
+        document
+          .querySelector<HTMLElement>('[aria-label="대화 기록"], [aria-label="Agent 선택"] button')
+          ?.focus({ preventScroll: true });
+    });
+  };
+  return (
+    <div className={styles.app}>
+      <aside className={styles.appRail} aria-label="앱 탐색 영역">
+        <div className={styles.brand}>
+          {brand.logo && <img className={styles.logo} src={`./${brand.logo}`} alt="" />}
+          <strong>{brand.displayName}</strong>
+        </div>
+        <nav aria-label="앱 탐색" className={styles.appNavigation}>
+          <Button
+            size="small"
+            variant={active ? 'secondary' : 'ghost'}
+            aria-current={active ? 'page' : undefined}
+            onClick={returnToAgent}
+          >
+            <span className={styles.railItem}>
+              <Icon name="message" />
+              Agent
+            </span>
+          </Button>
+          <Button
+            size="small"
+            variant={!active ? 'secondary' : 'ghost'}
+            aria-current={!active ? 'page' : undefined}
+            onClick={() => openSettings()}
+          >
+            <span className={styles.railItem}>
+              <Icon name="settings" />
+              설정{shared.dirty && <Badge tone="warning">미저장</Badge>}
+            </span>
+          </Button>
+        </nav>
+        <div className={styles.railFooter}>
+          <Badge>개발 환경</Badge>
+          {Object.keys(brand.links).length > 0 && (
+            <Button variant="ghost" size="small" onClick={() => setHelp(true)}>
+              도움말
+            </Button>
+          )}
+        </div>
+      </aside>
+      <main className={styles.workArea}>
+        {ui.readError && (
+          <Alert tone="error">
+            {ui.readError}
+            <Inline>
+              <Button variant="secondary" size="small" onClick={() => void ui.refresh()}>
+                다시 연결
+              </Button>
+              <Button variant="ghost" size="small" onClick={() => openSettings('connection')}>
+                연결 확인
+              </Button>
+            </Inline>
+          </Alert>
+        )}
+        {routeNotice && (
+          <Alert tone="warning">
+            {routeNotice}
+            <Button variant="ghost" size="small" onClick={() => setRouteNotice('')}>
+              안내 닫기
+            </Button>
+          </Alert>
+        )}
+        <div
+          className={styles.featureView}
+          hidden={!active}
+          onFocusCapture={(event) => {
+            lastFocus.current = event.target as HTMLElement;
+          }}
+        >
+          <AgentScreen
+            core={core}
+            ui={ui}
+            active={active}
+            view={navigation.agentView}
+            onNavigate={navigation.navigate}
+            panels={panels}
+            onSettings={() => openSettings('behavior')}
+          />
+        </div>
+        <div className={styles.featureView} hidden={active}>
+          <SettingsView
+            core={core}
+            endpoint={endpoint}
+            section={
+              navigation.view.kind === 'settings' ? navigation.view.section : lastSection.current
+            }
+            onSection={openSettings}
+            onReturn={returnToAgent}
+            theme={theme}
+            setTheme={setTheme}
+            panels={panels}
+            shared={shared}
+          />
+        </div>
+      </main>
+      <Dialog
+        open={help}
+        onOpenChange={setHelp}
+        title="도움말"
+        description={`${brand.displayName} 안내와 지원 링크입니다.`}
+      >
+        <Stack>
+          {Object.entries(brand.links).map(([key, href]) => (
+            <Link key={key} href={href}>
+              {({ home: '홈페이지', docs: '문서', support: '지원' } as Record<string, string>)[key]}
+            </Link>
+          ))}
+        </Stack>
+      </Dialog>
+    </div>
+  );
+}
 export function App({
   core: suppliedCore,
   endpoint: suppliedEndpoint = '견본 환경',
@@ -37,23 +217,16 @@ export function App({
   core?: WorknaruCore;
   endpoint?: string;
 }) {
-  const [connection, setConnection] = useState<{
-    core: WorknaruCore;
-    endpoint: string;
-  } | null>(() => (suppliedCore ? { core: suppliedCore, endpoint: suppliedEndpoint } : null));
+  const [loaded, setLoaded] = useState<Awaited<ReturnType<typeof loadCore>> | null>(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
-  const [connectionOpen, setConnectionOpen] = useState(false);
-  const [status, setStatus] = useState<DaemonStatus | null>(null);
-  const [checking, setChecking] = useState(false);
-  const { theme, setTheme } = useTheme();
   useEffect(() => {
     if (suppliedCore) return;
     let stopped = false;
     setError('');
     void loadCore()
       .then((value) => {
-        if (!stopped) setConnection(value);
+        if (!stopped) setLoaded(value);
       })
       .catch(() => {
         if (!stopped)
@@ -65,99 +238,33 @@ export function App({
       stopped = true;
     };
   }, [suppliedCore, attempt]);
-  async function check() {
-    if (!connection || checking) return;
-    setChecking(true);
-    setStatus(null);
-    try {
-      setStatus(await connection.core.getDaemonStatus());
-    } catch {
-      setError('연결 상태를 확인하지 못했습니다. 다시 시도해 주세요.');
-    } finally {
-      setChecking(false);
-    }
-  }
-  const links = (
-    <Inline>
-      {Object.entries(brand.links).map(([key, href]) => (
-        <Link key={key} href={href}>
-          {({ home: '홈페이지', docs: '문서', support: '지원' } as Record<string, string>)[key]}
-        </Link>
-      ))}
-    </Inline>
-  );
+  const connection = suppliedCore
+    ? {
+        core: suppliedCore,
+        endpoint: suppliedEndpoint,
+        identity: `${suppliedEndpoint}:${suppliedIdentity(suppliedCore)}`,
+      }
+    : loaded;
+  if (connection)
+    return (
+      <ConnectedApp
+        key={connection.identity}
+        core={connection.core}
+        endpoint={connection.endpoint}
+      />
+    );
   return (
-    <div className={styles.app}>
-      <header className={styles.header}>
-        <Inline>
-          {brand.logo && <img className={styles.logo} src={`./${brand.logo}`} alt="" />}
-          <strong>{brand.displayName}</strong>
-          <Badge>개발 환경</Badge>
-        </Inline>
-        <Inline>
-          <Menu
-            label={`화면: ${theme === 'system' ? '시스템' : theme === 'light' ? '밝게' : '어둡게'}`}
-            items={[
-              { label: '시스템 설정', onSelect: () => setTheme('system') },
-              { label: '밝게', onSelect: () => setTheme('light') },
-              { label: '어둡게', onSelect: () => setTheme('dark') },
-            ]}
-          />
-          <Button variant="ghost" onClick={() => setConnectionOpen(true)}>
-            연결 확인
-          </Button>
-        </Inline>
-      </header>
-      {connection ? (
-        <AgentScreen core={connection.core} footer={links} />
-      ) : error ? (
-        <main className={styles.start}>
-          <EmptyState
-            title="연결을 준비해 주세요"
-            action={<Button onClick={() => setAttempt((value) => value + 1)}>다시 연결</Button>}
-          >
-            {error}
-          </EmptyState>
-        </main>
+    <main className={styles.start}>
+      {error ? (
+        <EmptyState
+          title="연결을 준비해 주세요"
+          action={<Button onClick={() => setAttempt((value) => value + 1)}>다시 연결</Button>}
+        >
+          {error}
+        </EmptyState>
       ) : (
-        <main className={styles.start}>
-          <Loading>접속 정보를 준비하고 있습니다…</Loading>
-        </main>
+        <Loading>접속 정보를 준비하고 있습니다…</Loading>
       )}
-      <Dialog
-        open={connectionOpen}
-        onOpenChange={setConnectionOpen}
-        title="Daemon 연결 확인"
-        description="Agent를 실행하는 서버의 연결 상태를 확인합니다."
-      >
-        <Stack>
-          {checking ? (
-            <Loading>Daemon의 응답을 기다리고 있습니다…</Loading>
-          ) : status ? (
-            <Alert tone={status.outcome === 'available' ? 'success' : 'error'}>
-              {status.outcome === 'available'
-                ? '전용 Daemon이 정상적으로 응답했습니다.'
-                : failures[status.failure.code]}
-            </Alert>
-          ) : (
-            <p>상태 확인을 눌러 연결을 확인해 주세요.</p>
-          )}
-          {error && <Alert tone="error">{error}</Alert>}
-          <dl className={styles.connection}>
-            <dt>접속 주소</dt>
-            <dd>{connection?.endpoint ?? '—'}</dd>
-            <dt>서버 ID</dt>
-            <dd id="server-id">{status?.server?.id ?? '—'}</dd>
-            <dt>Paseo 버전</dt>
-            <dd>{status?.server?.version ?? '—'}</dd>
-            <dt>확인 시각</dt>
-            <dd>{status ? new Date(status.checkedAt).toLocaleTimeString('ko-KR') : '—'}</dd>
-          </dl>
-          <Button disabled={!connection || checking} onClick={() => void check()}>
-            상태 확인
-          </Button>
-        </Stack>
-      </Dialog>
-    </div>
+    </main>
   );
 }

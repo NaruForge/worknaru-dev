@@ -56,3 +56,5 @@ export const Permission: Story = { args: { scenario: 'permission' } };
 export const Uncertain: Story = { args: { scenario: 'uncertain' } };
 export const Archived: Story = { args: { scenario: 'archived' } };
 export const Long: Story = { args: { scenario: 'long' } };
+export const Continuity: Story = { args: { scenario: 'continuity' } };
+export const Many: Story = { args: { scenario: 'many' } };

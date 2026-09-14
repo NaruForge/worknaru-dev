@@ -33,8 +33,13 @@ export function NameForm({ onSave }: { onSave: (name: string) => void }) {
 | 상태      | Badge, Alert, Loading, EmptyState | Badge는 상태 이름, Alert는 읽어야 할 변경, EmptyState는 다음 행동을 제공. `States` 예제                                  |
 | 창·메뉴   | Dialog, ConfirmDialog, Menu       | 제목/설명, 제어되는 열림 상태, 명시적인 callback. busy 중 중복 행동/닫기 금지. 기본 포커스 복귀와 Escape. `Dialogs` 예제 |
 | 배치      | Stack, Inline, ListDetail         | 세로·가로 조립, 목록/상세 전환. ListDetail은 navigation과 selected를 받으며 모바일에서 해당 영역만 표시                  |
+| 패널 조절 | PanelGroup, ResizablePanel, normalizePanelWidth | 제품이 너비·열림 상태와 저장을 소유하고 공통 부품이 크기 제한·포인터·키보드를 담당. [공개 타입](src/ResizablePanel.tsx)과 [실행 예제](src/Panel.stories.tsx) |
 
 API의 정확한 prop·허용 변형은 공개 TypeScript 타입에서 확인한다. 숫자·색상 값은 [tokens.css](src/tokens.css)에만 정의한다. Storybook은 실제 부품을 실행하며 별도의 복제 화면을 만들지 않는다.
+
+`ResizablePanel`은 `PanelGroup`의 가용 너비에서 중앙 작업 공간을 남기고 크기를 제한한다. `side`는 시작/끝 패널을 정하며 `width={null}`은 해당 토큰의 기본값을 선택한다. 구분선에 접근 가능한 `label`을 제공한다. 방향키로 크기 조절, Home/End로 최솟값/최댓값을 선택할 수 있다. 접기/펼치기 버튼과 포커스 복귀는 실제 화면이 제공한다. 모바일에서는 너비 선호를 유지하면서 전체 폭으로 표시하고 구분선을 숨긴다.
+
+동적 너비는 패널 내부에서 검증한 숫자형 CSS 변수 하나로만 전달한다. 이 계약은 앱의 임의 inline style이나 내부 스타일 덮어쓰기를 허용하지 않는다. UI 패키지는 localStorage나 화면 이동 상태를 소유하지 않는다.
 
 ## 확장과 접근성
 

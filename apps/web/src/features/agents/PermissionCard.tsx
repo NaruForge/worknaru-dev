@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Permission, WorknaruCore } from '@worknaru/core';
 import { Alert, Button, Inline, Stack, TextField } from '@worknaru/ui';
-import { messageOf } from './useAgents.js';
+import { messageOf } from './agentState.js';
 import styles from './agents.module.css';
 
 export function PermissionCard({
@@ -9,16 +9,22 @@ export function PermissionCard({
   agentId,
   permission,
   onResponded,
+  answers,
+  onAnswersChange,
+  busy,
+  onBusy,
 }: {
   core: WorknaruCore;
   agentId: string;
   permission: Permission;
   onResponded: () => void;
+  answers: Record<string, string>;
+  onAnswersChange: (answers: Record<string, string>) => void;
+  busy: boolean;
+  onBusy: (busy: boolean) => void;
 }) {
   const form = useRef<HTMLFormElement>(null);
   const guard = useRef(false);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const questions = Array.isArray(permission.input.questions)
     ? (permission.input.questions as Record<string, unknown>[])
@@ -52,7 +58,7 @@ export function PermissionCard({
                 id={id}
                 label={String(question.question ?? question.header ?? '답변')}
                 value={answers[header] ?? ''}
-                onChange={(event) => setAnswers({ ...answers, [header]: event.target.value })}
+                onChange={(event) => onAnswersChange({ ...answers, [header]: event.target.value })}
                 required
                 disabled={busy}
                 list={`${id}-options`}
@@ -81,11 +87,12 @@ export function PermissionCard({
               onClick={() => {
                 if (
                   guard.current ||
+                  busy ||
                   (action.behavior === 'allow' && !form.current?.reportValidity())
                 )
                   return;
                 guard.current = true;
-                setBusy(true);
+                onBusy(true);
                 setError('');
                 void core.agents
                   .permission({
@@ -101,7 +108,7 @@ export function PermissionCard({
                   .catch((e) => setError(messageOf(e)))
                   .finally(() => {
                     guard.current = false;
-                    setBusy(false);
+                    onBusy(false);
                   });
               }}
             >

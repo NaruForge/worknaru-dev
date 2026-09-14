@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { Button, Dialog, IconButton, TextField } from '@worknaru/ui';
-import { mergeHistory } from '../features/agents/useAgents.js';
+import { mergeHistory } from '../features/agents/agentState.js';
 
 it('default actions do not accidentally submit a surrounding form', () => {
   const submit = vi.fn((event) => event.preventDefault());

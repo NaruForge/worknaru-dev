@@ -79,7 +79,7 @@ Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제
 
 CLI는 사람과 AI Agent가 사용한다. 사람에게는 `doctor`, `dev start`, `status`, `dev stop`의 기본 개발 흐름을 제공하고, 자동화는 명시적 대상과 JSON 계약을 사용할 수 있다. CLI를 호출하는 Agent와 Daemon이 관리하는 Agent 세션은 서로 다른 개념이다. 현재 상태 조회 명령은 호출자를 위한 새 Agent 세션을 만들지 않는다.
 
-Web UI의 [시작 코드](../apps/web/src/bootstrap.ts)도 Adapter를 생성하고 Core에 주입한다. [Agent 화면](../apps/web/src/features/agents/AgentScreen.tsx)과 [앱 화면](../apps/web/src/shell/App.tsx)은 Core API의 결과·오류를 표시한다. React 화면은 [공통 UI](../packages/ui/README.md)를 조립하고, UI 패키지는 Core·Runtime·Paseo를 호출하지 않는다. 개발 실행기가 대상 ID·예상 서버 ID를 `connection.json`으로 전달하고 브라우저는 같은 호스트의 `/ws`로 접속한다. CLI 환경 변수는 브라우저에서 직접 읽지 않는다. 기본 전송 설정은 CLI와 같은 서버 저장소에 기록하며 인증 입력·대상 선택은 지원하지 않는다. UI 책임 경계와 선택 근거는 [ADR 0009](adr/0009-ui-design-system.md)에 있다.
+Web UI의 [시작 코드](../apps/web/src/bootstrap.ts)도 Adapter를 생성하고 Core에 주입한다. [App](../apps/web/src/shell/App.tsx)은 앱 탐색과 실행 환경별 임시 작업 세션을 소유하고, Agent 기능과 통합 설정이 Core API의 결과·오류를 표시한다. React 화면은 [공통 UI](../packages/ui/README.md)를 조립하고, UI 패키지는 Core·Runtime·Paseo를 호출하지 않는다. 개발 실행기가 대상 ID·예상 서버 ID를 `connection.json`으로 전달하고 브라우저는 같은 호스트의 `/ws`로 접속한다. CLI 환경 변수는 브라우저에서 직접 읽지 않는다. 기본 전송 설정은 CLI와 같은 서버 저장소에 기록하며 테마·패널 선호는 브라우저에만 둔다. 인증 입력·대상 선택은 지원하지 않는다. UI 책임 경계는 [ADR 0009](adr/0009-ui-design-system.md), 화면 이동과 작업 상태의 수명은 [ADR 0010](adr/0010-app-shell-and-work-context.md)을 따른다.
 
 Web UI의 HTML·JavaScript 같은 정적 파일은 Paseo Daemon 자체가 브라우저에 제공할 수 있다. 별도 정적 호스팅을 사용할 수도 있으며, 파일을 제공하는 위치와 Core·Adapter가 실행되는 위치는 구분한다. 어느 경우든 전달된 코드의 Core 호출과 Daemon 통신은 브라우저 안에서 수행하므로 이 경로에 별도 Worknaru API 서버를 필수 구성요소로 두지 않는다.
 

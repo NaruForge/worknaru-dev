@@ -1,0 +1,14 @@
+.example {
+  display: flex;
+  min-height: 80dvh;
+}
+.region {
+  padding: var(--space-4);
+  background: var(--surface-subtle);
+  flex: 1;
+}
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-6);
+}

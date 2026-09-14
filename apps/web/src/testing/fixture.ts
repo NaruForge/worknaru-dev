@@ -8,7 +8,16 @@ import {
 } from '@worknaru/core';
 
 export type Scenario =
-  'conversation' | 'empty' | 'loading' | 'error' | 'permission' | 'uncertain' | 'archived' | 'long';
+  | 'conversation'
+  | 'empty'
+  | 'loading'
+  | 'error'
+  | 'permission'
+  | 'uncertain'
+  | 'archived'
+  | 'long'
+  | 'continuity'
+  | 'many';
 const date = '2026-09-14T01:00:00.000Z';
 const copy = <T>(value: T): T => structuredClone(value);
 export function createFixture(scenario: Scenario = 'conversation') {
@@ -36,6 +45,11 @@ export function createFixture(scenario: Scenario = 'conversation') {
         : [],
   };
   const agents: Agent[] = scenario === 'empty' ? [] : [agent];
+  if (scenario === 'many') {
+    agent.cwd = 'C:\\' + '긴-작업-폴더\\'.repeat(160);
+    for (let index = 1; index <= 40; index++)
+      agents.push({ ...agent, id: `agent-${index}`, name: `작업 ${index}`, permissions: [] });
+  }
   const histories = new Map<string, AgentHistory>([
     [
       agent.id,
@@ -61,14 +75,33 @@ export function createFixture(scenario: Scenario = 'conversation') {
       },
     ],
   ]);
-  if (scenario === 'long')
-    histories.get(agent.id)!.entries = Array.from({ length: 50 }, (_, index) => ({
-      seq: index + 1,
-      turnId: `turn-${index}`,
-      type: index % 2 ? 'assistant_message' : 'user_message',
-      text: `대화 ${index + 1}\n긴 내용도 이전 문맥을 확인하면서 읽을 수 있어야 합니다.\n${'프로젝트/한글경로/'.repeat(12)}`,
-      messageId: `message-${index}`,
-    }));
+  if (scenario === 'long' || scenario === 'continuity')
+    histories.get(agent.id)!.entries = Array.from(
+      { length: scenario === 'continuity' ? 120 : 50 },
+      (_, index) => ({
+        seq: index + 1,
+        turnId: `turn-${index}`,
+        type: index % 2 ? 'assistant_message' : 'user_message',
+        text: `대화 ${index + 1}\n긴 내용도 이전 문맥을 확인하면서 읽을 수 있어야 합니다.\n${'프로젝트/한글경로/'.repeat(12)}`,
+        messageId: `message-${index}`,
+      }),
+    );
+  if (scenario === 'continuity') {
+    agents.push({ ...agent, id: 'second-agent', name: '고객 미팅 준비', permissions: [] });
+    histories.set('second-agent', {
+      epoch: 'second-history',
+      cursor: null,
+      entries: [
+        {
+          seq: 1,
+          turnId: 'second-turn',
+          type: 'assistant_message',
+          text: '미팅 준비를 시작하겠습니다.',
+          messageId: 'second-message',
+        },
+      ],
+    });
+  }
   const requests: AgentRequest[] =
     scenario === 'uncertain'
       ? [
@@ -136,8 +169,20 @@ export function createFixture(scenario: Scenario = 'conversation') {
         histories.set(value.id, { epoch: value.id, cursor: null, entries: [] });
         return copy(value);
       },
-      history: async ({ agent: id }) =>
-        copy(histories.get(id) ?? { epoch: id, cursor: null, entries: [] }),
+      history: async ({ agent: id, cursor }) => {
+        const history = copy(histories.get(id) ?? { epoch: id, cursor: null, entries: [] });
+        if (scenario !== 'continuity') return history;
+        const before =
+          cursor && typeof cursor === 'object' && 'before' in cursor
+            ? Number(cursor.before)
+            : Infinity;
+        const entries = history.entries.filter((entry) => entry.seq < before).slice(-20);
+        return {
+          ...history,
+          entries,
+          cursor: entries[0] && entries[0].seq > 1 ? { before: entries[0].seq } : null,
+        };
+      },
       requests: async ({ agent: id }) => ({
         requests: copy(requests.filter((value) => value.agentId === id)),
         paused,

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { conversationMessages, type Agent, type WorknaruCore } from '@worknaru/core';
 import {
   Alert,
@@ -9,18 +9,17 @@ import {
   Icon,
   IconButton,
   Inline,
-  ListDetail,
+  ResizablePanel,
+  PanelGroup,
   Loading,
   TextArea,
 } from '@worknaru/ui';
-import {
-  ArchiveAgentDialog,
-  CreateAgentDialog,
-  DiscardDialog,
-  SettingsDialog,
-} from './AgentDialogs.js';
+import { ArchiveAgentDialog, CreateAgentDialog, DiscardDialog } from './AgentDialogs.js';
 import { PermissionCard } from './PermissionCard.js';
-import { agentLabel, messageOf, statusLabel, useAgents } from './useAgents.js';
+import { agentLabel, messageOf, statusLabel } from './agentState.js';
+import type { AgentSession } from './useAgentSession.js';
+import type { AgentView } from '../../shell/navigation.js';
+import type { usePanelLayout } from '../../shell/layout.js';
 import { useMediaQuery } from '../../shell/theme.js';
 import styles from './agents.module.css';
 
@@ -38,10 +37,39 @@ function AgentDetails({ agent }: { agent: Agent }) {
     </dl>
   );
 }
-export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: ReactNode }) {
-  const ui = useAgents(core);
-  const [dialog, setDialog] = useState<'create' | 'settings' | 'archive' | null>(null);
-  const [details, setDetails] = useState(false);
+export function AgentScreen({
+  core,
+  ui,
+  active,
+  view,
+  onNavigate,
+  panels,
+  onSettings,
+}: {
+  core: WorknaruCore;
+  ui: AgentSession;
+  active: boolean;
+  view: AgentView;
+  onNavigate: (view: AgentView) => void;
+  panels: ReturnType<typeof usePanelLayout>;
+  onSettings: () => void;
+}) {
+  const [dialog, setDialog] = useState<'create' | 'archive' | null>(null);
+  const [createOrigin, setCreateOrigin] = useState<string | null>(null);
+  const currentView = useRef({ active, agentId: view.agentId });
+  currentView.current = { active, agentId: view.agentId };
+  function openCreate() {
+    setCreateOrigin(view.agentId);
+    setDialog('create');
+  }
+  const [archiveTarget, setArchiveTarget] = useState<Agent | null>(null);
+  const expandList = useRef<HTMLButtonElement>(null);
+  const detailsToggle = useRef<HTMLButtonElement>(null);
+  const details = panels.layout.detailsOpen;
+  const setDetails = (detailsOpen: boolean) => {
+    panels.setLayout((value) => ({ ...value, detailsOpen }));
+    if (!detailsOpen) requestAnimationFrame(() => detailsToggle.current?.focus());
+  };
   const wide = useMediaQuery('(min-width: 1280px)');
   const [discard, setDiscard] = useState<{ agent: string; id: string } | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -51,6 +79,20 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
   const composer = useRef<HTMLTextAreaElement>(null);
   const atBottom = useRef(true);
   const previousAgent = useRef<string | undefined>(undefined);
+  const positions = useRef(
+    new Map<
+      string,
+      {
+        epoch: string | null;
+        seq: string | undefined;
+        offset: number;
+        top: number;
+        bottom: boolean;
+      }
+    >(),
+  );
+  const wasVisible = useRef(false);
+  const previousEpoch = useRef<string | null>(null);
   const olderAnchor = useRef<{
     height: number;
     top: number;
@@ -59,12 +101,67 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
   } | null>(null);
   const [olderBusy, setOlderBusy] = useState(false);
   const selected = ui.selected;
+  function rememberPosition() {
+    const box = historyBox.current;
+    if (!box || !box.clientHeight || !selected || !ui.history) return;
+    const top = box.getBoundingClientRect().top;
+    const anchor = [...box.querySelectorAll<HTMLElement>('[data-entry-seq]')].find(
+      (element) => element.getBoundingClientRect().bottom > top,
+    );
+    positions.current.set(selected.id, {
+      epoch: ui.history.epoch,
+      seq: anchor?.dataset.entrySeq,
+      offset: anchor ? anchor.getBoundingClientRect().top - top : 0,
+      top: box.scrollTop,
+      bottom: atBottom.current,
+    });
+  }
+  function choose(agent: Agent) {
+    rememberPosition();
+    onNavigate({
+      kind: 'agents',
+      agentId: agent.id,
+      archived: !!agent.archivedAt,
+      pane: 'conversation',
+    });
+    setActionError('');
+  }
   useLayoutEffect(() => {
     const box = historyBox.current;
-    if (!box) return;
-    if (previousAgent.current !== selected?.id) {
-      box.scrollTop = box.scrollHeight;
-      atBottom.current = true;
+    if (!box || !active || !box.clientHeight || (view.pane === 'list' && window.innerWidth < 768)) {
+      wasVisible.current = false;
+      return;
+    }
+    if (!ui.history || !selected) return;
+    const savedPosition = positions.current.get(selected.id);
+    // A scroll event can still be queued when incoming data commits. Read the
+    // actual movement before following the bottom, so a user's upward scroll
+    // cannot be overwritten by the stale atBottom flag.
+    if (
+      previousAgent.current === selected.id &&
+      wasVisible.current &&
+      savedPosition?.epoch === ui.history.epoch &&
+      box.scrollTop < savedPosition.top - 1
+    )
+      atBottom.current = false;
+    if (
+      previousAgent.current !== selected.id ||
+      !wasVisible.current ||
+      previousEpoch.current !== ui.history.epoch
+    ) {
+      const saved = positions.current.get(selected.id);
+      const anchor =
+        saved?.epoch === ui.history.epoch && saved.seq
+          ? box.querySelector<HTMLElement>(`[data-entry-seq="${saved.seq}"]`)
+          : null;
+      if (saved?.epoch === ui.history.epoch && !saved.bottom && anchor) {
+        box.scrollTop +=
+          anchor.getBoundingClientRect().top - box.getBoundingClientRect().top - saved.offset;
+        atBottom.current = false;
+      } else {
+        box.scrollTop = box.scrollHeight;
+        atBottom.current = true;
+      }
       previousAgent.current = selected?.id;
       olderAnchor.current = null;
     } else if (
@@ -75,7 +172,10 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
       box.scrollTop = olderAnchor.current.top + box.scrollHeight - olderAnchor.current.height;
       olderAnchor.current = null;
     } else if (atBottom.current && !olderAnchor.current) box.scrollTop = box.scrollHeight;
-  }, [ui.history, selected?.id, selected?.permissions, ui.queue]);
+    wasVisible.current = true;
+    previousEpoch.current = ui.history.epoch;
+    rememberPosition();
+  }, [ui.history, selected?.id, selected?.permissions, ui.queue, active, view.pane]);
   async function action(work: () => Promise<unknown>, notice: string, closeDiscard = false) {
     if (actionGuard.current) return;
     actionGuard.current = true;
@@ -115,99 +215,129 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
   const pending = ui.queue.requests.filter((request) =>
     ['queued', 'sending', 'running', 'failed', 'uncertain'].includes(request.state),
   );
-  const disableSelection = ui.sending || ui.archiving;
+  const disableSelection = ui.archiving;
   return (
     <>
-      {ui.readError && (
-        <Alert tone="error">
-          {ui.readError}{' '}
-          <Button variant="secondary" size="small" onClick={() => void ui.refresh()}>
-            다시 연결
-          </Button>
-        </Alert>
-      )}
       {ui.notice && (
         <div className={styles.notice}>
           <span role="status">{ui.notice}</span>
           <IconButton label="안내 닫기" icon="close" onClick={() => ui.setNotice('')} />
         </div>
       )}
-      <ListDetail
-        selected={!!selected}
-        navigation={
-          <aside className={styles.sidebar} aria-label="Agent 목록">
-            <div className={styles.sidebarHeading}>
-              <Inline align="between">
-                <h1>Agent</h1>
-                <Badge>{ui.agents.length}</Badge>
-              </Inline>
-              <Button onClick={() => setDialog('create')} disabled={disableSelection}>
-                <Icon name="plus" />새 Agent
-              </Button>
-              <Inline>
-                <Button
-                  variant={!ui.archived ? 'secondary' : 'ghost'}
-                  size="small"
-                  aria-pressed={!ui.archived}
-                  disabled={disableSelection}
-                  onClick={() => ui.setArchived(false)}
-                >
-                  활성
+      <PanelGroup className={styles.agentLayout} data-pane={view.pane}>
+        <div className={styles.agentNavigation}>
+          <ResizablePanel
+            label="Agent 목록 너비"
+            side="start"
+            width={panels.layout.sidebarWidth}
+            onWidthChange={(sidebarWidth) =>
+              panels.setLayout((value) => ({ ...value, sidebarWidth }))
+            }
+            collapsed={panels.layout.sidebarCollapsed}
+          >
+            <aside className={styles.sidebar} aria-label="Agent 목록">
+              <div className={styles.sidebarHeading}>
+                <Inline align="between">
+                  <h1>Agent</h1>
+                  <Inline>
+                    <Badge>{ui.agents.length}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      className={styles.desktopOnly}
+                      onClick={() => {
+                        panels.setLayout((value) => ({ ...value, sidebarCollapsed: true }));
+                        requestAnimationFrame(() => expandList.current?.focus());
+                      }}
+                    >
+                      목록 접기
+                    </Button>
+                  </Inline>
+                </Inline>
+                <Button onClick={openCreate} disabled={disableSelection}>
+                  <Icon name="plus" />새 Agent
                 </Button>
-                <Button
-                  variant={ui.archived ? 'secondary' : 'ghost'}
-                  size="small"
-                  aria-pressed={ui.archived}
-                  disabled={disableSelection}
-                  onClick={() => ui.setArchived(true)}
-                >
-                  <Icon name="archive" />
-                  보관함
+                <Inline>
+                  <Button
+                    variant={!ui.archived ? 'secondary' : 'ghost'}
+                    size="small"
+                    aria-pressed={!ui.archived}
+                    disabled={disableSelection}
+                    onClick={() => {
+                      rememberPosition();
+                      onNavigate({ kind: 'agents', archived: false, agentId: null, pane: 'list' });
+                    }}
+                  >
+                    활성
+                  </Button>
+                  <Button
+                    variant={ui.archived ? 'secondary' : 'ghost'}
+                    size="small"
+                    aria-pressed={ui.archived}
+                    disabled={disableSelection}
+                    onClick={() => {
+                      rememberPosition();
+                      onNavigate({ kind: 'agents', archived: true, agentId: null, pane: 'list' });
+                    }}
+                  >
+                    <Icon name="archive" />
+                    보관함
+                  </Button>
+                </Inline>
+              </div>
+              <nav aria-label="Agent 선택" className={styles.agentList}>
+                {ui.loading && <Loading />}
+                {!ui.loading && !ui.agents.length && (
+                  <p className={styles.muted}>
+                    {ui.archived ? '보관된 Agent가 없습니다.' : '아직 Agent가 없습니다.'}
+                  </p>
+                )}
+                {ui.agents.map((agent) => (
+                  <Button
+                    key={agent.id}
+                    variant="ghost"
+                    className={styles.agentRow}
+                    aria-pressed={agent.id === selected?.id}
+                    disabled={disableSelection}
+                    onClick={() => {
+                      choose(agent);
+                    }}
+                  >
+                    <span className={styles.agentRowName}>{agent.name}</span>
+                    <span className={styles.muted}>{agentLabel(agent)}</span>
+                  </Button>
+                ))}
+              </nav>
+              <div className={styles.sidebarFooter}>
+                <Button variant="ghost" onClick={onSettings}>
+                  <Icon name="settings" />
+                  전송 설정
                 </Button>
-              </Inline>
-            </div>
-            <nav aria-label="Agent 선택" className={styles.agentList}>
-              {ui.loading && <Loading />}
-              {!ui.loading && !ui.agents.length && (
-                <p className={styles.muted}>
-                  {ui.archived ? '보관된 Agent가 없습니다.' : '아직 Agent가 없습니다.'}
-                </p>
-              )}
-              {ui.agents.map((agent) => (
-                <Button
-                  key={agent.id}
-                  variant="ghost"
-                  className={styles.agentRow}
-                  aria-pressed={agent.id === selected?.id}
-                  disabled={disableSelection}
-                  onClick={() => {
-                    ui.select(agent);
-                    setDetails(false);
-                    setActionError('');
-                  }}
-                >
-                  <span className={styles.agentRowName}>{agent.name}</span>
-                  <span className={styles.muted}>{agentLabel(agent)}</span>
-                </Button>
-              ))}
-            </nav>
-            <div className={styles.sidebarFooter}>
-              <Button variant="ghost" onClick={() => setDialog('settings')}>
-                <Icon name="settings" />
-                전송 설정
-              </Button>
-              {footer}
-            </div>
-          </aside>
-        }
-      >
+              </div>
+            </aside>
+          </ResizablePanel>
+        </div>
         <section className={styles.main} aria-label="Agent 작업 영역">
-          {!selected ? (
+          {panels.layout.sidebarCollapsed && (
+            <div className={styles.restoreList}>
+              <Button
+                ref={expandList}
+                variant="ghost"
+                size="small"
+                onClick={() => panels.setLayout((value) => ({ ...value, sidebarCollapsed: false }))}
+              >
+                목록 펼치기
+              </Button>
+            </div>
+          )}
+          {!selected && ui.selectedId && !ui.readError ? (
+            <Loading>Agent를 불러오는 중…</Loading>
+          ) : !selected ? (
             <EmptyState
               title={ui.archived ? '보관한 대화를 다시 살펴보세요' : '어떤 일을 함께할까요?'}
               action={
                 !ui.archived && (
-                  <Button onClick={() => setDialog('create')}>
+                  <Button onClick={openCreate}>
                     <Icon name="plus" />첫 Agent 만들기
                   </Button>
                 )
@@ -226,7 +356,10 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                       icon="back"
                       label="Agent 목록으로"
                       disabled={disableSelection}
-                      onClick={() => ui.select(null)}
+                      onClick={() => {
+                        rememberPosition();
+                        onNavigate({ ...view, pane: 'list' });
+                      }}
                     />
                   </span>
                   <div className={styles.headingName}>
@@ -238,6 +371,7 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                 </Inline>
                 <Inline>
                   <IconButton
+                    ref={detailsToggle}
                     icon="info"
                     label="Agent 상세 정보"
                     aria-expanded={details}
@@ -246,14 +380,17 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                   <Button
                     variant="ghost"
                     disabled={!!selected.archivedAt || disableSelection}
-                    onClick={() => setDialog('archive')}
+                    onClick={() => {
+                      setArchiveTarget(selected);
+                      setDialog('archive');
+                    }}
                   >
                     <Icon name="archive" />
                     보관
                   </Button>
                 </Inline>
               </header>
-              <div className={styles.conversationBody}>
+              <PanelGroup className={styles.conversationBody}>
                 <div className={styles.conversation}>
                   <div
                     ref={historyBox}
@@ -262,7 +399,9 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                     tabIndex={0}
                     onScroll={(event) => {
                       const box = event.currentTarget;
+                      if (!box.clientHeight || !active) return;
                       atBottom.current = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
+                      rememberPosition();
                     }}
                   >
                     <div className={styles.reading}>
@@ -294,6 +433,7 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                           .map((entry) => (
                             <article
                               key={`${ui.history?.epoch}-${entry.seq}`}
+                              data-entry-seq={entry.seq}
                               className={
                                 entry.type === 'user_message'
                                   ? styles.userMessage
@@ -319,6 +459,12 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                               core={core}
                               agentId={selected.id}
                               permission={permission}
+                              answers={ui.permissionAnswers(permission.id)}
+                              onAnswersChange={(answers) =>
+                                ui.setPermissionAnswers(permission.id, answers)
+                              }
+                              busy={ui.permissionBusy(permission.id)}
+                              onBusy={(busy) => ui.setPermissionBusy(permission.id, busy)}
                               onResponded={() => {
                                 ui.setNotice('응답을 전달했습니다.');
                                 void ui.refresh();
@@ -412,7 +558,19 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                         className={styles.composer}
                         onSubmit={(event) => {
                           event.preventDefault();
-                          void ui.send().then(() => composer.current?.focus());
+                          const input = composer.current;
+                          const focused = document.activeElement;
+                          const agentId = selected.id;
+                          void ui.send().then(() => {
+                            if (
+                              currentView.current.active &&
+                              currentView.current.agentId === agentId &&
+                              input?.isConnected &&
+                              input.getClientRects().length &&
+                              document.activeElement === focused
+                            )
+                              input.focus();
+                          });
                         }}
                       >
                         <TextArea
@@ -442,6 +600,9 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                             <span>
                               전송 방식: {ui.settings.sendMode === 'queue' ? '대기열' : '추가 지시'}
                             </span>
+                            <Button variant="ghost" size="small" onClick={onSettings}>
+                              전송 방식 변경
+                            </Button>
                             <span>Enter로 전송 · Shift+Enter로 줄바꿈</span>
                           </div>
                           <Button
@@ -457,72 +618,82 @@ export function AgentScreen({ core, footer }: { core: WorknaruCore; footer?: Rea
                   </div>
                 </div>
                 {details && wide && (
-                  <aside aria-label="Agent 상세 정보" className={styles.details}>
-                    <Inline align="between">
-                      <h3>상세 정보</h3>
-                      <IconButton
-                        icon="close"
-                        label="상세 정보 닫기"
-                        onClick={() => setDetails(false)}
-                      />
-                    </Inline>
-                    <AgentDetails agent={selected} />
-                  </aside>
+                  <ResizablePanel
+                    label="상세 패널 너비"
+                    side="end"
+                    width={panels.layout.detailsWidth}
+                    onWidthChange={(detailsWidth) =>
+                      panels.setLayout((value) => ({ ...value, detailsWidth }))
+                    }
+                  >
+                    <aside aria-label="Agent 상세 정보" className={styles.details}>
+                      <Inline align="between">
+                        <h3>상세 정보</h3>
+                        <IconButton
+                          icon="close"
+                          label="상세 정보 닫기"
+                          onClick={() => setDetails(false)}
+                        />
+                      </Inline>
+                      <AgentDetails agent={selected} />
+                    </aside>
+                  </ResizablePanel>
                 )}
-              </div>
+              </PanelGroup>
             </>
           )}
         </section>
-      </ListDetail>
-      {selected && details && !wide && (
-        <Dialog
-          open
-          onOpenChange={setDetails}
-          presentation="sheet"
-          title="Agent 상세 정보"
-          description="선택한 Agent의 상태와 작업 환경입니다."
-        >
-          <AgentDetails agent={selected} />
-        </Dialog>
-      )}
+      </PanelGroup>
+      {active &&
+        selected &&
+        details &&
+        !wide &&
+        (view.pane === 'conversation' || window.innerWidth >= 768) && (
+          <Dialog
+            open
+            onOpenChange={setDetails}
+            presentation="sheet"
+            title="Agent 상세 정보"
+            description="선택한 Agent의 상태와 작업 환경입니다."
+          >
+            <AgentDetails agent={selected} />
+          </Dialog>
+        )}
       {dialog === 'create' && (
         <CreateAgentDialog
+          open={active && view.agentId === createOrigin}
           core={core}
           onClose={() => setDialog(null)}
           focusAfterCreate={() => composer.current}
           onCreated={(agent) => {
             setDialog(null);
-            ui.created(agent);
+            ui.remember(agent);
+            if (currentView.current.active && currentView.current.agentId === createOrigin)
+              choose(agent);
+            else void ui.refresh();
           }}
         />
       )}
-      {dialog === 'settings' && (
-        <SettingsDialog
-          core={core}
-          onClose={() => setDialog(null)}
-          onSaved={() => {
-            setDialog(null);
-            ui.setNotice('기본 전송 방식을 저장했습니다.');
-            void ui.refresh();
-          }}
-        />
-      )}
-      {dialog === 'archive' && selected && (
+      {dialog === 'archive' && archiveTarget && (
         <ArchiveAgentDialog
+          open={active && view.agentId === archiveTarget.id}
           core={core}
-          agent={selected}
+          agent={archiveTarget}
           onClose={() => setDialog(null)}
-          onBusy={ui.setArchiving}
+          onBusy={(busy) => ui.setAgentArchiving(archiveTarget.id, busy)}
           focusAfterArchive={() => historyBox.current}
           onArchived={() => {
             setDialog(null);
-            ui.setNotice('보관했습니다. 보관함에서 대화 기록을 다시 볼 수 있습니다.');
+            ui.setNotice(
+              `${archiveTarget.name}을 보관했습니다. 보관함에서 대화 기록을 다시 볼 수 있습니다.`,
+            );
             void ui.refresh();
           }}
         />
       )}
       {discard && (
         <DiscardDialog
+          open={active && view.agentId === discard.agent}
           busy={actionBusy}
           error={actionError}
           onClose={() => setDiscard(null)}
