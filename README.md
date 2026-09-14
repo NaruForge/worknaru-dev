@@ -6,6 +6,8 @@
 
 [용어집](docs/glossary.md)은 제품과 실행 기반의 핵심 용어를 정의한다. [개념 아키텍처](docs/architecture.md)는 CLI와 Web UI의 공통 구성요소, 호출 흐름과 실행 환경의 경계를 설명한다.
 
+[데이터 저장 위치](docs/data-storage.md)에서 설정·Agent·대화·작업 파일·브라우저·검증 데이터의 위치를 한눈에 확인할 수 있다. `WORKNARU_DATA_DIR`와 `WORKNARU_TEST_ROOT`, 주요 폴더 구조, 종료·초기화 시 보존 범위를 함께 설명한다.
+
 Web은 앱 탐색·Agent 목록·대화·상세 정보를 구분하고, 통합 설정에서 화면 테마·전송 방식·연결 진단을 제공한다. 같은 탭에서 설정과 다른 Agent를 오가도 초안과 읽던 위치를 유지한다. 패널 너비·접힘은 브라우저에 기억하며 작은 화면에서는 목록과 대화를 전환한다. UI를 개발하는 사람과 AI는 [UI 조립 안내](docs/ui-design.md)에서 공개 부품과 실제 예제를 찾는다. 개발용 카탈로그는 `pnpm ui:storybook`, 브라우저·접근성·화면 검증은 `pnpm ui:verify`로 실행한다.
 
 개발 환경에서 CLI를 사용하려면 [Worknaru CLI 실행 안내](apps/cli/README.md)를 참고한다. Daemon 연결과 CLI 연동은 [Paseo 개발 환경 검증](apps/paseo-dev/README.md)에서 확인한다.
