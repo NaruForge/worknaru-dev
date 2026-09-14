@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node", "vite/client", "vitest/globals"] },
+  "include": ["src", ".storybook", "test/browser", "../../packages/ui/src"],
+  "exclude": []
+}

@@ -22,5 +22,7 @@ Repository work와 architecture decision의 기록은
 
 패키지 관리는 루트 [package.json](package.json)의 `packageManager`에 지정된 pnpm을 사용한다.
 
+제품 UI 작업은 [UI 표준과 조립 절차](docs/ui-design.md)에서 공개 부품·실행 예제·검증 명령을 찾는다.
+
 기록 원본·진행 상태·ADR 상태를 다른 문서나 tracker에 중복 관리하지 않는다.
 사용자가 승인한 작업 범위를 따르며, 기록 체계 변경은 별도로 제안한다.

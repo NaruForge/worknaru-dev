@@ -1,0 +1,87 @@
+:root {
+  color-scheme: light;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  --font-mono: ui-monospace, Consolas, monospace;
+  --text-small: 12px;
+  --text-body: 14px;
+  --text-message: 16px;
+  --text-heading: 20px;
+  --text-hero: 28px;
+  --leading-body: 1.6;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  --radius-small: 6px;
+  --radius-medium: 10px;
+  --radius-large: 16px;
+  --radius-pill: 999px;
+  --stroke: 1px;
+  --focus-width: 2px;
+  --control-small: 30px;
+  --control-height: 36px;
+  --touch-height: 44px;
+  --icon-size: 16px;
+  --logo-size: 24px;
+  --sidebar-width: 260px;
+  --details-width: 300px;
+  --dialog-width: 520px;
+  --reading-width: 860px;
+  --motion-fast: 120ms;
+  --surface: #ffffff;
+  --surface-subtle: #f7f8fa;
+  --surface-hover: #eceef2;
+  --surface-selected: #e6e9f0;
+  --text: #20242e;
+  --text-muted: #596274;
+  --border: #d5d9e2;
+  --action: var(--brand-color, #3155d9);
+  --on-action: var(--brand-on-color, #ffffff);
+  --focus: #3155d9;
+  --status-error: #ae2538;
+  --status-error-bg: #fff0f1;
+  --status-warning: #805005;
+  --status-warning-bg: #fff5dd;
+  --status-success: #176347;
+  --status-success-bg: #eaf7f0;
+  --overlay: #13182466;
+  --shadow-dialog: 0 16px 64px #13182433;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #1a1c21;
+  --surface-subtle: #14161a;
+  --surface-hover: #292d35;
+  --surface-selected: #343a46;
+  --text: #f0f1f5;
+  --text-muted: #a5adbd;
+  --border: #3b414d;
+  --focus: #a7b9ff;
+  --status-error: #ffabb5;
+  --status-error-bg: #3b222a;
+  --status-warning: #efcc85;
+  --status-warning-bg: #332d20;
+  --status-success: #90ddbb;
+  --status-success-bg: #1c322b;
+  --overlay: #00000099;
+  --shadow-dialog: 0 16px 64px #00000066;
+}
+
+@media (pointer: coarse) {
+  :root {
+    --control-height: var(--touch-height);
+    --control-small: var(--touch-height);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+  }
+}

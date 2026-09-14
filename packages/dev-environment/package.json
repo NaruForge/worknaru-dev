@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@getpaseo/cli": "0.8.0",
-    "@getpaseo/client": "0.8.0"
+    "@getpaseo/client": "0.8.0",
+    "react": "19.1.9"
   }
 }
