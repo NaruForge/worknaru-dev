@@ -62,6 +62,10 @@ jobs:
       - run: pnpm test
         env:
           WORKNARU_TEST_ROOT: ${{ runner.temp }}/worknaru-tests
+      - name: Verify workspace RPC with a real Daemon (no Provider)
+        run: node --test apps/agent-service/test/workspace.integration.mjs
+        env:
+          WORKNARU_TEST_ROOT: ${{ runner.temp }}/worknaru-tests
   browser:
     needs: scope
     if: needs.scope.outputs.code == 'true'
