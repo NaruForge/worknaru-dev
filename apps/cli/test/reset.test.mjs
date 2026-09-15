@@ -9,6 +9,9 @@ import { acquireDataLock, assertStorage, inspectStorage, writeMarker } from '../
 import { expectedConfig } from '../../../packages/dev-environment/config.mjs';
 import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
 import { resetData, resetPlan, verifyStopped } from '../data-reset.mjs';
+import { initialAgentState } from '@worknaru/core/agent-service';
+import { openStore } from '../../agent-service/server/store.mjs';
+import { registry, seedRegistry, storedState, resetService } from './reset-state-fixture.mjs';
 
 const exec = promisify(execFile);
 const stopped = async () => {};
@@ -61,6 +64,49 @@ test('reset discards incompatible data, retains a management marker and is repea
   assert.equal((await resetData(f.paths, { stopped })).state, 'reset');
   await claim(f.paths); await writeFile(path.join(f.paths.dataHome, 'new-data'), 'new');
   await resetData(f.paths, { stopped }); assert.deepEqual(await readdir(f.paths.dataHome), ['worknaru-data.json']);
+});
+
+test('reset clears readable Agent registrations and durable request state without a Provider', async t => {
+  const f = await fixture(t); await claim(f.paths);
+  const project = path.join(f.directory, 'project'); await mkdir(project);
+  const files = { 'keep.txt': 'External project survives.', 'result.txt': '검증완료' };
+  for (const [name, content] of Object.entries(files)) await writeFile(path.join(project, name), content);
+  await seedRegistry(f.paths, project);
+  const seed = initialAgentState();
+  seed.settings = { sendMode: 'steer', revision: 3 };
+  seed.requests = ['completed', 'uncertain', 'queued'].map((state, index) => ({
+    id: `request-${index}`, agentId: 'active-agent', text: `Durable ${state}`, mode: 'queue', state,
+    turnId: state === 'queued' ? null : `turn-${index}`, createdAt: '2026-09-15T00:00:00.000Z', error: null,
+  }));
+  seed.paused['active-agent'] = true;
+  seed.creations['creation-one'] = { signature: JSON.stringify(['Active fixture', project, 'fixture-model']), agentId: 'active-agent' };
+  const writer = openStore(f.paths.agentState);
+  try { writer.save(seed); } finally { writer.close(); }
+  const providerCalls = [];
+  // A fresh reader must prove these are valid records, not just nonempty files.
+  const before = await resetService(f.paths, providerCalls);
+  try {
+    assert.deepEqual((await before.list()).map(a => a.id), ['active-agent']);
+    assert.deepEqual((await before.list({ archived: true })).map(a => a.id), ['archived-agent']);
+    assert.deepEqual(await before.settings(), seed.settings);
+    assert.deepEqual(await before.requests({ agent: 'active-agent' }), { requests: seed.requests, paused: true });
+    assert.deepEqual(storedState(f.paths), seed);
+  } finally { await before.close(); }
+  assert.deepEqual(providerCalls, [], 'Paused queued requests must never dispatch during fixture recovery');
+  assert.equal((await resetData(f.paths, { stopped })).state, 'reset');
+  assert.deepEqual(await readdir(f.paths.dataHome), ['worknaru-data.json']);
+  for (const [name, content] of Object.entries(files)) assert.equal(await readFile(path.join(project, name), 'utf8'), content);
+  assert.deepEqual(await (await registry(f.paths)).list(), []);
+  await claim(f.paths);
+  assert.equal(storedState(f.paths), null);
+  const after = await resetService(f.paths, providerCalls);
+  try {
+    assert.deepEqual(await after.list(), []);
+    assert.deepEqual(await after.list({ archived: true }), []);
+    assert.deepEqual(await after.settings(), initialAgentState().settings);
+    assert.deepEqual(storedState(f.paths), initialAgentState());
+  } finally { await after.close(); }
+  assert.deepEqual(providerCalls, []);
 });
 
 test('interrupted deletion blocks runtime reuse and retries without restoring data', async t => {

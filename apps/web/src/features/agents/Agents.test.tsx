@@ -265,6 +265,13 @@ it('retains a settings conflict and reloads the current revision before saving',
   await screen.findByLabelText('기본 전송 방식');
   fireEvent.change(screen.getByLabelText('기본 전송 방식'), { target: { value: 'steer' } });
   await act(() => fixture.core.agents.saveSettings({ sendMode: 'queue', revision: 0 }));
+  await screen.findByText(
+    '다른 화면에서 설정이 변경됐습니다. 편집 내용은 유지했습니다.',
+    {
+      exact: false,
+    },
+    { timeout: 3000 },
+  );
   fireEvent.click(screen.getByRole('button', { name: '저장' }));
   await screen.findByRole('alert');
   fireEvent.click(screen.getByRole('button', { name: '최신 설정 다시 불러오기' }));

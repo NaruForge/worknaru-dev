@@ -69,13 +69,15 @@ pnpm exec worknaru dev start
 
 Agent·대기열·권한·보관과 브라우저 사용 흐름의 검증 근거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 둔다. 기본 전체 흐름, CLI와 Web 간 후속 대화·설정 공유, 권한 승인·거부, 한글 조합 Enter·줄바꿈, 보관 후 전송 금지, 작은 화면과 재접속을 확인한다. 실제 Codex 검증에는 Provider 사용량이 발생한다.
 
-실제 Web–Provider 연결에 영향을 주면 소유권과 영향을 확인한 관리형 환경을 종료하고 빈 개발 포트에서 `pnpm ui:live`를 실행한다. 실제 생성·후속 대화·새로고침·한글 조합 Enter·390px 화면·보관·초기화를 재현한다. [실행기](test/live-browser.mjs)가 자체 격리 환경을 만들고 [브라우저 흐름](test/agent.browser.mjs)에 외부 작업 폴더와 캡처 경로를 전달한다. 캡처는 해당 외부 실행 폴더에 남긴다.
+실제 Web–Provider 연결에 영향을 주면 소유권과 영향을 확인한 관리형 환경을 종료하고 빈 개발 포트에서 `pnpm ui:live`를 실행한다. 실제 생성·대화·후속 대화·새로고침 후 이력·보관과 CLI/Web 교차 사용을 재현한다. [실행기](test/live-browser.mjs)가 자체 격리 환경을 만들고 [브라우저 흐름](test/agent.browser.mjs)에 외부 작업 폴더와 캡처 경로를 전달한다. 캡처는 해당 외부 실행 폴더에 남긴다. IME·줄바꿈·작은 화면·포커스·초안·테마·설정 충돌의 일반 동작은 기존 Vitest와 Storybook 브라우저 검사로 선택한다.
 
 개별 화면은 관련 Web 테스트·정적 검사와 `pnpm ui:verify:functional <spec> --grep <흐름>`으로 선택 검증한다. 이 명령은 Storybook을 빌드하고 기능·키보드·접근성을 검사하며 이미지 비교는 제외한다. 전체 `pnpm test`와 `pnpm ui:verify`는 공통 UI 변경 및 최종 UI 회귀에 사용한다. Docker 준비는 필요하지 않다. 브라우저가 없으면 `pnpm --filter @worknaru/web exec playwright install chromium`을 먼저 실행한다. 빌드 재사용 명령, 전체 검증 조건, Windows CI 기준 이미지의 검토·갱신과 AI 조립 평가는 [UI 표준](../../docs/ui-design.md#실행과-검증)을 따른다. `pnpm ui:storybook`으로 실제 부품과 상태별 견본을 확인한다. 실연동은 [변경별 선택 기준](../paseo-dev/README.md#검증-선택)을 따른다.
 
 실제 브라우저의 정상 조회·종료 후 실패·소켓 정리와 loopback 응답 서버를 사용한 인증 오류·대상 불일치·시간 초과 검증의 근거는 [Issue #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 둔다. Paseo `0.8.0` 전환 후 같은 경로를 재검증한 근거는 [Issue #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 연결한다.
 
-`pnpm ui:live`는 Windows에서 빈 개발 포트를 확인하고 [검증 전용 외부 루트](../paseo-dev/README.md#검증-데이터-격리)의 실행별 독립 데이터로 실제 Web 흐름·CLI/Web 교차 대화·Daemon 재접속을 검증한 뒤 자신이 시작한 환경을 종료한다. Codex 로그인과 Provider 사용량이 필요하며 결과·실패 화면은 해당 실행 폴더에 남는다. 기본 개인 데이터 루트를 정리하거나 기존 프로세스를 종료하지 않는다.
+`pnpm ui:live`는 Windows에서 빈 개발 포트를 확인하고 [검증 전용 외부 루트](../paseo-dev/README.md#검증-데이터-격리)의 실행별 독립 데이터로 실제 Web 흐름·CLI/Web 교차 대화를 검증한 뒤 자신이 시작한 환경을 종료한다. Codex 로그인과 Provider 사용량이 필요하며 결과·실패 화면은 해당 실행 폴더에 남는다. 기본 개인 데이터 루트를 정리하거나 기존 프로세스를 종료하지 않는다.
+
+오래된 탭의 전송 차단은 `pnpm ui:verify:functional sdk-identity.spec.ts`로 선택한다. `Verification/Connection` story는 Core 주입 없이 실제 App의 bootstrap과 고정 SDK를 실행하고, 브라우저 검사가 접속 설정·WebSocket 응답만 제공한다. 정상 ID의 생성·전송을 확인한 뒤 ID 변경 시 송신 RPC 부재, 초안·URL 유지, 수동 새로고침 후 선호 초기화를 검사한다. Provider·실제 Daemon 없이 실행하며 기존 Storybook 소스 빌드를 사용한다. 새 checkout/의존 패키지 변경 시 위 UI 표준의 선행 빌드를 적용한다. 이 검사는 실제 Daemon reset 완료 검증과 구분한다.
 
 ## 전체 초기화 후 새로고침
 
@@ -97,4 +99,4 @@ Agent·대기열·권한·보관과 브라우저 사용 흐름의 검증 근거�
 
 연결은 기존 Daemon의 `development.data` RPC와 관리 실행기의 named pipe를 사용한다. 별도 HTTP 서버·포트·백그라운드 서비스를 추가하지 않는다. 이 앱의 개발 관리 통신은 제품 Core/Runtime 계약 밖에 있으며, 기존 서버 ID·버전 확인을 적용한다. 관리형 Windows `dev start`와 활성화된 Agent 서비스가 필요하다.
 
-데이터 화면 문구·표시는 관련 고정 데이터 테스트로 확인하고 공통 UI 변경 및 병합 검증은 UI 표준을 따른다. 실제 종료·초기화·재시작 경계를 변경하면 관리 환경을 정지한 뒤 `node apps/web/test/data-browser.mjs`로 검사한다. 최초 setup이 한 번 빌드하므로 별도 선행 빌드는 필요 없다. 실행기 수명·실패 정리에도 영향을 주면 `pnpm dev:verify`를 추가한다. 테스트 전용 외부 루트에서 두 차례 초기화, 새 서버 ID, 전용 파일 삭제, 외부 파일 보존과 화면 재접속을 확인하며 Provider 메시지는 보내지 않는다. `WORKNARU_TEST_ROOT`를 지원한다. 폴더 열기는 단위 테스트에서 실행 대상을 검사하며 실제 탐색기 창은 자동 검증에서 열지 않는다.
+데이터 화면 문구·표시는 관련 고정 데이터 테스트로 확인하고 공통 UI 변경 및 병합 검증은 UI 표준을 따른다. 실제 설정 공유·연결 복구·초기화·재시작 경계를 변경하면 관리 환경을 정지한 뒤 `node apps/web/test/data-browser.mjs`로 검사한다. 최초 setup이 한 번 빌드하므로 별도 선행 빌드는 필요 없다. 실행기 수명·실패 정리에도 영향을 주면 `pnpm dev:verify`를 추가한다. 테스트 전용 외부 루트에서 저장된 비기본 설정의 재시작 보존, 두 차례 초기화와 요청 ID별 완료, 새 서버 ID/기본 선호, 외부 파일 보존, 다른 탭의 설정 저장 거부를 확인한다. 모델 조회·Agent 생성·Provider 대화를 하지 않으며 로그인/사용량이 필요 없다. CLI 명령·송신 RPC·등록 상태와 reset 전 로그를 실행 폴더에 남겨 비의존 경로를 확인한다. `WORKNARU_TEST_ROOT`를 지원한다. 폴더 열기는 단위 테스트에서 실행 대상을 검사하며 실제 탐색기 창은 자동 검증에서 열지 않는다.
