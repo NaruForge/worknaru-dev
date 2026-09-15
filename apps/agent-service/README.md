@@ -23,3 +23,22 @@ Agent 생성과 `options({ cwd })`는 명시적인 유효 작업 폴더를 요�
 ## 개발 데이터 관리 중계
 
 별도의 `development.data` RPC는 `snapshot`·`open`·`preview`·`reset`의 제한된 입력만 받는다. `server/data-management.mjs`는 전용 루트·소유 checkout·관리 실행기 기록·현재 서버 ID를 확인한 뒤 기존 Windows named pipe에 전달한다. 응답에서 제어 채널의 인증 토큰·PID·소유권 envelope를 제외한다. 실제 폴더 열기·정지·삭제·재시작은 CLI 관리 실행기가 수행한다. 제품 Agent API나 Core/Runtime에 파일·프로세스 관리 책임을 추가하지 않는다. [ADR 0012](../../docs/adr/0012-settings-data-management.md)
+
+## Workspace·Project API
+
+같은 플러그인이 별도의 `workspace.execute` RPC를 등록한다. `agents.execute`를 확장하거나 Agent 생성을 요구하지 않는다. `server/workspace-domain.mjs`가 외부 전용 루트의 소유 checkout·`ready` 마커를 검사하고 `server/workspace-store.mjs`의 SQLite 저장소를 [Core Workspace API](../../packages/core/README.md#workspaceproject-최소-도메인)에 주입한다. 초기화는 Agent Driver·server-id·Provider 연결을 기다리지 않으며 플러그인 해제 시 두 서비스의 DB/자원을 각각 정리한다. 플러그인 설치·활성화 자체는 기존 `agent setup` 흐름을 사용한다.
+
+RPC 입력은 `{ operation, input }`이며 아래 여섯 작업과 각 입력의 필드만 허용한다. 성공은 `{ ok: true, data }`, 실패는 `{ ok: false, error: { code, message } }`다. 도메인 오류는 Core의 안전한 코드·메시지를 전달하고 초기화 실패는 `service_error`로 처리한다. 임의 메서드·파일 경로·SQL을 받지 않는다. 현재 UI·CLI에는 이 기능의 화면·명령·클라이언트 연결을 추가하지 않았다.
+
+| operation | input |
+| --- | --- |
+| `createWorkspace` | `{ name }` |
+| `listWorkspaces` | `{}` |
+| `getWorkspace` | `{ id }` |
+| `createProject` | `{ workspaceId, name }` |
+| `listProjects` | `{ workspaceId }` |
+| `getProject` | `{ id }` |
+
+저장 파일은 `WORKNARU_AGENT_DATA_ROOT` 아래의 `worknaru-domain.sqlite`다. 별도 경로 환경 변수·기본 Workspace·로컬 작업 폴더를 만들지 않는다. DB·부속 파일의 링크를 거부하고 외래키·행 단위 원자적 insert·WAL·`synchronous=FULL`을 사용한다. 여러 연결은 DB의 현재 행을 조회하며 Agent queue의 상태 스냅샷/revision을 공유하지 않는다. 정상 재시작은 보존하고, 기존 승인된 전용 루트 전체 초기화는 이 DB와 부속 파일도 삭제한다. [저장·보존 범위](../../docs/data-storage.md)
+
+`pnpm test`는 소속·입력 검증, 저장 실패, 별도 프로세스 재시작, 동시 생성, 소유권/초기화 차단 회귀를 포함한다. 이 검증은 Provider 호출을 하지 않는다. 변경 범위와 실행 근거는 [Issue #51](https://github.com/NaruForge/worknaru-dev/issues/51)에 둔다.

@@ -2,7 +2,9 @@ import type { PluginServerContext } from '@getpaseo/plugin/server';
 import { defineRpc } from '@getpaseo/plugin';
 import { z } from 'zod';
 import { AgentError } from '@worknaru/runtime';
+import { WorkspaceDomainError } from '@worknaru/core';
 import { initialize } from './server/entry.mjs';
+import { initializeWorkspaceDomain } from './server/workspace-domain.mjs';
 import { manageData } from './server/data-management.mjs';
 
 const management = defineRpc({ name: 'development.data',
@@ -20,6 +22,19 @@ const contract = defineRpc({ name: 'agents.execute',
   output: z.discriminatedUnion('ok', [z.object({ ok: z.literal(true), data: z.unknown() }),
     z.object({ ok: z.literal(false), error: z.object({ code: z.string(), message: z.string() }) })]) });
 
+const workspaceContract = defineRpc({ name: 'workspace.execute',
+  input: z.discriminatedUnion('operation', [
+    z.object({ operation: z.literal('createWorkspace'), input: z.object({ name: z.string() }).strict() }).strict(),
+    z.object({ operation: z.literal('listWorkspaces'), input: z.object({}).strict() }).strict(),
+    z.object({ operation: z.literal('getWorkspace'), input: z.object({ id: z.string() }).strict() }).strict(),
+    z.object({ operation: z.literal('createProject'), input: z.object({ workspaceId: z.string(), name: z.string() }).strict() }).strict(),
+    z.object({ operation: z.literal('listProjects'), input: z.object({ workspaceId: z.string() }).strict() }).strict(),
+    z.object({ operation: z.literal('getProject'), input: z.object({ id: z.string() }).strict() }).strict(),
+  ]),
+  output: z.discriminatedUnion('ok', [z.object({ ok: z.literal(true), data: z.unknown() }),
+    z.object({ ok: z.literal(false), error: z.object({ code: z.string(), message: z.string() }) })]),
+});
+
 export default function contribute(server: PluginServerContext) {
   server.handle(management, async ({ operation, input }) => {
     try {
@@ -27,6 +42,26 @@ export default function contribute(server: PluginServerContext) {
       return result.ok ? { ok: true, data: result.value } : { ok: false, error: result.error };
     }
     catch { return { ok: false, error: { code: 'management_unavailable', message: '데이터 관리 실행기에 연결하지 못했습니다. 관리형 dev start 환경인지 확인하고 doctor로 진단해 주세요.' } }; }
+  });
+  // Product metadata does not wait for a Paseo Agent driver or Provider connection.
+  const workspaceDomain = initializeWorkspaceDomain();
+  workspaceDomain.catch(() => console.error('Workspace domain initialization failed. Inspect owned data storage.'));
+  server.handle(workspaceContract, async request => {
+    try {
+      const { api } = await workspaceDomain;
+      switch (request.operation) {
+        case 'createWorkspace': return { ok: true as const, data: await api.createWorkspace(request.input) };
+        case 'listWorkspaces': return { ok: true as const, data: await api.listWorkspaces() };
+        case 'getWorkspace': return { ok: true as const, data: await api.getWorkspace(request.input) };
+        case 'createProject': return { ok: true as const, data: await api.createProject(request.input) };
+        case 'listProjects': return { ok: true as const, data: await api.listProjects(request.input) };
+        case 'getProject': return { ok: true as const, data: await api.getProject(request.input) };
+      }
+    } catch (error) {
+      return { ok: false as const, error: error instanceof WorkspaceDomainError
+        ? { code: error.code, message: error.message }
+        : { code: 'service_error', message: '업무 저장소를 준비하지 못했습니다. doctor와 전용 데이터 설정을 확인해 주세요.' } };
+    }
   });
   const service = initialize();
   // Initialization errors are surfaced through health without exposing raw local errors.
@@ -39,5 +74,7 @@ export default function contribute(server: PluginServerContext) {
         : { code: 'service_error', message: 'Agent 작업을 완료하지 못했습니다. doctor와 실행부 로그를 확인해 주세요.' } };
     }
   });
-  return async () => { try { await (await service).close(); } catch { /* initialization already reported */ } };
+  return async () => {
+    await Promise.allSettled([service.then(value => value.close()), workspaceDomain.then(value => value.close())]);
+  };
 }
