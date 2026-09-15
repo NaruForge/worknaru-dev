@@ -2,6 +2,7 @@ import type { DaemonStatus, Runtime } from '@worknaru/runtime';
 import { AgentError, type AgentAPI } from '@worknaru/runtime';
 export * from '@worknaru/runtime';
 export { conversationMessages } from './conversation.js';
+export * from './workspace-domain.js';
 
 export type { DaemonStatus } from '@worknaru/runtime';
 

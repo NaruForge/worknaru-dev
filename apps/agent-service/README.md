@@ -23,3 +23,33 @@ Agent 생성과 `options({ cwd })`는 명시적인 유효 작업 폴더를 요�
 ## 개발 데이터 관리 중계
 
 별도의 `development.data` RPC는 `snapshot`·`open`·`preview`·`reset`의 제한된 입력만 받는다. `server/data-management.mjs`는 전용 루트·소유 checkout·관리 실행기 기록·현재 서버 ID를 확인한 뒤 기존 Windows named pipe에 전달한다. 응답에서 제어 채널의 인증 토큰·PID·소유권 envelope를 제외한다. 실제 폴더 열기·정지·삭제·재시작은 CLI 관리 실행기가 수행한다. 제품 Agent API나 Core/Runtime에 파일·프로세스 관리 책임을 추가하지 않는다. [ADR 0012](../../docs/adr/0012-settings-data-management.md)
+
+## Workspace·Project API
+
+같은 플러그인이 별도의 `workspace.execute` RPC를 등록한다. `agents.execute`를 확장하거나 Agent 생성을 요구하지 않는다. `server/workspace-domain.mjs`가 외부 전용 루트의 소유 checkout·`ready` 마커를 검사하고 `server/workspace-store.mjs`의 SQLite 저장소를 [Core Workspace API](../../packages/core/README.md#workspaceproject-최소-도메인)에 주입한다. 초기화는 Agent Driver·server-id·Provider 연결을 기다리지 않으며 플러그인 해제 시 두 서비스의 DB/자원을 각각 정리한다. 플러그인 설치·활성화 자체는 기존 `agent setup` 흐름을 사용한다.
+
+RPC 입력은 `{ operation, input }`이며 아래 여섯 작업과 각 입력의 필드만 허용한다. 성공은 `{ ok: true, data }`, 실패는 `{ ok: false, error: { code, message } }`다. 도메인 오류는 Core의 안전한 코드·메시지를 전달하고 초기화 실패는 `service_error`로 처리한다. 임의 메서드·파일 경로·SQL을 받지 않는다. 현재 UI·CLI에는 이 기능의 화면·명령·클라이언트 연결을 추가하지 않았다.
+
+| operation | input |
+| --- | --- |
+| `createWorkspace` | `{ name }` |
+| `listWorkspaces` | `{}` |
+| `getWorkspace` | `{ id }` |
+| `createProject` | `{ workspaceId, name }` |
+| `listProjects` | `{ workspaceId }` |
+| `getProject` | `{ id }` |
+
+저장 파일은 `WORKNARU_AGENT_DATA_ROOT` 아래의 `worknaru-domain.sqlite`다. 별도 경로 환경 변수·기본 Workspace·로컬 작업 폴더를 만들지 않는다. DB·부속 파일의 링크를 거부하고 외래키·행 단위 원자적 insert·WAL·`synchronous=FULL`을 사용한다. 여러 연결은 DB의 현재 행을 조회하며 Agent queue의 상태 스냅샷/revision을 공유하지 않는다. 정상 재시작은 보존하고, 기존 승인된 전용 루트 전체 초기화는 이 DB와 부속 파일도 삭제한다. [저장·보존 범위](../../docs/data-storage.md)
+
+기존 DB는 `user_version=1`만으로 신뢰하지 않는다. 초기화 잠금 안에서 `sqlite_schema`의 앱 소유 객체 전체를 v1 생성 DDL과 대조하고, `quick_check`와 `foreign_key_check`로 기존 행도 검사한 뒤에만 WAL을 설정한다. PK·FK·NOT NULL·CHECK·STRICT·인덱스가 다르거나 예상하지 않은 객체가 있으면 변경 없이 거부한다. 공백 배치를 제외한 앱 생성 DDL만 허용하며, 외부 도구가 재작성한 의미상 동등한 스키마의 호환성까지 제공하지 않는다. 자동 복구·마이그레이션·데이터 삭제는 하지 않는다.
+
+`pnpm test`는 소속·입력 검증, 저장 실패, 별도 프로세스 재시작, 동시 생성, 소유권/초기화 차단 회귀를 포함한다. `workspace-schema.test.mjs`는 수정 전 정상 v1 DB의 호환성과 잘못된 v1 DB의 무변경 거부를 DELETE/WAL 양쪽에서 검사한다. 이 검증은 Provider 호출을 하지 않는다. 변경 범위와 실행 근거는 [Issue #51](https://github.com/NaruForge/worknaru-dev/issues/51)에 둔다.
+
+실제 RPC 연결은 Windows에서 아래 명령으로 별도 검증한다. 먼저 관리형 개발 환경을 정상 종료하고 [검증 데이터 격리](../paseo-dev/README.md#검증-데이터-격리) 규칙을 따른다.
+
+```powershell
+pnpm build
+node --test apps/agent-service/test/workspace.integration.mjs
+```
+
+이 검사는 외부 임시 데이터 루트와 기존 전용 Daemon 실행기를 사용한다. 실제 `workspace.execute`의 여섯 API·오류 응답, 정상 종료 후 새 프로세스의 ID·소속·생성 시각 보존, 잘못된 스키마의 `service_error` 응답과 DB 보존을 확인한다. Agent 생성·Provider 로그인·메시지 전송은 하지 않는다. 고정 포트를 쓰므로 다른 실연동과 동시에 실행하지 않는다. Windows CI의 `tests` 작업이 전체 `pnpm test` 이후 이 검사를 직렬 실행하며, 일반 패키지 단위 테스트에는 포함하지 않는다. Linux의 명시적 skip은 실연동 성공 근거가 아니다.
