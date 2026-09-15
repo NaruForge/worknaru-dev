@@ -27,6 +27,11 @@ test('mobile Workspace navigation preserves selection through list, history and 
   await page.reload();
   await expect(project).toHaveAttribute('aria-current', 'page');
   await expect(select).toHaveValue(sampleWorkspace.id);
+  await project.click();
+  await page.reload();
+  await page.getByRole('button', { name: '설정', exact: true }).click();
+  await page.getByRole('button', { name: '작업으로 돌아가기' }).click();
+  await expect(page.getByRole('heading', { name: sampleProject.name })).toBeFocused();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

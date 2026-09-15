@@ -16,6 +16,7 @@ import {
 } from '@worknaru/ui';
 import { initialWorkspaceView, type WorkspaceView } from '../../shell/navigation.js';
 import type { usePanelLayout } from '../../shell/layout.js';
+import { useMediaQuery } from '../../shell/theme.js';
 import { useWorkspaceSession, workspaceMessage } from './useWorkspaceSession.js';
 import styles from './workspaces.module.css';
 
@@ -34,6 +35,8 @@ export function WorkspaceScreen({
   panels: ReturnType<typeof usePanelLayout>;
 }) {
   const ui = useWorkspaceSession(core, view, active, onNavigate);
+  const desktop = useMediaQuery('(min-width: 768px)');
+  const DetailHeading = desktop ? 'h2' : 'h1';
   const [draft, setDraft] = useState<Draft | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,8 +60,7 @@ export function WorkspaceScreen({
   const selected = ui.project ?? ui.workspace;
   const chooseDetail = (next: WorkspaceView) => {
     onNavigate(next);
-    if (next.pane === 'detail' && !window.matchMedia('(min-width: 768px)').matches)
-      requestAnimationFrame(() => heading.current?.focus());
+    if (next.pane === 'detail' && !desktop) requestAnimationFrame(() => heading.current?.focus());
   };
   const chooseWorkspace = (id: string) =>
     chooseDetail({
@@ -247,9 +249,9 @@ export function WorkspaceScreen({
                 {panels.layout.sidebarCollapsed ? '목록 펼치기' : '목록 접기'}
               </Button>
             </div>
-            <h2 ref={heading} tabIndex={-1}>
+            <DetailHeading ref={heading} tabIndex={-1}>
               {selected?.name ?? '업무 공간'}
-            </h2>
+            </DetailHeading>
           </header>
           <div className={styles.content}>
             {ui.loading ? (

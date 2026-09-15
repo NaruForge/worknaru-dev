@@ -122,13 +122,17 @@ function ConnectedApp({
       const target = lastFocus.current[view.kind];
       if (target?.isConnected && target.getClientRects().length && !target.matches(':disabled'))
         target.focus({ preventScroll: true });
+      else if (view.kind === 'workspaces')
+        [
+          ...document.querySelectorAll<HTMLElement>(
+            '[aria-label="Workspace 탐색"] select, [aria-label="업무 공간 상세"] h1, [aria-label="업무 공간 상세"] h2',
+          ),
+        ]
+          .find((element) => element.getClientRects().length)
+          ?.focus({ preventScroll: true });
       else
         document
-          .querySelector<HTMLElement>(
-            view.kind === 'workspaces'
-              ? '[aria-label="Workspace 탐색"] select'
-              : '[aria-label="대화 기록"], [aria-label="Agent 선택"] button',
-          )
+          .querySelector<HTMLElement>('[aria-label="대화 기록"], [aria-label="Agent 선택"] button')
           ?.focus({ preventScroll: true });
     });
   };
