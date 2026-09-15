@@ -2,9 +2,9 @@
 
 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것들을 하나의 Workspace에서 조합·실행할 수 있게 하는 플랫폼.
 
-현재 CLI와 Web UI에서 Codex Agent를 생성·조회하고, 메시지 전송·응답 확인·후속 대화·보관까지 사용할 수 있다. 지속 대기열, 진행 중인 작업에 추가 지시, 권한 승인·거부와 질문 응답을 지원한다. Module·Worknaru Workspace의 개발·조합·실행 기능은 후속 구현 대상이다.
+현재 CLI와 Web UI에서 Codex Agent를 생성·조회하고, 메시지 전송·응답 확인·후속 대화·보관까지 사용할 수 있다. 지속 대기열, 진행 중인 작업에 추가 지시, 권한 승인·거부와 질문 응답을 지원한다. Module·Worknaru Workspace·Project의 관계와 실행 맥락은 제품 계약으로 정했으며, 관리·개발·조합·실행 기능은 후속 구현 대상이다.
 
-[용어집](docs/glossary.md)은 제품과 실행 기반의 핵심 용어를 정의한다. [개념 아키텍처](docs/architecture.md)는 CLI와 Web UI의 공통 구성요소, 호출 흐름과 실행 환경의 경계를 설명한다.
+[용어집](docs/glossary.md)은 제품과 실행 기반의 핵심 용어를 정의한다. [개념 아키텍처](docs/architecture.md)는 채택한 업무 관계·실행 맥락과 현재 CLI·Web UI의 구성요소·호출 흐름을 구분해 설명한다.
 
 [데이터 저장 위치](docs/data-storage.md)에서 설정·Agent·대화·작업 파일·브라우저·검증 데이터의 위치를 한눈에 확인할 수 있다. `WORKNARU_DATA_DIR`와 `WORKNARU_TEST_ROOT`, 주요 폴더 구조, 종료·초기화 시 보존 범위를 함께 설명한다.
 

@@ -2,7 +2,7 @@
 
 Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것들을 하나의 Workspace에서 조합·실행할 수 있게 하는 플랫폼이다. 사용자가 플랫폼 안에서 AI Agent와 함께 Module을 개발하는 것이 핵심 목표다.
 
-이 문서는 현재 코드의 구성요소와 실행 구조를 설명한다. CLI와 Web UI는 같은 Core·Runtime·Paseo Adapter를 통해 전용 Daemon 상태와 Codex Agent의 생성·대화·대기열·권한·보관을 사용한다. 웹 코드는 브라우저에서 실행하고 지속 대기열은 Daemon의 서버 플러그인이 실행한다.
+이 문서는 채택한 제품 계약과 현재 코드의 구성요소·실행 구조를 구분해 설명한다. CLI와 Web UI는 같은 Core·Runtime·Paseo Adapter를 통해 전용 Daemon 상태와 Codex Agent의 생성·대화·대기열·권한·보관을 사용한다. 웹 코드는 브라우저에서 실행하고 지속 대기열은 Daemon의 서버 플러그인이 실행한다.
 
 개별 용어의 정의와 혼동하기 쉬운 차이는 [용어집](glossary.md)에서 확인한다.
 
@@ -10,15 +10,89 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 
 ## 제품 개념과 현재 구현의 관계
 
-| 개념 | 플랫폼에서의 의미 |
+아래는 [ADR 0015](adr/0015-workspace-project-module-contract.md)에서 채택한 계약이다. 이 절의 Workspace·Project는 별도 표기가 없으면 Worknaru의 개념이며, 짧은 정의는 [용어집](glossary.md)을 따른다.
+
+| 범위 | 채택한 제품 계약 | 현재 구현과 후속 범위 |
+| --- | --- | --- |
+| 업무 구조 | Workspace → Project 소속, 독립 Module의 참조·사용 | Workspace·Project·Module 관리 API와 UI는 미구현 |
+| Module 실행 | Standalone / Workspace / Project의 명시적 실행 맥락 | Run API·물리 저장·패키징·버전·실행 수명 구현은 후속 범위 |
+| Agent | 직접 대화 및 Module 개발·실행에 참여할 수 있는 실행 대상 | Core는 Agent API와 상태 조회를 제공하며 Module 실행·Project 연결은 미구현 |
+| System Agent | 앱 수준의 안내·작업 진입점 | 전용 기능·cwd·세션·위임 구조는 후속 설계 |
+
+### 업무 구조와 Project 선택
+
+Workspace는 Project를 조직하는 업무 구조의 최상위다. 0개 이상의 Project를 가지며, 각 Project는 정확히 하나의 Workspace에 속한다. 초기 모델에는 Workspace·Project 중첩과 Project의 무소속·동시 다중 소속을 두지 않는다. 이 관계는 앱 수준 Agent나 단독 Module 실행의 선행 조건이 아니다.
+
+Project는 같은 목표나 관리 대상의 자료·대화·결과·결정을 함께 관리하고 후속 작업에서 다시 사용할 필요가 있을 때 만든다. 이미 이력이 쌓여 있어야 하는 것은 아니며, 기간·실행 횟수·기록의 존재만으로 구분하지 않는다. 단독 Run도 기록·결과를 보관한다. 빈 Workspace와 Module을 사용하지 않는 Project도 존재할 수 있다.
+
+첫 Project를 만들 때 Workspace가 없다면 같은 안내 흐름에서 소속 공간과 새 업무를 식별할 수 있게 제안한다. 사용자가 선택·지시한 대상을 사용하며 숨은 Workspace나 임의의 기본 Project를 만들지 않는다. 단일 소속은 자료·기록을 찾을 위치를 명확히 하지만 첫 Project에도 공간을 정해야 하는 부담이 있다.
+
+### Module 사용과 설정
+
+| 관계 | 의미 |
 | --- | --- |
-| Module | 하나의 업무 기능. 외부 서비스, 로컬 서비스, AI Agent의 참여와 사용자의 검수·수정을 함께 구성할 수 있다. |
-| Workspace | 사용자가 자신의 업무에 필요한 Module들을 모아 조합하고 실행하는 공간이다. |
-| AI Agent | 사용자와 함께 Module 개발을 돕거나, Module이 실행되는 과정에 참여하는 역할이다. 두 역할은 필요로 하는 맥락과 권한이 다를 수 있다. |
+| Workspace ↔ Module | 여러 공간에서 기능을 재사용하는 N:M 사용 관계다. 공간에서 자주 사용할 기능을 노출하고 필요한 공통 설정·연결을 구성한다. |
+| Project ↔ Module | 여러 업무에서 기능을 재사용하는 N:M 사용 관계다. 해당 Project의 목적·선택 자료·결과에 맞춰 기능을 사용하며 업무별 설정·연결을 둘 수 있다. |
 
-예를 들어 문서 정규화 Module은 업로드된 형식에 따라 변환 서비스를 선택하고, 변환 결과를 사람이 검수·수정한 뒤 일관된 최종 문서를 만들 수 있다. 이는 플랫폼이 지원하려는 업무의 예시다.
+Module 추가·고정은 기능 정의의 소유권 이전이나 코드 복제가 아니다. 목록 구성, 실행, 실행 권한은 서로 다르다. 실행 전에 목록에 반드시 추가할 필요는 없지만 기능의 사용 가능 여부·지원 맥락·필수 입력·파일 및 서비스 접근 조건은 충족해야 한다.
 
-현재 제품 API는 상태 조회와 Agent 생성·재사용·대화·보관을 제공한다. Module 정의·개발·실행, Worknaru Workspace 관리와 Paseo Workspace의 대응 관계는 후속 설계 대상이다.
+공통 설정을 구성했다는 사실만으로 Project에 자동 적용·상속하지 않는다. 실행에서 실제 적용할 값과 범위를 식별하며 Project 설정을 Workspace에 자동 반영하지도 않는다. 예를 들어 Workspace에 구성한 보고서 템플릿을 Project 실행에서 명시적으로 선택할 수 있지만, 그 선택만으로 Workspace의 지속 상태까지 공유하지 않는다. 일반적인 상속·동기화 규칙은 후속 설계다.
+
+### Module 실행 맥락
+
+Module Execution Context는 업무 대상과 기록·결과의 논리적 귀속이다. 아래 표는 도메인 불변식이며 실제 API 타입·엔드포인트나 저장 스키마가 아니다.
+
+| 실행 맥락 | 지정할 대상 | Workspace | Project | 기록·결과 귀속 |
+| --- | --- | --- | --- | --- |
+| Standalone | 단독 실행 | 없음 | 없음 | 사용자에게 다시 조회 가능한 앱 수준 실행 기록·결과 |
+| Workspace | Workspace W | W | 없음 | 선택한 W의 해당 실행 |
+| Project | Project P | P의 소속에서 도출 | P | 선택한 P의 해당 실행 |
+
+Project 실행은 Project를 기준으로 Workspace를 결정하며 두 값을 독립적인 선택값으로 취급하지 않는다. 외부 요청·참조에 둘 다 포함된 경우에도 P의 소속이 W2인데 W1을 제시한 조합은 거부한다. 마지막으로 열었던 공간이나 현재 프로세스 cwd를 조용히 실행 대상으로 선택하지 않는다.
+
+각 Module은 지원하는 실행 맥락을 제한할 수 있다. Project 자료 관리처럼 Project가 필수인 기능은 무맥락 요청을 거부한다. Module의 독립성은 모든 기능이 세 맥락을 모두 지원하거나 Worknaru·외부 서비스 없이 실행된다는 뜻이 아니다. Standalone 기록을 보관하려고 숨은 Workspace·임시 Project를 만들지 않으며, 앱 수준 보관은 브라우저 저장이나 새 전역 DB를 확정하는 말이 아니다.
+
+### 설정·지속 상태·결과와 수명
+
+Module 정의는 기능의 구현·버전이며 여러 곳에서 재사용한다. 사용 설정은 적용할 선택값, 지속 상태는 다음 실행까지 이어지는 업무 데이터, Run 기록·결과는 개별 실행의 입력·처리 이력·산출물이다. 이는 의미 구분이며 각각을 새 DB 엔티티로 만들라는 요구가 아니다.
+
+같은 Module을 두 Project가 사용해도 입력·설정·지속 상태·결과를 암묵적으로 섞지 않는다. 같은 Project에서 고객용·내부용 보고서를 만들 때에는 실행별 입력·템플릿만 달리할 수도 있다. 설정값의 차이만으로 저장된 복수 프리셋이나 독립된 지속 상태를 요구하지 않는다. 결과의 덮어쓰기나 자료·상태 공유에는 명시적인 선택·정책이 필요하다.
+
+| 동작 | 수명·보존 원칙 |
+| --- | --- |
+| Module 사용 해제 | 해당 사용 관계를 정리한다. 공유 정의·기존 기록·결과를 자동 삭제하지 않으며 저장 설정·지속 상태의 처분은 별도로 명시한다. |
+| Project 삭제 | Project의 관리 데이터 처분 범위를 명시한다. 공유 Module·다른 Project·참조 외부 파일·원래 Agent 이력을 자동 삭제하지 않는다. |
+| Workspace 삭제 | Project가 남아 있으면 기본 거부하고 소속 Project 처리를 먼저 명시한다. Workspace 자체의 설정·지속 상태·기록·결과 처분도 구분한다. |
+| Module 전역 제거·업데이트 | 영향받는 사용처·실행·설정·상태를 확인한다. 기존 결과의 자동 삭제를 허용하지 않으며 버전 변환·실행 중 충돌 처리는 후속 설계다. |
+| 화면 닫기·공간 전환 | 탐색 변경만으로 실행을 종료하거나 저장된 데이터를 삭제하지 않는다. 임시 UI 상태의 수명은 해당 UI 계약을 따른다. |
+
+Module을 개발하는 Project에는 개발 자료·소스·결정을 모을 수 있지만, 완성된 Module은 그 Project의 영구 하위 소유물이 아니다. 개발 Project 삭제가 배포된 Module 삭제를 뜻하지 않으며 실제 배포·패키징·버전 연결은 후속 구현에서 정한다.
+
+### Agent와 리소스의 경계
+
+Agent와 직접 대화하는 데 Module·Project·Workspace 생성을 요구하지 않는다. Agent는 Module 개발을 돕거나 실행에 참여할 수 있으며 필요한 맥락·권한은 역할과 실행마다 다를 수 있다. Module은 Agent 사용·전용 화면·한 번의 함수 호출·일회성 완료를 필수 조건으로 하지 않고, 서비스 처리와 사용자의 검수·수정을 포함할 수 있다.
+
+System Agent는 앱 수준에서 간단한 업무를 단독 실행으로 안내하고 맥락을 축적할 필요가 있을 때 Project를 제안한다. 제품 상태 변경은 제공된 Worknaru API·도구로 수행하며 앱 수준 역할을 모든 업무 자료에 대한 접근 권한으로 해석하지 않는다. 해당 도메인의 생성·실행 기능은 API가 구현된 뒤 제공할 수 있다.
+
+대화 중 Project를 만들거나 선택해도 전체 Agent 이력이 자동 편입되지 않는다. 사용자가 선택한 요약·결과를 Project에 연결해 다시 찾도록 하며 원래 대화의 소속 변경·전체 이력 복제를 전제하지 않는다. Project에 남길 자료와 Agent의 다음 실행에 제공할 맥락은 별도로 식별한다. 현재 요청·이력은 Agent 기준이며 이 연결의 복사·참조·세션·API는 후속 설계다.
+
+Workspace·Project는 로컬 디렉터리·Git 저장소·Agent cwd와 다르다. 한 Project가 여러 자료 위치를 참조할 수 있고 Module에 따라 로컬 파일 시스템이 필요 없을 수도 있다. 파일·폴더·Git 저장소는 연결 가능한 리소스이며 Agent cwd는 실행 PC의 실제 작업 폴더다. 소속을 파일 접근 권한이나 자동 데이터 전달로 해석하지 않는다.
+
+Paseo는 Project 아래에 폴더 기반 Workspace를 두지만 이를 Worknaru의 소속 구조와 이름만으로 동일시하거나 1:1 대응하지 않는다. 기존 저장·초기화 범위와 Agent queue/archive 계약은 유지한다. 현재 데이터 위치·보존 범위는 [데이터 저장 위치](data-storage.md), Web 초기화가 대체한 범위는 [ADR 0012](adr/0012-settings-data-management.md)를 따른다.
+
+### 경계 사례
+
+| 상황 | 적용할 계약 |
+| --- | --- |
+| PDF를 여러 번 독립적으로 변환 | 맥락을 함께 관리할 필요가 없으면 Standalone 또는 Workspace Run으로 처리한다. 반복 횟수와 기록만으로 Project를 만들지 않는다. |
+| 하루 안에 끝나는 보고서의 자료 비교·검토·결정 관리 | 후속 검토에서 맥락을 재사용하므로 짧은 수명의 Project도 적합하다. |
+| 첫 Project 생성 | 소속 Workspace를 같은 안내 흐름에서 식별한다. 이미 쌓인 이력을 요구하거나 숨은 공간을 만들지 않는다. |
+| 목록에 추가하지 않은 Module 실행 | 목록 구성과 실행을 분리하되 실행에 필요한 준비·입력·권한·맥락 조건을 확인한다. |
+| Workspace와 Project 양쪽에 설정 존재 | 실행 대상과 적용값·상태 범위를 식별한다. 소속만으로 자동 상속하지 않는다. |
+| 다른 소속의 Workspace와 Project 조합 | 거부한다. Project에서 소속을 도출하고 요청을 조용히 보정하지 않는다. |
+| Project가 필수인 Module의 Standalone 요청 | 거부하며 Project를 임의 생성·선택하지 않는다. |
+| 대화 결과를 Project에서 다시 찾기 | 선택한 요약·결과만 연결한다. 원래 Agent 이력과 다음 실행 맥락을 구분한다. |
+| 개발 Project 삭제 | 개발 자료의 처분과 배포된 Module 수명을 구분한다. |
 
 ## 구성과 연결
 
@@ -46,7 +120,7 @@ flowchart LR
 
 Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에서는 CLI 프로세스 안에서, Web UI에서는 브라우저 안에서 실행한다. Paseo Client도 Adapter가 사용하는 라이브러리이며 같은 환경 안에서 동작한다. 실제 통신 대상인 Paseo Daemon은 별도 프로세스로 실행된다.
 
-여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Module·Workspace 데이터를 앱 사이에서 공유할 저장 구조는 후속 설계 대상이다.
+여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Module·Workspace·Project 데이터를 앱 사이에서 공유할 저장 구조는 후속 설계 대상이다.
 
 ## 구성요소의 책임
 
@@ -63,7 +137,7 @@ Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에
 | Paseo Client | Adapter 내부에서 사용하는 Paseo SDK. Daemon 연결과 메시지 송수신 처리 | [Paseo SDK 안내](https://paseo.sh/docs/sdk.md) |
 | Paseo Daemon | 상태·WebSocket·플러그인 호스팅·Codex Agent 실행·세션과 기록 관리 | [전용 개발 환경](../apps/paseo-dev/README.md) |
 
-Core는 구체적인 Paseo SDK, CLI 출력 형식이나 웹 화면을 알지 못한다. 앱의 Core API는 Runtime을 통해 요청하고, 서버 플러그인에서 사용하는 Core 정책은 주입된 Driver·저장소로 Agent 운영을 처리한다. Module·Workspace의 업무 정책과 관계는 별도 구현 범위다.
+Core는 구체적인 Paseo SDK, CLI 출력 형식이나 웹 화면을 알지 못한다. 앱의 Core API는 Runtime을 통해 요청하고, 서버 플러그인에서 사용하는 Core 정책은 주입된 Driver·저장소로 Agent 운영을 처리한다. Module·Workspace·Project의 위 제품 계약을 처리할 API·업무 정책 코드는 후속 구현 범위다.
 
 Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제품 코드에서 Adapter 내부에 모은다. 다른 실행 기반을 도입할 때도 Core가 사용하는 Runtime 계약을 기준으로 연결할 수 있다.
 
@@ -175,6 +249,6 @@ Agent의 작업 폴더는 호출자가 명시하고 서버 경계에서 실제 �
 
 ## 이후 설계에서 이어갈 부분
 
-제품 기능을 늘릴 때는 필요한 Core API와 Runtime 기능을 정하고, 실행 기반의 호출을 Adapter에서 연결한다. 현재 문서는 앞으로의 세션 정책, Module 실행 모델이나 Workspace 저장 구조를 확정하지 않는다. 초기 지원 기능에 대한 검토 내용은 [Paseo Adapter 설계 초안](paseo-adapter-initial-design.md)에 있으며, 그 제안과 실제 구현은 구분해서 읽는다.
+제품 기능을 늘릴 때는 필요한 Core API와 Runtime 기능을 정하고, 실행 기반의 호출을 Adapter에서 연결한다. 업무 구조와 Module 실행 맥락은 위 제품 계약을 따른다. 관리·Run API의 실제 타입·엔드포인트, 물리 저장 구조, 패키징·배포·버전, 일반적인 설정 상속·동기화, 공유 상태, Project 이동·공유, System Agent의 세션·위임과 권한의 구체 모델은 후속 설계다. 초기 지원 기능에 대한 검토 내용은 [Paseo Adapter 설계 초안](paseo-adapter-initial-design.md)에 있으며, 그 제안과 실제 구현은 구분해서 읽는다.
 
 패키지를 추가하거나 이동할 때는 [저장소 구조 규칙](repository-structure.md)을 따른다. 이 문서는 구성요소와 흐름을 설명하고, 중요한 결정의 근거는 ADR에 남긴다.
