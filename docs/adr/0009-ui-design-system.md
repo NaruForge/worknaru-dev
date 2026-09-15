@@ -1,7 +1,7 @@
 # ADR 0009: 조립 중심 제품 UI 디자인 시스템
 
 - 날짜: 2026-09-14
-- 상태: Accepted
+- 상태: Superseded — [ADR 0013](0013-windows-ui-verification.md)이 Linux 화면 비교 환경에 한해 대체하며 나머지 UI 결정은 유지한다.
 - 관련 작업: [#23](https://github.com/NaruForge/worknaru-dev/issues/23)
 - 승인 근거: 사용자가 디자인 시스템 v1 계획의 전체 구현과 PR·독립 리뷰·병합을 명시적으로 승인함.
 

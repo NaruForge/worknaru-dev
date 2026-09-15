@@ -309,8 +309,7 @@ for (const width of [390, 768, 1440])
       }
       await page.getByRole('button', { name: '상태 확인', exact: true }).click();
       await expect(page.getByText('전용 Daemon이 정상적으로 응답했습니다.')).toBeVisible();
-      if (process.platform === 'linux')
-        await expect(page).toHaveScreenshot(`settings-${width}-${colorScheme}.png`);
+      await expect.soft(page).toHaveScreenshot(`settings-${width}-${colorScheme}.png`);
     });
   }
 test('malformed and unavailable local preferences preserve a usable layout', async ({ page }) => {

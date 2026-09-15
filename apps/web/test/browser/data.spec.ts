@@ -49,8 +49,7 @@ for (const width of [390, 768, 1440])
         true,
       );
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-      if (process.platform === 'linux')
-        await expect(page).toHaveScreenshot(`data-${width}-${theme}.png`);
+      await expect.soft(page).toHaveScreenshot(`data-${width}-${theme}.png`);
       const reset = page.getByRole('button', { name: '초기화 대상 확인' });
       await reset.focus();
       await page.keyboard.press('Enter');

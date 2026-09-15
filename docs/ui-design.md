@@ -49,6 +49,16 @@ Linear의 중립적인 바탕과 정보 위계, Paseo·VS Code의 탐색/작업 
 
 `pnpm test`는 빌드·타입·경계/스타일 검사·기존 Node 테스트·React 사용자 동작 테스트를 실행한다. `pnpm ui:verify`는 Storybook을 빌드하고 브라우저 흐름·axe·화면 비교를 수행한다. 브라우저가 없으면 `pnpm --filter @worknaru/web exec playwright install chromium`을 먼저 실행한다.
 
-390/768/1440px와 밝은/어두운 테마를 확인한다. 화면 비교 기준 환경은 `mcr.microsoft.com/playwright:v1.63.0-noble` Linux 이미지다. Windows 실행은 기능·접근성을 검증하며 Linux 기준 이미지를 갱신하지 않는다. 기준 변경은 같은 이미지에서 `pnpm --filter @worknaru/web exec playwright test --update-snapshots`로 생성한 뒤 실제 diff를 검토한다. CI는 누락된 이미지를 자동 승인하지 않는다.
+UI 검증은 Windows에서 실행하며 Linux·Docker 환경을 준비하지 않는다. 390/768/1440px와 밝은/어두운 테마의 기능·키보드·접근성·화면 비교를 함께 수행한다. [Windows 검증 결정](adr/0013-windows-ui-verification.md)을 따른다.
+
+화면 비교의 기준은 [CI workflow](../.github/workflows/ui.yml)의 `windows-2025` 환경과 잠금 파일의 Playwright Chromium이다. 시스템 Chrome/Edge를 대신 사용하지 않는다. CI의 `tests`와 `browser`는 병렬 실행하며 브라우저 작업은 필요한 Chromium을 설치한다. `windows-2025`도 공급자 업데이트를 받으므로 완전히 고정된 이미지로 간주하지 않는다. 실행 로그의 runner 이미지 버전·OS·Segoe UI/Malgun Gothic/Consolas 폰트 해시를 캡처 생성·비교 시점에 확인한다.
+
+정상 `pnpm ui:verify`는 기준 이미지가 없거나 다르면 실패한다. 화면 비교가 실패해도 같은 테스트의 나머지 화면·동작 검증을 계속해 보고서에 차이를 모으며, 테스트 실패 판정은 유지한다. 기준 PNG는 `apps/web/test/browser/*.spec.ts-snapshots/*-win32.png`에 둔다. 기준을 갱신할 때는 다음을 따른다.
+
+1. 같은 브랜치에서 `gh workflow run ui.yml --ref <브랜치> -f update_snapshots=true`로 후보 생성만 명시적으로 요청한다. 이 수동 실행은 기존 테스트와 함께 `--update-snapshots=all`로 캡처하며 `windows-screenshot-candidates` artifact를 제공한다. 자동 커밋은 하지 않는다.
+2. 해당 실행의 후보 PNG와 `ui-browser-evidence` 보고서에서 변경 의도·글꼴·줄바꿈·잘림을 검토한다. 승인할 PNG만 같은 이름의 테스트 기준 파일에 반영해 커밋한다. 여러 후보를 무조건 일괄 승인하지 않는다.
+3. PR의 정상 Windows CI에서 갱신 옵션 없이 다시 실행해 통과를 확인한다. PR에 생성 실행·환경과 검토 이유를 남긴다. 일반 push/PR 및 갱신을 선택하지 않은 수동 실행은 기준 이미지를 바꾸지 않는다.
+
+로컬에서도 `pnpm ui:verify`로 같은 검사를 실행한다. 로컬 Windows와 CI의 폰트·OS 차이로 픽셀 비교가 실패하면 환경을 대조하고 CI의 결과를 기준으로 판정한다. 허용 오차를 늘리거나 로컬 화면으로 CI 기준을 덮어쓰지 않는다.
 
 자동 접근성 검사와 함께 키보드 이동, 포커스 복귀, 한글 조합 Enter, 확대·터치 화면을 확인한다. 실제 Codex 연동은 격리된 데이터 루트에서 별도로 검증한다. AI 조립 평가는 동일 과제를 새 세션 3회에 제공하고 공개 부품 재사용, 없는 API, 임의 스타일, 검사 우회, 수정량을 기록한다. 업무별 결과는 PR/이슈에 연결한다.
