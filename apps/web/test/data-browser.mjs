@@ -8,6 +8,7 @@ import { chromium, expect } from '@playwright/test';
 import { root } from '../../../packages/dev-environment/paths.mjs';
 import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
 import { portOpen } from '../../cli/local-support.mjs';
+import { verificationEnvironment } from '../../cli/test/verification-environment.mjs';
 
 assert.equal(process.platform, 'win32');
 assert.equal(await portOpen(), false, 'Stop the managed environment before this isolated test.');
@@ -16,6 +17,7 @@ const data = path.join(directory, 'data');
 const project = path.join(directory, 'project'); await mkdir(project);
 await writeFile(path.join(project, 'keep.txt'), 'External project survives.');
 const env = { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^WORKNARU_/i.test(key))), WORKNARU_DATA_DIR: data };
+const verification = verificationEnvironment(env);
 const exec = promisify(execFile);
 const cli = async (...args) => {
   const value = await exec(process.execPath, [path.join(root, 'apps/cli/bin/worknaru.mjs'), ...args, '--json'],
@@ -24,8 +26,8 @@ const cli = async (...args) => {
 };
 let browser;
 try {
+  await verification.setup(); await verification.start();
   assert.equal((await cli('doctor')).ok, true);
-  await cli('agent', 'setup'); await cli('dev', 'start');
   browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = []; page.on('pageerror', error => errors.push(error.message));
@@ -68,7 +70,8 @@ try {
   }
   assert.deepEqual(errors, []);
   assert.deepEqual(dialogs, [], 'Confirmed reset must not raise a second beforeunload confirmation');
-  console.log(JSON.stringify({ ok: true, cycles: 2, providerMessages: 0, screenshots: directory }));
+  assert.equal(verification.builds, 1);
+  console.log(JSON.stringify({ ok: true, builds: verification.builds, cycles: 2, providerMessages: 0, screenshots: directory }));
 } finally {
   await browser?.close();
   try { await cli('dev', 'stop'); } catch (error) { console.error('Cleanup needs inspection:', error.stdout ?? error.message); }

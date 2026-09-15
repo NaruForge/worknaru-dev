@@ -1,7 +1,7 @@
 # ADR 0013: Windows 전용 제품의 UI 검증을 Windows로 통일
 
 - 날짜: 2026-09-15
-- 상태: Accepted
+- 상태: Superseded — [ADR 0014](0014-scoped-development-verification.md)가 일반 문서 전용 PR/push의 CI 실행 범위에 한해 대체하며 Windows 환경·기준 이미지·실패 처리 결정은 유지한다.
 - 관련 작업: [#42](https://github.com/NaruForge/worknaru-dev/issues/42)
 - 승인 근거: 사용자가 Windows 전용 프로젝트에서 Linux 검증의 필요성을 재검토하도록 지시한 뒤 Windows 전환·기준 이미지 교체·독립 리뷰·병합 계획을 승인했다.
 - 대체 범위: [ADR 0009](0009-ui-design-system.md)의 고정 Linux 화면 비교 환경. React·공통 UI·Storybook·정적 검사·접근성·실연동·기준 이미지 검토 등 나머지 결정은 유지한다.

@@ -57,21 +57,37 @@ Remove-Item Env:WORKNARU_DATA_DIR
 
 설정·인증·server ID·Agent 기록·대기열·SQLite와 WAL/SHM·로그·설정 백업·managed worktree·웹 staging·임시 파일은 모두 전용 루트 아래에 둔다. 소스·의존 패키지·빌드 산출물·실제 외부 작업 프로젝트·개인 Paseo 및 Provider 로그인 정보는 초기화 대상에서 제외한다. 저장소의 `.local/dev-build.lock`은 소스 빌드 잠금이며 사용자 데이터가 아니다. 개별 경로 지정·다중 인스턴스·포트 자동 선택·이전 데이터 연결·백업/롤백은 지원하지 않는다.
 
+## 검증 선택
+
+검증은 [공통 기준](../../AGENTS.md#개발과-검증)에 따라 변경 동작과 영향받는 호출부로 선택한다. 아래 명령 전체를 매 작업마다 실행하지 않는다. 작은 수정은 관련 검사로 결과를 전달하고, 공통 계약·빌드·의존성 변경과 코드 병합에는 전체 자동 테스트를 적용한다.
+
+| 변경·검증 목적 | 실행할 검사 |
+| --- | --- |
+| 한 패키지 내부 로직 | 필요한 선행 빌드 후 실제 해당 패키지 테스트. 예: Core는 `pnpm --filter @worknaru/core... build` 후 `pnpm --filter @worknaru/core test`. Node 테스트를 더 좁힐 때도 패키지 test에 포함된 타입 검사 등 필요한 선행 조건을 유지한다. |
+| Runtime 계약 | Runtime 자체에는 test 명령이 없다. Core의 타입·계약 테스트와 변경을 사용하는 Adapter·CLI·Web의 타입/테스트를 검사한다. 공개 계약 변경은 `pnpm test`로 확대한다. |
+| 공통 UI | UI 자체에는 test 명령이 없다. Web의 `src/testing/UI.test.tsx`와 관련 화면·브라우저 테스트를 사용한다. [UI 명령과 확대 조건](../../docs/ui-design.md#실행과-검증)을 따른다. |
+| 개발 환경 공통 코드 | dev-environment 자체에는 test 명령이 없다. CLI의 `local.test.mjs`·`reset.test.mjs`·`data-management.test.mjs`, paseo-dev의 `paths.test.mjs` 및 영향받는 Agent 서비스 테스트를 선택한다. 경로·저장·제어 모듈의 실제 소비자를 확인한다. |
+| 최초 실행·시작/종료·빌드 실패·소유권 정리 | `pnpm dev:verify`. 별도 checkout 설치와 실제 Windows 수명 검증이 필요한 변경에 사용한다. |
+| SDK·Adapter 연결·Paseo 버전 호환성 | `pnpm paseo:verify`. 실제 Daemon 연결을 확인하며 Provider 메시지를 보내지 않는다. |
+| 실제 Provider 세션·권한·Agent 실행 경계 | `pnpm agent:verify`. 로그인과 Provider 사용량이 필요하다. |
+| Web과 실제 Provider 연결 동작 | `pnpm ui:live`. 일반 UI 문구·스타일 변경은 고정 데이터 검사로 확인한다. |
+| Web 데이터 관리의 실제 초기화·재시작 | `node apps/web/test/data-browser.mjs`. Provider 메시지 없이 전용 데이터 보존/삭제와 화면 복구를 검사한다. |
+
+`agent:verify`, `ui:live`, `data-browser.mjs`는 최초 setup에서 한 번 빌드하고 같은 검증 실행의 setup/start에서만 재사용한다. [검증 helper](../cli/test/verification-environment.mjs)는 입력·설정·lockfile·pnpm 설치 메타데이터·Node/환경과 산출물 내용을 대조한다. 중간 변경이나 산출물 누락은 검증 실패이며 조용히 재빌드하지 않는다. 실행 중 제품 소스·의존성·빌드 설정을 수정하지 말고, 변경했다면 새 검증 실행으로 시작한다. 영구 캐시와 사용자용 빌드 생략 옵션은 없으며 일반 CLI setup/start 및 `dev:verify`의 실제 빌드 검사는 유지한다. 이 세 명령 앞에 별도 `pnpm build`를 붙일 필요는 없다.
+
+전체 자동 테스트와 Storybook 검사를 수행하는 CI는 위 실연동 검사를 포함하지 않는다. 같은 최종 변경·환경·범위의 성공 결과만 재사용하고, 테스트 명령 없음·선택 결과 0건·CI 대기를 성공으로 표시하지 않는다.
+
 ## 검증 데이터 격리
 
-`dev:verify`, `paseo:verify`, `agent:verify`, `ui:live`는 실행마다 저장소 밖에 새 전용 데이터와 실제 Agent 작업 fixture를 만든다. 테스트 전용 `WORKNARU_TEST_ROOT`가 우선하며 미지정 시 검증된 OS 임시 폴더의 `worknaru-tests`를 사용한다. 경로가 지원되지 않으면 명시적 테스트 루트를 요구한다. 제품 실행의 저장 설정은 여전히 `WORKNARU_DATA_DIR` 하나다. 기존 제품 데이터나 개인 Provider 홈을 테스트 초기화 대상으로 사용하지 않는다.
+`dev:verify`, `paseo:verify`, `agent:verify`, `ui:live`, `data-browser.mjs`는 실행마다 저장소 밖에 새 전용 데이터와 필요한 작업 fixture를 만든다. 테스트 전용 `WORKNARU_TEST_ROOT`가 우선하며 미지정 시 검증된 OS 임시 폴더의 `worknaru-tests`를 사용한다. 경로가 지원되지 않으면 명시적 테스트 루트를 요구한다. 제품 실행의 저장 설정은 여전히 `WORKNARU_DATA_DIR` 하나다. 기존 제품 데이터나 개인 Provider 홈을 테스트 초기화 대상으로 사용하지 않는다.
 
 ```powershell
 $env:WORKNARU_TEST_ROOT = 'C:\WorknaruTests'
-pnpm test
-pnpm ui:verify
-pnpm dev:verify
+# SDK 연결을 변경한 작업에서 선택한 실연동 예시입니다.
 pnpm paseo:verify
-pnpm agent:verify
-pnpm ui:live
 ```
 
-실연동은 포트 6868을 사용하므로 위 순서로 실행한다. 결과와 실패 로그는 해당 외부 실행 폴더에 남으며, 필요하면 출력된 루트를 `WORKNARU_DATA_DIR`로 지정해 전용 reset을 실행한다. 검증 중 Provider가 개인 저장소에 남긴 로그인·기록은 Worknaru 초기화가 관리하지 않는다.
+선택한 실연동은 모두 포트 6868을 사용한다. 소유권과 다른 작업에 대한 영향을 확인한 관리형 개발 환경을 먼저 종료한다. 여러 검사가 필요하면 `dev:verify` → `paseo:verify` → `agent:verify` → `ui:live` → `data-browser.mjs` 순서 중 선택한 항목만 직렬 실행한다. 결과와 실패 로그는 해당 외부 실행 폴더에 남으며, 필요하면 출력된 루트를 `WORKNARU_DATA_DIR`로 지정해 전용 reset을 실행한다. 검증 중 Provider가 개인 저장소에 남긴 로그인·기록은 Worknaru 초기화가 관리하지 않는다.
 
 ## 동작과 운영 분리
 

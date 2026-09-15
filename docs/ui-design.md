@@ -7,7 +7,7 @@
 1. 사용자가 할 일과 정상·빈 상태·로딩·오류·권한 대기 상태를 정리한다.
 2. [공개 타입과 구현](../packages/ui/src/index.tsx), [부품 예제](../packages/ui/src/UI.stories.tsx), [패널 예제](../packages/ui/src/Panel.stories.tsx), [Agent 화면](../apps/web/src/features/agents/Agents.stories.tsx)과 [통합 설정 예제](../apps/web/src/shell/Shell.stories.tsx)를 찾는다.
 3. `@worknaru/ui`에서 가져온 부품과 패턴에 데이터·명시적인 callback을 연결한다. 도메인 호출은 Web 기능에서 Core API로 수행한다.
-4. 관련 Storybook 상태와 사용자 동작 검증을 갱신한다. `pnpm test`, `pnpm ui:verify`를 실행한다.
+4. 변경된 동작에 필요한 Storybook 상태와 사용자 동작 검증을 갱신한다. 아래 [검증 선택](#실행과-검증)에 따라 해당 화면부터 확인하며, 공통 UI 변경과 병합 단계에서 전체 회귀로 확대한다.
 
 단일 기능의 데이터·문구·실행 정책은 앱에 둔다. UI 패키지는 Core·Runtime·Paseo를 import하지 않는다. 버튼에 operation 문자열을 넘겨 제품 실행을 처리하는 범용 API를 만들지 않는다.
 
@@ -25,7 +25,7 @@ Linear의 중립적인 바탕과 정보 위계, Paseo·VS Code의 탐색/작업 
 
 ## 조립과 확장
 
-표준 부품과 기존 패턴을 사용한 조립은 자율적으로 진행한다. 새 부품/변형이 필요하면 기존 API로 표현할 수 없는 실제 사용처, 영향받는 화면, API·상태 예제·접근성 검증을 함께 PR에 제시한다. 중요한 배치나 사용 흐름을 사용자와 논의할 때에는 같은 데이터·화면 크기·테마의 A/B/C 시안을 최소 3개 제공하고 선택을 기록한다.
+표준 부품과 기존 패턴을 사용한 조립은 자율적으로 진행한다. 새 부품/변형이 필요하면 기존 API로 표현할 수 없는 실제 사용처, 영향받는 화면, API·상태 예제·접근성 검증을 함께 PR에 제시한다. 이미 선택·승인된 방향의 구현에는 대안 시안과 승인을 반복하지 않는다. 중요한 배치나 사용 흐름에 실제 선택이 필요하면 같은 데이터·화면 크기·테마에서 의미 있는 대안을 비교하고 선택을 기록한다. 대안 수는 결정할 차이에 맞추며 개수를 채우기 위한 시안을 만들지 않는다.
 
 앱 전용 배치는 CSS Modules에서 공통 토큰으로 작성한다. 공통 컴포넌트 내부 경로 import, 내부 선택자 덮어쓰기, 임의 색상/길이/서체, inline style, `!important`를 사용하지 않는다. `0`, 비율, flex/grid의 무차원 값, 반응형 media query는 배치에 사용할 수 있다. `className`은 앱 소유 영역의 배치와 도메인 행 표현을 위한 것이며 공통 버튼의 내부 스타일을 바꾸는 통로가 아니다.
 
@@ -47,11 +47,21 @@ Linear의 중립적인 바탕과 정보 위계, Paseo·VS Code의 탐색/작업 
 
 저장소 루트에서 `pnpm ui:storybook`으로 개발용 카탈로그를 연다. Storybook은 실제 부품과 실제 제품 화면에 고정 Core 데이터를 주입하며 Provider를 호출하지 않는다. 제품 배포에는 포함하지 않는다. 공개 API의 타입은 소스가 원본이고 예제는 같은 컴포넌트를 import한다. 별도 MCP는 필요하지 않다.
 
-`pnpm test`는 빌드·타입·경계/스타일 검사·기존 Node 테스트·React 사용자 동작 테스트를 실행한다. `pnpm ui:verify`는 Storybook을 빌드하고 브라우저 흐름·axe·화면 비교를 수행한다. 브라우저가 없으면 `pnpm --filter @worknaru/web exec playwright install chromium`을 먼저 실행한다.
+`pnpm test`는 전체 빌드·타입·경계/스타일 검사·기존 Node 테스트·React 사용자 동작 테스트를 실행한다. 개별 화면을 수정하는 동안에는 필요한 선행 빌드와 해당 Web 테스트·`pnpm ui:lint`를 선택한다. 브라우저 검증은 다음 명령으로 범위를 구분한다. 브라우저가 없으면 `pnpm --filter @worknaru/web exec playwright install chromium`을 먼저 실행한다.
 
-UI 검증은 Windows에서 실행하며 Linux·Docker 환경을 준비하지 않는다. 390/768/1440px와 밝은/어두운 테마의 기능·키보드·접근성·화면 비교를 함께 수행한다. [Windows 검증 결정](adr/0013-windows-ui-verification.md)을 따른다.
+| 명령 | 범위 |
+| --- | --- |
+| `pnpm ui:verify:functional` | Storybook 빌드 후 브라우저 동작·키보드·axe 검사. 이미지 비교는 제외하며 전체 시각 회귀의 통과 근거가 아니다. |
+| `pnpm ui:verify` | Storybook 빌드 후 기존 전체 동작·접근성·이미지 비교. 병합 전 UI 회귀와 CI에 사용한다. |
+| `pnpm ui:verify:functional:built` / `pnpm ui:verify:built` | 각각 위 검사에서 Storybook 빌드만 생략한다. 같은 checkout의 제품 소스·Storybook 설정·의존성·브랜딩이 마지막 성공 빌드 이후 바뀌지 않았을 때만 사용한다. 불명확하면 빌드 포함 명령을 사용한다. |
 
-화면 비교의 기준은 [CI workflow](../.github/workflows/ui.yml)의 `windows-2025` 환경과 잠금 파일의 Playwright Chromium이다. 시스템 Chrome/Edge를 대신 사용하지 않는다. CI의 `tests`와 `browser`는 병렬 실행하며 브라우저 작업은 필요한 Chromium을 설치한다. `windows-2025`도 공급자 업데이트를 받으므로 완전히 고정된 이미지로 간주하지 않는다. 실행 로그의 runner 이미지 버전·OS·Segoe UI/Malgun Gothic/Consolas 폰트 해시를 캡처 생성·비교 시점에 확인한다.
+명령 뒤에 spec 경로와 `--grep`을 전달해 관련 흐름을 선택할 수 있다. 새 checkout 또는 의존 패키지·브랜딩을 변경한 경우 `pnpm --filter @worknaru/web... build`로 Web과 의존 패키지를 먼저 빌드한다. Storybook 빌드만으로 가져오는 패키지의 `dist`가 갱신되지는 않는다. 예를 들어 패널 조절을 고칠 때 선행 빌드 후 `pnpm ui:verify:functional shell.spec.ts --grep "panel mouse"`로 해당 브라우저 흐름을 검사한다. 선택 결과가 0건이면 검증 완료가 아니다. React 테스트만 선택할 때는 필요한 빌드/타입 검사를 별도로 수행한 뒤 `pnpm --filter @worknaru/web exec vitest run src/shell/Shell.test.tsx`처럼 실제 파일을 지정한다. UI 패키지 자체에는 test 명령이 없으며 Web의 [공통 UI 테스트](../apps/web/src/testing/UI.test.tsx)와 관련 브라우저 테스트가 소비자 검증을 맡는다.
+
+개별 화면은 변경된 동작·입력·반응형 배치에 맞는 검사를 선택한다. 공통 토큰·공개 컴포넌트·전역 레이아웃·UI 빌드/검증 설정 변경은 `pnpm test`와 전체 `pnpm ui:verify`로 확대한다. UI 영향이 있는 병합은 최종 변경·환경·범위를 포함하는 전체 성공 근거가 필요하며 같은 CI 결과를 로컬에서 반복할 필요는 없다. CI 대기나 기능 전용 검사 성공을 전체 UI 검증 완료로 표시하지 않는다.
+
+UI 검증은 Windows에서 실행하며 Linux·Docker 환경을 준비하지 않는다. 전체 UI 회귀에서는 대표 화면의 390/768/1440px와 밝은/어두운 테마 조합, 나머지 개별 동작·키보드·접근성·화면 비교를 유지한다. [Windows 환경 결정](adr/0013-windows-ui-verification.md)과 [검증 범위 결정](adr/0014-scoped-development-verification.md)을 따른다.
+
+화면 비교의 기준은 [CI workflow](../.github/workflows/ui.yml)의 `windows-2025` 환경과 잠금 파일의 Playwright Chromium이다. 시스템 Chrome/Edge를 대신 사용하지 않는다. 코드 변경의 CI는 `tests`와 `browser`를 병렬 실행하며 브라우저 작업은 필요한 Chromium을 설치한다. 일반 Markdown 안내만 바뀌면 CI는 diff 검사만 수행하고 링크·앵커·명령·정책은 변경 검토에서 확인한다. 같은 PR의 오래된 실행은 취소하고 최신 변경을 검사한다. `windows-2025`도 공급자 업데이트를 받으므로 완전히 고정된 이미지로 간주하지 않는다. 실행 로그의 runner 이미지 버전·OS·Segoe UI/Malgun Gothic/Consolas 폰트 해시를 캡처 생성·비교 시점에 확인한다.
 
 정상 `pnpm ui:verify`는 기준 이미지가 없거나 다르면 실패한다. 화면 비교가 실패해도 같은 테스트의 나머지 화면·동작 검증을 계속해 보고서에 차이를 모으며, 테스트 실패 판정은 유지한다. 기준 PNG는 `apps/web/test/browser/*.spec.ts-snapshots/*-win32.png`에 둔다. 기준을 갱신할 때는 다음을 따른다.
 
@@ -59,6 +69,6 @@ UI 검증은 Windows에서 실행하며 Linux·Docker 환경을 준비하지 않
 2. 해당 실행의 후보 PNG와 `ui-browser-evidence` 보고서에서 변경 의도·글꼴·줄바꿈·잘림을 검토한다. 승인할 PNG만 같은 이름의 테스트 기준 파일에 반영해 커밋한다. 여러 후보를 무조건 일괄 승인하지 않는다.
 3. PR의 정상 Windows CI에서 갱신 옵션 없이 다시 실행해 통과를 확인한다. PR에 생성 실행·환경과 검토 이유를 남긴다. 일반 push/PR 및 갱신을 선택하지 않은 수동 실행은 기준 이미지를 바꾸지 않는다.
 
-로컬에서도 `pnpm ui:verify`로 같은 검사를 실행한다. 로컬 Windows와 CI의 폰트·OS 차이로 픽셀 비교가 실패하면 환경을 대조하고 CI의 결과를 기준으로 판정한다. 허용 오차를 늘리거나 로컬 화면으로 CI 기준을 덮어쓰지 않는다.
+로컬 전체 화면 비교가 필요하면 `pnpm ui:verify`를 사용한다. 로컬 Windows와 CI의 폰트·OS 차이로 픽셀 비교가 실패하면 실제 차이와 환경을 대조하고 최종 변경의 CI 결과를 기준으로 판정한다. 로컬 실패 원인을 확인하지 않은 채 CI 성공으로 덮거나, 허용 오차를 늘리거나 로컬 화면으로 CI 기준을 덮어쓰지 않는다.
 
-자동 접근성 검사와 함께 키보드 이동, 포커스 복귀, 한글 조합 Enter, 확대·터치 화면을 확인한다. 실제 Codex 연동은 격리된 데이터 루트에서 별도로 검증한다. AI 조립 평가는 동일 과제를 새 세션 3회에 제공하고 공개 부품 재사용, 없는 API, 임의 스타일, 검사 우회, 수정량을 기록한다. 업무별 결과는 PR/이슈에 연결한다.
+자동 접근성 검사와 함께 변경에 관련된 키보드 이동, 포커스 복귀, 한글 조합 Enter, 확대·터치 화면을 확인한다. 실제 Codex 연결 경계에 영향을 주면 격리된 실연동을 선택한다. AI 조립성 평가를 수행하는 작업에서는 동일 과제를 새 세션 3회에 제공하고 공개 부품 재사용, 없는 API, 임의 스타일, 검사 우회, 수정량을 기록한다. 일반 UI 작업의 매번 완료 조건으로 적용하지 않는다. 업무별 결과는 PR/이슈에 연결하며 성공한 범위의 반복 실행·별도 검증 장부를 추가하지 않는다.

@@ -6,6 +6,9 @@ export default defineConfig({
   testDir: './test/browser',
   fullyParallel: true,
   workers: process.env.CI ? 2 : 4,
+  // The normal regression command must compare committed screenshot baselines.
+  // Only the explicitly named functional command opts out through Playwright's CLI.
+  ignoreSnapshots: false,
   updateSnapshots: 'none',
   use: {
     baseURL: 'http://127.0.0.1:6006',

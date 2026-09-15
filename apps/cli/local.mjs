@@ -101,7 +101,14 @@ export async function doctor(paths) {
   } catch (error) { checks.push({ name: 'Development environment', ok: false, detail: error instanceof DataError ? error.message : 'Unable to verify identity files.', next: 'Inspect dev-instance.json, paseo.pid, dev-runner.log and daemon.log in the data root; do not remove files while their owner is running.' }); }
   return { kind: 'doctor', ok: checks.every(check => check.ok), dataRoot: paths.dataHome, checks };
 }
-export async function start(paths) {
+// The verification harness shares this build operation across its own setup/start
+// calls. Public CLI commands always use this default and keep building on start.
+export async function buildDevelopment(paths) {
+  const log = await open(paths.buildLog, 'w');
+  try { await pnpmCommand('build', { log: log.fd, timeoutMs: 180000 }); }
+  finally { await log.close(); }
+}
+export async function start(paths, { build = buildDevelopment, env = process.env } = {}) {
   if (process.platform !== 'win32') throw new LocalError('unsupported_platform', 'Managed development commands currently support Windows only.');
   await assertNoLegacy(paths);
   await validateDirectory(paths.repository, 'Development checkout');
@@ -123,17 +130,15 @@ export async function start(paths) {
     await mkdir(path.join(root, '.local'), { recursive: true });
     const releaseBuild = await acquireLock(path.join(root, '.local/dev-build.lock'));
     try {
-      const log = await open(paths.buildLog, 'w');
-      try { await pnpmCommand('build', { log: log.fd, timeoutMs: 180000 }); }
+      try { await build(paths); }
       catch (error) { retainLocks = error.retainLocks === true; throw error; }
-      finally { await log.close(); }
     } finally { if (!retainLocks) await releaseBuild(); }
     const owner = newOwner(paths);
     const log = await open(paths.runnerLog, 'a');
     let child;
     try {
       child = spawn(process.execPath, [fileURLToPath(new URL('./dev-runner.mjs', import.meta.url))], {
-        cwd: root, env: { ...process.env, WORKNARU_DATA_DIR: paths.dataHome },
+        cwd: root, env: { ...env, WORKNARU_DATA_DIR: paths.dataHome },
         detached: true, windowsHide: true, shell: false, stdio: ['ignore', log.fd, log.fd, 'ipc'],
       });
       await new Promise((resolve, reject) => {

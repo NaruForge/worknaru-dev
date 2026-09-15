@@ -38,6 +38,6 @@ pnpm exec worknaru dev stop
 
 CLI 명령 `worknaru`, 환경 변수 접두사, 패키지·API·내부 식별자 변경은 지원하지 않는다. 실행 중 브랜드 전환, 개별 저장 경로 지정, 기존 데이터 자동 이전과 OS 서비스 이름 변경도 지원 범위에 포함하지 않는다.
 
-코드나 문서를 변경하기 전에 [프로젝트 기록 규약](docs/project-records.md)을 읽는다. 파일·패키지의 배치는 [저장소 구조 규칙](docs/repository-structure.md)을 따른다. 전체 빌드와 자동 테스트는 루트에서 `pnpm test`로 실행한다. 실제 Windows 개발 환경의 전체 시작·종료 검증은 개발 환경을 끈 뒤 `pnpm dev:verify`로 실행한다.
+코드나 문서를 변경하기 전에 [프로젝트 기록 규약](docs/project-records.md)을 읽는다. 파일·패키지의 배치는 [저장소 구조 규칙](docs/repository-structure.md)을 따른다. 작업 중에는 [변경별 검증 선택](apps/paseo-dev/README.md#검증-선택)에 따라 관련 검사부터 수행한다. 전체 빌드·자동 테스트는 `pnpm test`, 전체 UI 회귀는 `pnpm ui:verify`다. 개별 UI 동작·접근성은 `pnpm ui:verify:functional`로 선택 검사하며 전체 시각 회귀의 대체 근거가 아니다. 실제 Windows 시작·종료 경계를 변경하면 개발 환경을 끈 뒤 `pnpm dev:verify`를 선택한다.
 
 개발 단계의 저장 구조 변경은 마이그레이션하지 않는다. `dev stop` 후 `pnpm exec worknaru dev reset --dry-run`으로 대상을 확인하고 `--yes`로 전용 데이터 전체를 초기화한다. 실제 작업 프로젝트·소스·개인 Paseo 및 Provider 로그인은 보존한다. 초기화 후 `doctor → agent setup → dev start → status`로 새 환경을 만들고 열린 Web을 새로고침한다. [초기화 안내](apps/cli/README.md#사용자-데이터-전체-초기화)

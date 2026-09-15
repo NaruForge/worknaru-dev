@@ -182,7 +182,9 @@ pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id <확인�
 
 `pnpm test`는 명령·출력·대상 선택·읽기 전용 진단·잠금·손상 기록과 기존 제품 계약을 검사한다. `pnpm dev:verify`는 Windows에서 별도 소스 복사본과 데이터 루트를 만들고 실제 Daemon으로 최초 빌드·셸 종료 후 유지·동시 명령·충돌·실패 정리·ID 보존을 확인한다. 검증 전에 개발 환경을 종료한다. 고정 lockfile로 격리 checkout에 의존성을 설치하고 캐시에 없는 패키지만 내려받으며 [검증 전용 외부 루트](../paseo-dev/README.md#검증-데이터-격리)를 사용한다. `pnpm paseo:verify`는 SDK·Adapter·명시적 CLI 조회를 기존 방식으로 검증한다.
 
-작업 범위와 검증 증거는 [Issue #15](https://github.com/NaruForge/worknaru-dev/issues/15)에 둔다.
+작은 CLI 변경은 필요한 선행 빌드 후 관련 CLI 테스트와 영향을 받는 호출부를 선택한다. 자체 test 명령이 없는 공통 패키지의 소비자 검사와 실연동 발동 조건은 [검증 선택](../paseo-dev/README.md#검증-선택)을 따른다. 검증 전용 실행은 같은 입력의 setup/start 빌드 결과를 실행 안에서만 재사용하며 일반 CLI setup/start는 기존처럼 빌드한다.
+
+최초 구현의 범위와 검증 증거는 [Issue #15](https://github.com/NaruForge/worknaru-dev/issues/15), 검증 범위·빌드 재사용 결정은 [ADR 0014](../../docs/adr/0014-scoped-development-verification.md)에 둔다.
 
 ### Web에서 요청한 데이터 초기화
 

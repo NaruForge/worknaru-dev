@@ -1,13 +1,13 @@
-import { mkdir, open, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { agentConfig, agentsEnabled, configState } from '../../packages/dev-environment/config.mjs';
 import { prepareDataDirectories, root } from '../../packages/dev-environment/paths.mjs';
 import { acquireDataLock, assertStorage, assertNoLegacy } from '../../packages/dev-environment/storage.mjs';
-import { inspect, prerequisites } from './local.mjs';
-import { acquireLock, LocalError, pnpmCommand } from './local-support.mjs';
+import { buildDevelopment, inspect, prerequisites } from './local.mjs';
+import { acquireLock, LocalError } from './local-support.mjs';
 
-export async function setupAgents(paths) {
+export async function setupAgents(paths, { build = buildDevelopment } = {}) {
   await assertNoLegacy(paths);
   await assertStorage(paths);
   if ((await inspect(paths)).state !== 'stopped') throw new LocalError('operation_busy', '먼저 pnpm exec worknaru dev stop으로 개발 환경을 종료해 주세요.');
@@ -25,10 +25,9 @@ export async function setupAgents(paths) {
     const before = existsSync(paths.config) ? await readFile(paths.config, 'utf8') : null;
     await mkdir(path.join(root, '.local'), { recursive: true });
     const releaseBuild = await acquireLock(path.join(root, '.local/dev-build.lock'));
-    let log;
-    try { log = await open(paths.buildLog, 'w'); await pnpmCommand('build', { log: log.fd, timeoutMs: 180000 }); }
+    try { await build(paths); }
     catch (error) { retainLocks = error.retainLocks === true; throw error; }
-    finally { await log?.close(); if (!retainLocks) await releaseBuild(); }
+    finally { if (!retainLocks) await releaseBuild(); }
     const latest = existsSync(paths.config) ? await readFile(paths.config, 'utf8') : null;
     if (latest !== before) throw new LocalError('configuration_conflict', '준비 중 설정이 변경되어 적용하지 않았습니다.');
     if (before !== null) await writeFile(path.join(paths.dataHome, `config.before-agents-${Date.now()}.json`), before, { flag: 'wx' });
