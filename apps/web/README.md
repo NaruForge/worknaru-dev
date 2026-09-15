@@ -71,7 +71,7 @@ Agent·대기열·권한·보관과 브라우저 사용 흐름의 검증 근거�
 
 실행 중인 Agent 개발 환경에서 `pnpm ui:live`로 실제 생성·후속 대화·새로고침·한글 조합 Enter·390px 화면·보관·초기화를 재현한다. [실행기](test/live-browser.mjs)가 [브라우저 흐름](test/agent.browser.mjs)에 외부 작업 폴더와 캡처 경로를 명시적으로 전달한다. 캡처는 해당 외부 실행 폴더에 남긴다.
 
-`pnpm test`는 웹 타입·빌드·경계/스타일 검사, React 사용자 동작 테스트와 기존 CLI·Adapter 테스트를 수행한다. `pnpm ui:verify`는 고정 데이터로 Storybook·브라우저·접근성·화면 비교를 수행한다. 브라우저 설치·Linux 기준 이미지·AI 조립 평가 방식은 [UI 표준](../../docs/ui-design.md)을 따른다. `pnpm ui:storybook`으로 실제 부품과 상태별 견본을 확인한다. `pnpm paseo:verify`는 실제 전용 Daemon의 SDK·Adapter·CLI 연동을 확인한다. 실제 Provider 사용은 고정 데이터 검사와 분리한다.
+`pnpm test`는 웹 타입·빌드·경계/스타일 검사, React 사용자 동작 테스트와 기존 CLI·Adapter 테스트를 수행한다. `pnpm ui:verify`는 Windows에서 고정 데이터로 Storybook·브라우저·접근성·화면 비교를 수행한다. Docker 준비는 필요하지 않다. 브라우저가 없으면 `pnpm --filter @worknaru/web exec playwright install chromium`을 먼저 실행한다. Windows CI 기준 이미지의 검토·갱신과 로컬 환경 차이 처리, AI 조립 평가 방식은 [UI 표준](../../docs/ui-design.md#실행과-검증)을 따른다. `pnpm ui:storybook`으로 실제 부품과 상태별 견본을 확인한다. `pnpm paseo:verify`는 실제 전용 Daemon의 SDK·Adapter·CLI 연동을 확인한다. 실제 Provider 사용은 고정 데이터 검사와 분리한다.
 
 실제 브라우저의 정상 조회·종료 후 실패·소켓 정리와 loopback 응답 서버를 사용한 인증 오류·대상 불일치·시간 초과 검증의 근거는 [Issue #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 둔다. Paseo `0.8.0` 전환 후 같은 경로를 재검증한 근거는 [Issue #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 연결한다.
 

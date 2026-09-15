@@ -59,10 +59,9 @@ for (const width of [390, 768, 1440])
             .analyze()
         ).violations,
       ).toEqual([]);
-      if (process.platform === 'linux')
-        await expect(page).toHaveScreenshot(`conversation-${width}-${colorScheme}.png`, {
-          animations: 'disabled',
-        });
+      await expect.soft(page).toHaveScreenshot(`conversation-${width}-${colorScheme}.png`, {
+        animations: 'disabled',
+      });
       await page.getByRole('button', { name: 'Agent 상세 정보', exact: true }).click();
       await expect(page.getByText('C:\\Projects\\my-work', { exact: true })).toBeVisible();
       if (width < 1280) {
@@ -75,10 +74,9 @@ for (const width of [390, 768, 1440])
       await page.getByRole('button', { name: '보관', exact: true }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-      if (process.platform === 'linux')
-        await expect(page).toHaveScreenshot(`archive-${width}-${colorScheme}.png`, {
-          animations: 'disabled',
-        });
+      await expect.soft(page).toHaveScreenshot(`archive-${width}-${colorScheme}.png`, {
+        animations: 'disabled',
+      });
     });
   }
 test('a person can create, converse, follow up and archive', async ({ page }) => {

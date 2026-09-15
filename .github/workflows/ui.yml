@@ -3,11 +3,17 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: Generate Windows screenshot candidates for review
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   tests:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,10 +27,7 @@ jobs:
         env:
           WORKNARU_TEST_ROOT: ${{ runner.temp }}/worknaru-tests
   browser:
-    runs-on: ubuntu-24.04
-    container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
-      options: --ipc=host
+    runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,8 +37,29 @@ jobs:
         with:
           version: 10.34.1
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @worknaru/web exec playwright install chromium
+      - name: Record Windows screenshot environment
+        run: |
+          Write-Output "Runner image: $env:ImageOS $env:ImageVersion"
+          [Environment]::OSVersion.VersionString
+          Get-FileHash "$env:WINDIR/Fonts/segoeui*.ttf", "$env:WINDIR/Fonts/malgun*.ttf", "$env:WINDIR/Fonts/consola*.ttf" |
+            Select-Object @{Name='Font'; Expression={Split-Path $_.Path -Leaf}}, Hash | ConvertTo-Json
       - run: pnpm build
-      - run: pnpm ui:verify
+      - if: github.event_name != 'workflow_dispatch' || !inputs.update_snapshots
+        run: pnpm ui:verify
+      - if: github.event_name == 'workflow_dispatch' && inputs.update_snapshots
+        name: Generate screenshot candidates
+        run: |
+          pnpm --filter @worknaru/web storybook:build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --filter @worknaru/web exec playwright test --update-snapshots=all
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch' && inputs.update_snapshots && success()
+        with:
+          name: windows-screenshot-candidates
+          path: apps/web/test/browser/*.spec.ts-snapshots/*-win32.png
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:
