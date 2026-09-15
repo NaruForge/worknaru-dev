@@ -6,6 +6,7 @@ import type {
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
 import { createStatusWebSocket } from './status-websocket.js';
 import { agentRpc } from './agent-rpc.js';
+import { workspaceRpc } from './workspace-rpc.js';
 
 export const SUPPORTED_PASEO_VERSION = '0.8.0';
 
@@ -17,7 +18,7 @@ export interface PaseoAdapterOptions {
   readonly clientType?: 'cli' | 'browser';
   /** Kept out of result objects and logs. Supply separately from the endpoint. */
   readonly password?: string;
-  /** Total connect + status budget, in milliseconds (default 5 seconds). */
+  /** Total connect + status/workspace request budget, in milliseconds (default 5 seconds). */
   readonly timeoutMs?: number;
 }
 
@@ -111,6 +112,7 @@ export function createPaseoRuntime(options: PaseoAdapterOptions): Runtime {
 
   return {
     agents: agentRpc(options),
+    workspace: workspaceRpc({ ...options, endpoint: target.endpoint, expectedServerId: target.expectedServerId }),
     async getDaemonStatus(): Promise<DaemonStatus> {
       const deadline = Date.now() + timeoutMs;
       let client: DaemonClient | undefined;

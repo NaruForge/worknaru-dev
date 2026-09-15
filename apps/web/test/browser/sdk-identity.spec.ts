@@ -1,6 +1,55 @@
 import { expect, test } from '@playwright/test';
 import { createFixture } from '../../src/testing/fixture.js';
 
+test('the production SDK blocks Workspace creation with a stale server ID', async ({ page }) => {
+  let serverId = 'workspace-before-reset';
+  const fixture = createFixture('empty');
+  const sent: string[] = [];
+  await page.route('**/connection.json', (route) =>
+    route.fulfill({ json: { targetId: 'worknaru-dev', expectedServerId: serverId } }),
+  );
+  await page.routeWebSocket('**/ws', (socket) => {
+    const identity = serverId;
+    socket.onMessage(async (bytes) => {
+      const envelope = JSON.parse(String(bytes));
+      const send = (message: unknown) => socket.send(JSON.stringify({ type: 'session', message }));
+      if (envelope.type === 'hello')
+        send({
+          type: 'status',
+          payload: { status: 'server_info', serverId: identity, version: '0.8.0' },
+        });
+      else if (envelope.type === 'session') {
+        const request = envelope.message;
+        const { operation, input } = request.input;
+        sent.push(`${identity}:${request.method}:${operation}`);
+        const data =
+          request.method === 'workspace.execute'
+            ? await fixture.core.workspace[operation as keyof typeof fixture.core.workspace](
+                input as never,
+              )
+            : await fixture.core.agents[operation as keyof typeof fixture.core.agents](
+                input as never,
+              );
+        send({
+          type: 'plugin.rpc.invoke.response',
+          payload: { requestId: request.requestId, output: { ok: true, data } },
+        });
+      }
+    });
+  });
+  await page.goto('/iframe.html?id=verification-connection--identity&viewMode=story');
+  await page.getByRole('button', { name: 'Workspace', exact: true }).click();
+  await page.getByRole('button', { name: 'Workspace 만들기', exact: true }).click();
+  await page.getByLabel('Workspace 이름').fill('이전 환경의 입력');
+  serverId = 'workspace-after-reset';
+  const url = page.url();
+  await page.getByRole('button', { name: '만들기', exact: true }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('새로고침');
+  await expect(page.getByLabel('Workspace 이름')).toHaveValue('이전 환경의 입력');
+  expect(page.url()).toBe(url);
+  expect(sent.filter((value) => value.startsWith('workspace-after-reset:'))).toEqual([]);
+});
+
 test('the production SDK blocks stale sends until a manual identity refresh', async ({ page }) => {
   // Playwright gives this test its own context/localStorage. Only the server wire
   // is fixed; the story runs the real App/bootstrap/Core/Adapter/DaemonClient.

@@ -74,17 +74,18 @@ Remove-Item Env:WORKNARU_DATA_DIR
 | SDK·Adapter 연결·Paseo 버전 호환성 | `pnpm paseo:verify`. 실제 Daemon 연결을 확인하며 Provider 메시지를 보내지 않는다. |
 | 실제 Provider 세션·권한·Agent 실행 경계 | `pnpm agent:verify`. 로그인과 Provider 사용량이 필요하다. |
 | Web과 실제 Provider 연결 동작 | `pnpm ui:live`. 일반 UI 문구·스타일 변경은 고정 데이터 검사로 확인한다. |
+| Workspace·Project CLI/Web 교차 사용 | `node apps/web/test/workspace-browser.mjs`. 외부 전용 환경에서 양쪽의 생성·조회와 정상 재시작 후 데이터·선택 보존을 확인한다. Provider 호출 없이 실행하며 첫 setup의 빌드를 재사용한다. |
 | 실제 Web 설정 공유·재접속·초기화·재시작 | `node apps/web/test/data-browser.mjs`. Windows·Chromium·전용 Daemon으로 저장된 설정 보존, reset 완료/새 ID, 두 번째 controller의 재진입, 다른 탭의 설정 저장 차단을 검사한다. 모델 조회·Agent 생성·Provider 대화는 하지 않으며 로그인/사용량이 필요 없다. |
 
-`agent:verify`, `ui:live`, `data-browser.mjs`는 최초 setup에서 한 번 빌드하고 같은 검증 실행의 setup/start에서만 재사용한다. [검증 helper](../cli/test/verification-environment.mjs)는 입력·설정·lockfile·pnpm 설치 메타데이터·Node/환경과 산출물 내용을 대조한다. 중간 변경이나 산출물 누락은 검증 실패이며 조용히 재빌드하지 않는다. 실행 중 제품 소스·의존성·빌드 설정을 수정하지 말고, 변경했다면 새 검증 실행으로 시작한다. 영구 캐시와 사용자용 빌드 생략 옵션은 없으며 일반 CLI setup/start 및 `dev:verify`의 실제 빌드 검사는 유지한다. 이 세 명령 앞에 별도 `pnpm build`를 붙일 필요는 없다.
+`agent:verify`, `ui:live`, `data-browser.mjs`, `workspace-browser.mjs`는 최초 setup에서 한 번 빌드하고 같은 검증 실행의 setup/start에서만 재사용한다. [검증 helper](../cli/test/verification-environment.mjs)는 입력·설정·lockfile·pnpm 설치 메타데이터·Node/환경과 산출물 내용을 대조한다. 중간 변경이나 산출물 누락은 검증 실패이며 조용히 재빌드하지 않는다. 실행 중 제품 소스·의존성·빌드 설정을 수정하지 말고, 변경했다면 새 검증 실행으로 시작한다. 영구 캐시와 사용자용 빌드 생략 옵션은 없으며 일반 CLI setup/start 및 `dev:verify`의 실제 빌드 검사는 유지한다. 이 네 명령 앞에 별도 `pnpm build`를 붙일 필요는 없다.
 
-전체 자동 테스트와 Storybook 검사를 수행하는 CI는 위 실연동 검사를 포함하지 않는다. 같은 최종 변경·환경·범위의 성공 결과만 재사용하고, 테스트 명령 없음·선택 결과 0건·CI 대기를 성공으로 표시하지 않는다.
+Windows CI는 Workspace RPC 실연동과 CLI/Web 교차 검증을 포함한다. 다른 실연동은 변경 영향에 따라 별도로 선택한다. 같은 최종 변경·환경·범위의 성공 결과만 재사용하고, 테스트 명령 없음·선택 결과 0건·CI 대기를 성공으로 표시하지 않는다.
 
 `agent:verify`는 실제 Provider lifecycle을 담당하고 reset을 반복하지 않는다. `ui:live`에는 실제 Web 생성·대화·이력·보관과 CLI/Web 교차 사용을 남긴다. 삭제 범위·부분 실패·멱등성은 reset 단위 검사, Windows 실행기 수명은 `dev:verify`, Web reset 재진입은 `data-browser.mjs`가 담당한다. 각 suite의 격리·소유권 확인은 그대로 수행한다. `data-browser.mjs`는 CLI 명령·브라우저 송신 RPC·초기/종료 등록 상태와 reset 전 실행 로그를 실행 폴더에 남긴다. Daemon 상태 조회의 Provider 실행 파일 존재 확인은 모델 조회·세션 실행과 구분하며, 메시지 수나 로그 부재만으로 비의존을 판정하지 않는다.
 
 ## 검증 데이터 격리
 
-`dev:verify`, `paseo:verify`, `agent:verify`, `ui:live`, `data-browser.mjs`는 실행마다 저장소 밖에 새 전용 데이터와 필요한 작업 fixture를 만든다. 테스트 전용 `WORKNARU_TEST_ROOT`가 우선하며 미지정 시 검증된 OS 임시 폴더의 `worknaru-tests`를 사용한다. 경로가 지원되지 않으면 명시적 테스트 루트를 요구한다. 제품 실행의 저장 설정은 여전히 `WORKNARU_DATA_DIR` 하나다. 기존 제품 데이터나 개인 Provider 홈을 테스트 초기화 대상으로 사용하지 않는다.
+`dev:verify`, `paseo:verify`, `agent:verify`, `ui:live`, `data-browser.mjs`, `workspace-browser.mjs`는 실행마다 저장소 밖에 새 전용 데이터와 필요한 작업 fixture를 만든다. 테스트 전용 `WORKNARU_TEST_ROOT`가 우선하며 미지정 시 검증된 OS 임시 폴더의 `worknaru-tests`를 사용한다. 경로가 지원되지 않으면 명시적 테스트 루트를 요구한다. 제품 실행의 저장 설정은 여전히 `WORKNARU_DATA_DIR` 하나다. 기존 제품 데이터나 개인 Provider 홈을 테스트 초기화 대상으로 사용하지 않는다.
 
 ```powershell
 $env:WORKNARU_TEST_ROOT = 'C:\WorknaruTests'
@@ -92,7 +93,7 @@ $env:WORKNARU_TEST_ROOT = 'C:\WorknaruTests'
 pnpm paseo:verify
 ```
 
-선택한 실연동은 모두 포트 6868을 사용한다. 소유권과 다른 작업에 대한 영향을 확인한 관리형 개발 환경을 먼저 종료한다. 여러 검사가 필요하면 `dev:verify` → `paseo:verify` → `agent:verify` → `ui:live` → `data-browser.mjs` 순서 중 선택한 항목만 직렬 실행한다. 결과와 실패 로그는 해당 외부 실행 폴더에 남으며, 필요하면 출력된 루트를 `WORKNARU_DATA_DIR`로 지정해 전용 reset을 실행한다. 검증 중 Provider가 개인 저장소에 남긴 로그인·기록은 Worknaru 초기화가 관리하지 않는다.
+선택한 실연동은 모두 포트 6868을 사용한다. 소유권과 다른 작업에 대한 영향을 확인한 관리형 개발 환경을 먼저 종료한다. 여러 검사가 필요하면 `dev:verify` → `paseo:verify` → `agent:verify` → `ui:live` → `data-browser.mjs` → `workspace.integration.mjs` → `workspace-browser.mjs` 순서 중 선택한 항목만 직렬 실행한다. 결과와 실패 로그는 해당 외부 실행 폴더에 남으며, 필요하면 출력된 루트를 `WORKNARU_DATA_DIR`로 지정해 전용 reset을 실행한다. 검증 중 Provider가 개인 저장소에 남긴 로그인·기록은 Worknaru 초기화가 관리하지 않는다.
 
 ## 동작과 운영 분리
 

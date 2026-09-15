@@ -1,7 +1,6 @@
 import { createInterface } from 'node:readline/promises';
 import { setTimeout as delay } from 'node:timers/promises';
-import { inspect, localPaths } from './local.mjs';
-import { endpoint } from '../../packages/dev-environment/config.mjs';
+import { productConfiguration } from './product-connection.mjs';
 import { conversationMessages } from '@worknaru/core';
 
 import { agentHelp, parseAgentArgs } from './agent-arguments.mjs';
@@ -18,16 +17,8 @@ export async function runAgents(args, env, output) {
     let parsed;
     try { parsed = parseAgentArgs(args); } catch (e) { emitError({ code: 'invalid_arguments', message: e.message }); return 2; }
     const { positional: p, options: o } = parsed;
-    const [{ createCore }, { parseCommand }] = await Promise.all([import('./dist/bootstrap.js'), import('./dist/arguments.js')]);
-    const connectionArgs = ['--endpoint', '--server-id', '--target', '--timeout-ms'].flatMap(flag => o[flag] ? [flag, o[flag]] : []);
-    let configuration;
-    if (connectionArgs.length || ['ENDPOINT', 'SERVER_ID', 'TARGET_ID', 'TIMEOUT_MS', 'PASSWORD'].some(key => env[`WORKNARU_${key}`] !== undefined)) {
-      configuration = parseCommand(['status', ...connectionArgs], env).configuration;
-    } else {
-      const current = await inspect(localPaths(env));
-      if (current.state !== 'running') throw Object.assign(Error('먼저 pnpm exec worknaru dev start를 실행해 주세요.'), { code: 'not_running' });
-      configuration = { targetId: 'worknaru-dev', endpoint, expectedServerId: current.serverId, timeoutMs: 5000 };
-    }
+    const { createCore } = await import('./dist/bootstrap.js');
+    const configuration = await productConfiguration(o, env);
     const agents = createCore(configuration).agents;
     const expect = count => { if (p.length !== count) throw Object.assign(Error('명령 인자를 확인해 주세요. agent --help'), { code: 'invalid_arguments' }); };
     const select = async selector => {

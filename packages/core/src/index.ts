@@ -1,5 +1,5 @@
 import type { DaemonStatus, Runtime } from '@worknaru/runtime';
-import { AgentError, type AgentAPI } from '@worknaru/runtime';
+import { AgentError, WorkspaceDomainError, type AgentAPI, type WorkspaceDomain } from '@worknaru/runtime';
 export * from '@worknaru/runtime';
 export { conversationMessages } from './conversation.js';
 export * from './workspace-domain.js';
@@ -9,6 +9,7 @@ export type { DaemonStatus } from '@worknaru/runtime';
 /** Product API used by Worknaru applications. */
 export interface WorknaruCore {
   readonly agents: AgentAPI;
+  readonly workspace: WorkspaceDomain;
   getDaemonStatus(): Promise<DaemonStatus>;
 }
 
@@ -18,7 +19,19 @@ export function createWorknaruCore({ runtime }: { readonly runtime: Runtime }): 
     if (!runtime.agents) throw new AgentError('feature_unavailable', 'Agent 기능을 준비해 주세요. pnpm exec worknaru agent setup');
     return runtime.agents;
   };
+  const workspace = () => {
+    if (!runtime.workspace) throw new WorkspaceDomainError('feature_unavailable', 'Workspace 기능을 사용할 수 없습니다.');
+    return runtime.workspace;
+  };
   return {
+    workspace: {
+      createWorkspace: async input => workspace().createWorkspace(input),
+      listWorkspaces: async () => workspace().listWorkspaces(),
+      getWorkspace: async input => workspace().getWorkspace(input),
+      createProject: async input => workspace().createProject(input),
+      listProjects: async input => workspace().listProjects(input),
+      getProject: async input => workspace().getProject(input),
+    },
     agents: {
       health: input => agents().health(input),
       options: input => agents().options(input),

@@ -1,6 +1,6 @@
 # Worknaru CLI
 
-개발 환경 관리와 Codex Agent의 생성·대화·대기열·보관을 제공한다. 사람은 이름과 대화형 입력으로 사용할 수 있고, 자동화는 ID와 JSON 출력을 사용할 수 있다. 제품 기능은 Core API를 호출한다.
+개발 환경 관리, Codex Agent의 생성·대화·대기열·보관, Workspace·Project의 생성·조회를 제공한다. 자동화는 ID와 JSON 출력을 사용할 수 있다. 제품 기능은 Core API를 호출한다.
 
 ## 설치와 기본 사용
 
@@ -26,6 +26,25 @@ pnpm exec worknaru dev stop
 새 코드·브랜드를 반영하려면 `dev stop` 후 `dev start`한다. 빌드 존재 여부와 최신 여부는 다르므로, `doctor`의 빌드 점검은 파일 존재만 확인한다. 디렉터리 쓰기 가능 여부는 `dev start`에서 실제 쓰기로 검사한다.
 
 진입점은 빌드 전에도 동작한다. 의존성 설치에 문제가 있어 `pnpm exec`가 실행되지 않으면 `node apps/cli/bin/worknaru.mjs doctor`로 진단한다. Node 자체가 없으면 먼저 설치해야 한다. 빌드 전 도움말에는 기본 이름 Worknaru를 표시하고 빌드 후에는 [공통 브랜드](../../packages/branding/README.md)의 이름을 사용한다.
+
+## Workspace·Project 생성과 조회
+
+정지된 개발 환경에서 `pnpm exec worknaru agent setup`으로 공통 서버 플러그인을 준비하고 `dev start`로 실행한다. Workspace·Project 기능은 모델 조회·Agent 생성·Provider 로그인을 요구하지 않는다.
+
+```powershell
+pnpm exec worknaru workspace create --name "제품 개발" --json
+pnpm exec worknaru workspace list --json
+pnpm exec worknaru workspace show <Workspace-ID> --json
+pnpm exec worknaru project create --workspace <Workspace-ID> --name "출시 준비" --json
+pnpm exec worknaru project list --workspace <Workspace-ID> --json
+pnpm exec worknaru project show <Project-ID> --json
+```
+
+반환된 전체 UUID를 사용한다. 이름·ID 접두사 선택이나 대화형 질문은 제공하지 않으며 create의 이름과 Project create/list의 Workspace는 필수다. 같은 이름은 허용한다. Web과 같은 Daemon의 데이터를 사용하고 정상 stop/start 후에도 보존한다. 선택이나 생성이 Agent의 소속·작업 폴더를 바꾸지는 않는다.
+
+아래 [대상 선택](#대상-선택)의 옵션·환경 변수를 적용하며, 명시적 설정을 생략하면 관리형 로컬 환경을 확인한다. `--timeout-ms`는 연결부터 RPC 완료까지 하나의 총 제한 시간이다. 도움말과 명령 문법 검사는 연결 전에 수행한다.
+
+JSON 성공 결과는 엔티티 객체 또는 배열이며 실패는 `{ "error": { "code", "message" } }`다. 종료 코드는 성공/도움말 0, 작업·연결 실패 1, 입력·설정 오류 2, 예상하지 못한 내부 오류 3이다. 결과가 불명확한 생성은 자동 재전송하지 않는다. 목록을 확인한 뒤 새 생성을 명시적으로 실행한다. 이름이 같다는 사실만으로 직전 요청의 성공 여부를 확정할 수 없다.
 
 ## Agent 생성부터 보관까지
 

@@ -1,6 +1,10 @@
 # Worknaru Runtime 계약
 
-Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. `Runtime.getDaemonStatus()`와 Agent 작업 계약이 있으며 외부 SDK 의존성이 없다. [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)의 Runtime 경계를 유지한다.
+Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. `Runtime.getDaemonStatus()`, Agent 작업, Workspace·Project 계약이 있으며 외부 SDK 의존성이 없다. [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)의 Runtime 경계를 유지한다.
+
+## Workspace·Project
+
+[workspace-domain.ts](src/workspace-domain.ts)가 엔티티·입력·오류와 여섯 메서드의 `WorkspaceDomain` 계약을 소유한다. `Runtime.workspace`는 선택 기능이며 앱은 Core의 `workspace`를 통해 호출한다. 저장 포트·생성·입력 정책은 [Core](../core/README.md#workspaceproject-최소-도메인)에 있다. Runtime은 Core를 가져오거나 저장 구현을 제공하지 않는다.
 
 ## Daemon 상태 조회
 

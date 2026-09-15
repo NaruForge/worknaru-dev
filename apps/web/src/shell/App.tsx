@@ -16,9 +16,17 @@ import {
 } from '@worknaru/ui';
 import { loadCore } from '../bootstrap.js';
 import { AgentScreen } from '../features/agents/AgentScreen.js';
+import { WorkspaceScreen } from '../features/workspaces/WorkspaceScreen.js';
 import { useAgentSession } from '../features/agents/useAgentSession.js';
 import { useTheme } from './theme.js';
-import { initialAgentView, useNavigation, type SettingsSection } from './navigation.js';
+import {
+  initialAgentView,
+  initialWorkspaceView,
+  useNavigation,
+  type SettingsSection,
+  type AgentView,
+  type WorkspaceView,
+} from './navigation.js';
 import { usePanelLayout } from './layout.js';
 import { SettingsView, useSharedSettings } from './SettingsView.js';
 import styles from './shell.module.css';
@@ -48,12 +56,22 @@ function ConnectedApp({
   const shared = useSharedSettings(core, ui.settings, resetting);
   const [help, setHelp] = useState(false);
   const [routeNotice, setRouteNotice] = useState('');
-  const lastFocus = useRef<HTMLElement | null>(null);
+  const lastFocus = useRef<{ agents: HTMLElement | null; workspaces: HTMLElement | null }>({
+    agents: null,
+    workspaces: null,
+  });
   const lastSection = useRef<SettingsSection>('appearance');
-  const active = !resetting && navigation.view.kind !== 'settings';
+  const active = !resetting && navigation.view.kind === 'agents';
+  const workspaceActive = !resetting && navigation.view.kind === 'workspaces';
+  const settingsActive = resetting || navigation.view.kind === 'settings';
   if (navigation.view.kind === 'settings') lastSection.current = navigation.view.section;
   useEffect(() => {
     if (navigation.view.kind === 'invalid' || (navigation.view.kind === 'agents' && ui.missing)) {
+      if (navigation.view.kind === 'invalid' && navigation.view.feature === 'workspaces') {
+        setRouteNotice('사용할 수 없는 업무 공간 주소입니다. 목록에서 다시 선택해 주세요.');
+        navigation.navigate(initialWorkspaceView, true);
+        return;
+      }
       setRouteNotice('사용할 수 없는 주소 또는 Agent입니다. 목록에서 작업을 선택해 주세요.');
       navigation.navigate(initialAgentView, true);
     }
@@ -98,12 +116,20 @@ function ConnectedApp({
   }, [navigation.view, navigation.navigate, ui.selected]);
   const openSettings = (section = lastSection.current) =>
     navigation.navigate({ kind: 'settings', section });
-  const returnToAgent = () => {
-    navigation.navigate(navigation.agentView);
+  const returnToWork = (view: AgentView | WorkspaceView) => {
+    navigation.navigate(view);
     requestAnimationFrame(() => {
-      const target = lastFocus.current;
+      const target = lastFocus.current[view.kind];
       if (target?.isConnected && target.getClientRects().length && !target.matches(':disabled'))
         target.focus({ preventScroll: true });
+      else if (view.kind === 'workspaces')
+        [
+          ...document.querySelectorAll<HTMLElement>(
+            '[aria-label="Workspace 탐색"] select, [aria-label="업무 공간 상세"] h1, [aria-label="업무 공간 상세"] h2',
+          ),
+        ]
+          .find((element) => element.getClientRects().length)
+          ?.focus({ preventScroll: true });
       else
         document
           .querySelector<HTMLElement>('[aria-label="대화 기록"], [aria-label="Agent 선택"] button')
@@ -129,15 +155,23 @@ function ConnectedApp({
             disabled={resetting}
             variant={active ? 'secondary' : 'ghost'}
             aria-current={active ? 'page' : undefined}
-            onClick={returnToAgent}
+            onClick={() => returnToWork(navigation.agentView)}
+          />
+          <IconButton
+            icon="workspace"
+            label="Workspace"
+            disabled={resetting}
+            variant={workspaceActive ? 'secondary' : 'ghost'}
+            aria-current={workspaceActive ? 'page' : undefined}
+            onClick={() => returnToWork(navigation.workspaceView)}
           />
           <div className={styles.settingsNavigation}>
             <IconButton
               icon="settings"
               disabled={resetting}
               label={shared.dirty ? '설정 (미저장)' : '설정'}
-              variant={!active ? 'secondary' : 'ghost'}
-              aria-current={!active ? 'page' : undefined}
+              variant={settingsActive ? 'secondary' : 'ghost'}
+              aria-current={settingsActive ? 'page' : undefined}
               onClick={() => openSettings()}
             />
             {shared.dirty && (
@@ -157,7 +191,7 @@ function ConnectedApp({
         </div>
       </aside>
       <main className={styles.workArea}>
-        {ui.readError && !resetting && (
+        {ui.readError && active && (
           <Alert tone="error">
             {ui.readError}
             <Inline>
@@ -182,7 +216,7 @@ function ConnectedApp({
           className={styles.featureView}
           hidden={!active}
           onFocusCapture={(event) => {
-            lastFocus.current = event.target as HTMLElement;
+            lastFocus.current.agents = event.target as HTMLElement;
           }}
         >
           <AgentScreen
@@ -194,11 +228,26 @@ function ConnectedApp({
             panels={panels}
           />
         </div>
-        <div className={styles.featureView} hidden={active}>
+        <div
+          className={styles.featureView}
+          hidden={!workspaceActive}
+          onFocusCapture={(event) => {
+            lastFocus.current.workspaces = event.target as HTMLElement;
+          }}
+        >
+          <WorkspaceScreen
+            core={core}
+            active={workspaceActive}
+            view={navigation.workspaceView}
+            onNavigate={navigation.navigate}
+            panels={panels}
+          />
+        </div>
+        <div className={styles.featureView} hidden={!settingsActive}>
           <SettingsView
             core={core}
             dataClient={dataClient}
-            active={!active}
+            active={settingsActive}
             resetting={resetting}
             onResetting={setResetting}
             endpoint={endpoint}
@@ -210,7 +259,7 @@ function ConnectedApp({
                   : lastSection.current
             }
             onSection={openSettings}
-            onReturn={returnToAgent}
+            onReturn={() => returnToWork(navigation.workView)}
             theme={theme}
             setTheme={setTheme}
             panels={panels}
