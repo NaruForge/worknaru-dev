@@ -89,6 +89,7 @@ test('incomplete explicit settings and invalid local arguments never fall back o
     [['status', '--json'], { WORKNARU_SERVER_ID: 'test-secret' }],
     [['status', '--json'], { WORKNARU_PASSWORD: 'test-secret' }],
     [['dev', 'start', '--json'], { WORKNARU_ENDPOINT: 'test-secret' }],
+    [['dev', 'start', '--skip-build', '--json'], {}],
     [['doctor', '--password', 'test-secret', '--json'], {}],
     [['dev', 'stop', '--json', '--json'], {}],
   ]) {

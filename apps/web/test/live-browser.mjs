@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { chromium, expect } from '@playwright/test';
 import { root } from '../../../packages/dev-environment/paths.mjs';
 import { portOpen } from '../../cli/local-support.mjs';
+import { verificationEnvironment } from '../../cli/test/verification-environment.mjs';
 if (process.platform !== 'win32') throw Error('Real managed UI verification requires Windows.');
 assert.equal(await portOpen(), false, 'The managed development port must be free.');
 const parent = await testDirectory('ui-browser');
@@ -20,6 +21,7 @@ const env = {
   WORKNARU_DATA_DIR: path.join(folder, 'data'),
 };
 const exec = promisify(execFile);
+const verification = verificationEnvironment(env);
 const cli = async (...args) => {
   const result = await exec(
     process.execPath,
@@ -31,11 +33,10 @@ const cli = async (...args) => {
 let started = false;
 let browser;
 try {
-  const doctor = await cli('doctor');
-  assert.equal(doctor.ok, true);
-  await cli('agent', 'setup');
-  await cli('dev', 'start');
+  await verification.setup();
+  await verification.start();
   started = true;
+  assert.equal((await cli('doctor')).ok, true);
   browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -110,7 +111,7 @@ try {
   await expect(page.getByRole('region', { name: '환경설정' }).getByRole('alert')).toBeVisible({
     timeout: 15000,
   });
-  await cli('dev', 'start');
+  await verification.start();
   started = true;
   await page.getByRole('button', { name: '상태 확인', exact: true }).click();
   await expect(page.getByText('전용 Daemon이 정상적으로 응답했습니다.')).toBeVisible({
@@ -141,8 +142,8 @@ try {
   await cli('dev', 'stop');
   started = false;
   await cli('dev', 'reset', '--yes');
-  await cli('agent', 'setup');
-  await cli('dev', 'start');
+  await verification.setup();
+  await verification.start();
   started = true;
   assert.notEqual(
     (await readFile(path.join(env.WORKNARU_DATA_DIR, 'server-id'), 'utf8')).trim(),
@@ -180,7 +181,9 @@ try {
   await expect(page.getByLabel('기본 전송 방식')).toHaveValue('queue');
   assert.deepEqual(await cli('agent', 'list'), []);
   assert.deepEqual(errors, []);
+  assert.equal(verification.builds, 1, 'One verified build covers setup and all restarts.');
   const evidence = {
+    builds: verification.builds,
     ...result,
     cliWebCrossover: true,
     reconnection: true,

@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import test from 'node:test';
 import { root } from '../../../packages/dev-environment/paths.mjs';
 import { portOpen } from '../local-support.mjs';
+import { verificationEnvironment } from './verification-environment.mjs';
 
 const exec = promisify(execFile);
 test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archive', { skip: process.platform !== 'win32', timeout: 480000 }, async t => {
@@ -16,6 +17,7 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
   const folder = await mkdtemp(path.join(parent, 'run-')); const data = path.join(folder, 'data'); const project = path.join(folder, 'project'); await mkdir(project);
   await writeFile(path.join(project, 'keep.txt'), 'Archive must preserve this file.');
   const env = { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^WORKNARU_/i.test(key))), WORKNARU_DATA_DIR: data };
+  const verification = verificationEnvironment(env);
   const cli = async (...args) => {
     let result;
     try { result = { code: 0, ...await exec(process.execPath, [path.join(root, 'apps/cli/bin/worknaru.mjs'), ...args, '--json'], { cwd: root, env, windowsHide: true, timeout: 120000, maxBuffer: 4 * 1024 * 1024 }) }; }
@@ -25,7 +27,7 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
   const success = async (...args) => { const r = await cli(...args); assert.equal(r.code, 0, JSON.stringify(r.data)); return r.data; };
   let started = false;
   t.after(async () => { if (started) await success('dev', 'stop'); });
-  await success('agent', 'setup'); await success('dev', 'start'); started = true;
+  await verification.setup(); await verification.start(); started = true;
   const id = (await readFile(path.join(data, 'server-id'), 'utf8')).trim();
   const create = ['agent', 'create', '--name', 'Integration Agent', '--cwd', project, '--id', 'integration-create'];
   const agent = await success(...create); assert.equal((await success(...create)).id, agent.id);
@@ -37,7 +39,7 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
   const queue = await success('agent', 'queue', 'list', agent.id); assert.ok(queue.requests.every(r => r.state === 'completed'));
   assert.notEqual(queue.requests[0].turnId, queue.requests[1].turnId);
   await success('settings', 'set', 'send-mode', 'steer');
-  await success('dev', 'stop'); started = false; await success('dev', 'start'); started = true;
+  await success('dev', 'stop'); started = false; await verification.start(); started = true;
   assert.equal((await readFile(path.join(data, 'server-id'), 'utf8')).trim(), id);
   assert.equal((await success('settings', 'get', 'send-mode')).sendMode, 'steer');
   assert.equal((await success('agent', 'queue', 'list', agent.id)).requests.length, 2);
@@ -49,7 +51,7 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
   await success('dev', 'stop'); started = false;
   await rename(project, moved);
   try {
-    await success('dev', 'start'); started = true;
+    await verification.start(); started = true;
     const blocked = await cli('agent', 'send', agent.id, '실행되면 안 됩니다', '--id', 'invalid-cwd', '--no-wait');
     assert.equal(blocked.data.error.code, 'invalid_directory');
     assert.equal((await success('agent', 'queue', 'list', agent.id)).requests.some(r => r.id === 'invalid-cwd'), false);
@@ -74,7 +76,7 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
     assert.deepEqual(await readdir(data), ['worknaru-data.json']);
     assert.equal(await readFile(path.join(project, 'keep.txt'), 'utf8'), 'Archive must preserve this file.');
     assert.equal((await readFile(path.join(project, 'result.txt'), 'utf8')).trim(), '검증완료');
-    await success('doctor'); await success('agent', 'setup'); await success('dev', 'start'); started = true;
+    await success('doctor'); await verification.setup(); await verification.start(); started = true;
     const freshId = (await readFile(path.join(data, 'server-id'), 'utf8')).trim();
     assert.notEqual(freshId, priorId); priorId = freshId;
     assert.deepEqual(await success('agent', 'list'), []);
@@ -82,5 +84,6 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
     assert.equal((await success('settings', 'get', 'send-mode')).sendMode, 'queue');
     await success('dev', 'stop'); started = false;
   }
-  t.diagnostic(`Evidence retained under ${path.relative(root, folder)}; Provider data is local only.`);
+  assert.equal(verification.builds, 1, 'One verified build covers setup and all restarts.');
+  t.diagnostic(`Builds: ${verification.builds}. Evidence retained under ${path.relative(root, folder)}; Provider data is local only.`);
 });

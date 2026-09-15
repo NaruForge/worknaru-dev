@@ -8,6 +8,9 @@
     "storybook": "storybook dev --host 127.0.0.1 -p 6006 --no-open",
     "storybook:build": "storybook build -o storybook-static",
     "ui:verify": "pnpm storybook:build && playwright test",
+    "ui:verify:functional": "pnpm storybook:build && playwright test --ignore-snapshots",
+    "ui:verify:built": "playwright test",
+    "ui:verify:functional:built": "playwright test --ignore-snapshots",
     "ui:lint": "eslint src ../../packages/ui/src && stylelint \"src/**/*.css\" \"../../packages/ui/src/**/*.css\""
   },
   "dependencies": {

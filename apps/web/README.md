@@ -69,9 +69,9 @@ pnpm exec worknaru dev start
 
 Agent·대기열·권한·보관과 브라우저 사용 흐름의 검증 근거는 [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17)에 둔다. 기본 전체 흐름, CLI와 Web 간 후속 대화·설정 공유, 권한 승인·거부, 한글 조합 Enter·줄바꿈, 보관 후 전송 금지, 작은 화면과 재접속을 확인한다. 실제 Codex 검증에는 Provider 사용량이 발생한다.
 
-실행 중인 Agent 개발 환경에서 `pnpm ui:live`로 실제 생성·후속 대화·새로고침·한글 조합 Enter·390px 화면·보관·초기화를 재현한다. [실행기](test/live-browser.mjs)가 [브라우저 흐름](test/agent.browser.mjs)에 외부 작업 폴더와 캡처 경로를 명시적으로 전달한다. 캡처는 해당 외부 실행 폴더에 남긴다.
+실제 Web–Provider 연결에 영향을 주면 소유권과 영향을 확인한 관리형 환경을 종료하고 빈 개발 포트에서 `pnpm ui:live`를 실행한다. 실제 생성·후속 대화·새로고침·한글 조합 Enter·390px 화면·보관·초기화를 재현한다. [실행기](test/live-browser.mjs)가 자체 격리 환경을 만들고 [브라우저 흐름](test/agent.browser.mjs)에 외부 작업 폴더와 캡처 경로를 전달한다. 캡처는 해당 외부 실행 폴더에 남긴다.
 
-`pnpm test`는 웹 타입·빌드·경계/스타일 검사, React 사용자 동작 테스트와 기존 CLI·Adapter 테스트를 수행한다. `pnpm ui:verify`는 Windows에서 고정 데이터로 Storybook·브라우저·접근성·화면 비교를 수행한다. Docker 준비는 필요하지 않다. 브라우저가 없으면 `pnpm --filter @worknaru/web exec playwright install chromium`을 먼저 실행한다. Windows CI 기준 이미지의 검토·갱신과 로컬 환경 차이 처리, AI 조립 평가 방식은 [UI 표준](../../docs/ui-design.md#실행과-검증)을 따른다. `pnpm ui:storybook`으로 실제 부품과 상태별 견본을 확인한다. `pnpm paseo:verify`는 실제 전용 Daemon의 SDK·Adapter·CLI 연동을 확인한다. 실제 Provider 사용은 고정 데이터 검사와 분리한다.
+개별 화면은 관련 Web 테스트·정적 검사와 `pnpm ui:verify:functional <spec> --grep <흐름>`으로 선택 검증한다. 이 명령은 Storybook을 빌드하고 기능·키보드·접근성을 검사하며 이미지 비교는 제외한다. 전체 `pnpm test`와 `pnpm ui:verify`는 공통 UI 변경 및 최종 UI 회귀에 사용한다. Docker 준비는 필요하지 않다. 브라우저가 없으면 `pnpm --filter @worknaru/web exec playwright install chromium`을 먼저 실행한다. 빌드 재사용 명령, 전체 검증 조건, Windows CI 기준 이미지의 검토·갱신과 AI 조립 평가는 [UI 표준](../../docs/ui-design.md#실행과-검증)을 따른다. `pnpm ui:storybook`으로 실제 부품과 상태별 견본을 확인한다. 실연동은 [변경별 선택 기준](../paseo-dev/README.md#검증-선택)을 따른다.
 
 실제 브라우저의 정상 조회·종료 후 실패·소켓 정리와 loopback 응답 서버를 사용한 인증 오류·대상 불일치·시간 초과 검증의 근거는 [Issue #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 둔다. Paseo `0.8.0` 전환 후 같은 경로를 재검증한 근거는 [Issue #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 연결한다.
 
@@ -97,4 +97,4 @@ Agent·대기열·권한·보관과 브라우저 사용 흐름의 검증 근거�
 
 연결은 기존 Daemon의 `development.data` RPC와 관리 실행기의 named pipe를 사용한다. 별도 HTTP 서버·포트·백그라운드 서비스를 추가하지 않는다. 이 앱의 개발 관리 통신은 제품 Core/Runtime 계약 밖에 있으며, 기존 서버 ID·버전 확인을 적용한다. 관리형 Windows `dev start`와 활성화된 Agent 서비스가 필요하다.
 
-검증은 `pnpm test`, `pnpm ui:verify`, `pnpm dev:verify`를 실행한다. 데이터 화면의 실제 종료·초기화·재시작은 관리 환경을 정지한 뒤 `pnpm build`와 `node apps/web/test/data-browser.mjs`로 검사한다. 테스트 전용 외부 루트에서 두 차례 초기화, 새 서버 ID, 전용 파일 삭제, 외부 파일 보존과 화면 재접속을 확인하며 Provider 메시지는 보내지 않는다. `WORKNARU_TEST_ROOT`를 지원한다. 폴더 열기는 단위 테스트에서 실행 대상을 검사하며 실제 탐색기 창은 자동 검증에서 열지 않는다.
+데이터 화면 문구·표시는 관련 고정 데이터 테스트로 확인하고 공통 UI 변경 및 병합 검증은 UI 표준을 따른다. 실제 종료·초기화·재시작 경계를 변경하면 관리 환경을 정지한 뒤 `node apps/web/test/data-browser.mjs`로 검사한다. 최초 setup이 한 번 빌드하므로 별도 선행 빌드는 필요 없다. 실행기 수명·실패 정리에도 영향을 주면 `pnpm dev:verify`를 추가한다. 테스트 전용 외부 루트에서 두 차례 초기화, 새 서버 ID, 전용 파일 삭제, 외부 파일 보존과 화면 재접속을 확인하며 Provider 메시지는 보내지 않는다. `WORKNARU_TEST_ROOT`를 지원한다. 폴더 열기는 단위 테스트에서 실행 대상을 검사하며 실제 탐색기 창은 자동 검증에서 열지 않는다.
