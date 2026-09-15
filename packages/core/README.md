@@ -1,6 +1,6 @@
 # Worknaru Core
 
-앱에서 호출하는 Worknaru API와 Agent 운영 정책이다. `createWorknaruCore({ runtime })`는 `getDaemonStatus()`와 Agent 전용 메서드 객체 `agents`를 주입받은 [Runtime 계약](../runtime/README.md)에 전달한다.
+앱에서 호출하는 Worknaru API와 Agent 운영 정책이다. `createWorknaruCore({ runtime })`는 `getDaemonStatus()`, Agent 전용 `agents`, Workspace·Project 전용 `workspace`를 주입받은 [Runtime 계약](../runtime/README.md)에 전달한다.
 
 ```typescript
 import { createWorknaruCore } from '@worknaru/core';
@@ -26,7 +26,9 @@ Node 실행부는 별도 export `@worknaru/core/agent-service`의 `createAgentSe
 
 ## Workspace·Project 최소 도메인
 
-`createWorkspaceDomain({ store })`는 `createWorknaruCore({ runtime })`와 별도로 사용하는 Core API다. 업무 메타데이터 저장에는 Agent나 Runtime을 요구하지 않는다. 앱이 `WorkspaceStore`를 주입하며 Core는 Node·SQLite·파일 경로를 import하지 않는다. 현재 Node 구성은 [서버 플러그인](../../apps/agent-service/README.md#workspaceproject-api)이 담당한다. 기존 `createWorknaruCore` 호출 계약은 바꾸지 않았다.
+CLI·Web은 `createWorknaruCore({ runtime }).workspace`의 여섯 메서드를 사용한다. Runtime에 Workspace 기능이 없으면 `feature_unavailable`로 실패하며 기존 상태·Agent 전용 Runtime도 사용할 수 있다. 공통 엔티티·입력·오류·API 계약은 Runtime이 소유하고 Core의 기존 진입점에서도 재수출한다.
+
+서버의 `createWorkspaceDomain({ store })`는 업무 정책을 처리하는 독립 Core API다. 업무 메타데이터 저장에는 Agent나 Runtime을 요구하지 않는다. 앱이 `WorkspaceStore`를 주입하며 Core는 Node·SQLite·파일 경로를 import하지 않는다. Node 구성은 [서버 플러그인](../../apps/agent-service/README.md#workspaceproject-api)이 담당한다.
 
 ```typescript
 import { createWorkspaceDomain, type WorkspaceStore } from '@worknaru/core';
@@ -51,6 +53,6 @@ async function createExample(store: WorkspaceStore) {
 
 Workspace는 `{ id, name, createdAt }`, Project는 `{ id, workspaceId, name, createdAt }`다. 소문자 UUID와 UTC ISO 시각은 서비스가 생성한다. 이름은 앞뒤 공백을 제거하고 1~200 UTF-16 code unit으로 제한하며 제어 문자를 거부한다. 이름 중복은 허용하고 선택은 ID로 한다. 입력에 ID·시각·cwd·알 수 없는 필드를 추가할 수 없다. SQLite 목록은 `createdAt`, `id` 오름차순이다.
 
-`WorkspaceDomainError.code`는 `invalid_input`, `workspace_not_found`, `project_not_found`, `storage_error`다. 없는 Workspace의 Project 목록은 빈 배열이 아니라 오류다. 저장 실패는 성공으로 반환하지 않고 SQL·경로 등 원시 오류를 노출하지 않는다. 반환 객체는 저장 객체와 분리한다. 저장 포트는 원자적 insert와 Project 외래키를 보장해야 한다.
+서버 정책의 `WorkspaceDomainError.code`는 `invalid_input`, `workspace_not_found`, `project_not_found`, `storage_error`다. 원격 호출의 연결·인증·응답 오류는 [Adapter](../paseo-adapter/README.md#workspaceproject-rpc)가 구분한다. 없는 Workspace의 Project 목록은 빈 배열이 아니라 오류다. 저장 실패는 성공으로 반환하지 않고 SQL·경로 등 원시 오류를 노출하지 않는다. 반환 객체는 저장 객체와 분리한다. 저장 포트는 원자적 insert와 Project 외래키를 보장해야 한다.
 
-생성 호출은 호출마다 새로운 ID를 만든다. 전송 결과가 불명확한 생성 요청을 자동 재시도하지 않는다. 삭제·이동·수정, Module/Run, Agent/cwd 연결, UI·CLI 명령과 원격 클라이언트 API는 이 최소 구현에 포함하지 않는다. 검증은 `pnpm test`가 타입·도메인·SQLite/재시작 테스트를 포함해 실행한다. [Issue #51](https://github.com/NaruForge/worknaru-dev/issues/51)
+생성 호출은 호출마다 새로운 ID를 만든다. 전송 결과가 불명확한 생성 요청을 자동 재시도하지 않는다. 삭제·이동·수정, Module/Run, Agent/cwd 연결은 후속 범위다. 검증은 `pnpm test`가 타입·도메인·SQLite/재시작 테스트를 포함해 실행한다. 도메인 근거는 [Issue #51](https://github.com/NaruForge/worknaru-dev/issues/51), CLI·Web 연결은 [Issue #53](https://github.com/NaruForge/worknaru-dev/issues/53)에 있다.

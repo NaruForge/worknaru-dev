@@ -24,7 +24,7 @@ test('icon navigation exposes names, hover titles and unsaved settings without d
   await expect(page.getByRole('button', { name: '전송 방식 변경' })).toHaveCount(0);
   await expect(page.getByText('전송 방식: 대기열', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '보관', exact: true })).toBeVisible();
-  for (const label of ['Agent', '설정']) {
+  for (const label of ['Agent', 'Workspace', '설정']) {
     const button = nav.getByRole('button', { name: label, exact: true });
     await button.hover();
     await expect(button).toHaveAttribute('title', label);

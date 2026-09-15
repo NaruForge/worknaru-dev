@@ -6,6 +6,7 @@ import {
   type AgentSettings,
   type WorknaruCore,
 } from '@worknaru/core';
+import { workspaceFixture } from './workspaceFixture.js';
 
 export type Scenario =
   | 'conversation'
@@ -130,6 +131,7 @@ export function createFixture(scenario: Scenario = 'conversation') {
     return found;
   };
   const core: WorknaruCore = {
+    workspace: workspaceFixture(scenario === 'empty'),
     getDaemonStatus: async () => ({
       outcome: 'available',
       target: {

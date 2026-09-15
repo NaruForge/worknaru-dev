@@ -14,7 +14,7 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 
 | 범위 | 채택한 제품 계약 | 현재 구현과 후속 범위 |
 | --- | --- | --- |
-| 업무 구조 | Workspace → Project 소속, 독립 Module의 참조·사용 | Workspace·Project 생성·목록·단건 조회 API와 SQLite 저장 구현. UI·CLI 명령·Module 관리는 후속 범위 |
+| 업무 구조 | Workspace → Project 소속, 독립 Module의 참조·사용 | Workspace·Project 생성·목록·단건 조회 API, SQLite 저장과 CLI·Web 진입점 구현. 수정·삭제·이동·Module 관리는 후속 범위 |
 | Module 실행 | Standalone / Workspace / Project의 명시적 실행 맥락 | Run API·물리 저장·패키징·버전·실행 수명 구현은 후속 범위 |
 | Agent | 직접 대화 및 Module 개발·실행에 참여할 수 있는 실행 대상 | Core는 Agent API와 상태 조회를 제공하며 Module 실행·Project 연결은 미구현 |
 | System Agent | 앱 수준의 안내·작업 진입점 | 전용 기능·cwd·세션·위임 구조는 후속 설계 |
@@ -120,7 +120,7 @@ flowchart LR
 
 Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에서는 CLI 프로세스 안에서, Web UI에서는 브라우저 안에서 실행한다. Paseo Client도 Adapter가 사용하는 라이브러리이며 같은 환경 안에서 동작한다. 실제 통신 대상인 Paseo Daemon은 별도 프로세스로 실행된다.
 
-여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Workspace·Project는 서버의 `worknaru-domain.sqlite`에 보관하며 전용 RPC를 제공한다. 현재 CLI/Web의 Workspace·Project 클라이언트 연결과 화면·명령, Module 저장은 후속 범위다.
+여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Workspace·Project는 서버의 `worknaru-domain.sqlite`에 보관하며 CLI·Web이 Core의 `workspace`를 통해 같은 전용 RPC를 사용한다. Module 저장은 후속 범위다.
 
 ## 구성요소의 책임
 
@@ -182,7 +182,7 @@ Web UI의 상태 조회도 같은 Core API와 Runtime 결과를 사용한다. �
 
 Core의 `createWorkspaceDomain({ store })`는 생성·목록·단건 조회의 여섯 메서드를 제공한다. Workspace는 `id`, `name`, `createdAt`, Project는 여기에 필수 `workspaceId`를 가진다. ID·생성 시각은 Core가 생성하며 이름 중복을 식별자로 사용하지 않는다. Project 생성·목록 조회는 명시한 Workspace의 존재를 검사하고, 저장소도 외래키로 소속을 강제한다. 세부 입력·오류·예제는 [Core 안내](../packages/core/README.md#workspaceproject-최소-도메인)에 있다.
 
-기존 서버 플러그인이 이 Core API에 Node 전용 SQLite 저장소를 주입하고 별도의 `workspace.execute` RPC를 등록한다. 이는 고정된 여섯 작업의 전송용 envelope이며 임의 메서드 호출은 허용하지 않는다. Agent 초기화·Provider 연결과 별도로 실행하며 새 서버나 포트를 추가하지 않는다. CLI/Web 클라이언트·UI·명령은 아직 연결하지 않았다.
+기존 서버 플러그인이 이 Core API에 Node 전용 SQLite 저장소를 주입하고 별도의 `workspace.execute` RPC를 등록한다. 이는 고정된 여섯 작업의 전송용 envelope이며 임의 메서드 호출은 허용하지 않는다. Agent 초기화·Provider 연결과 별도로 실행하며 새 서버나 포트를 추가하지 않는다. CLI·Web은 `Core.workspace → Runtime.workspace → Adapter`로 호출한다. 공통 타입·오류·API 계약은 Runtime에, 저장 포트와 업무 정책은 Core에 있다. Web의 선택은 URL에 보존하는 탐색 상태이며 Agent 실행 맥락을 변경하지 않는다. 앱 연결의 근거는 [Issue #53](https://github.com/NaruForge/worknaru-dev/issues/53)에 있다.
 
 저장은 [소유권이 확인된 전용 루트](data-storage.md)의 `worknaru-domain.sqlite`를 사용한다. `agent-state.sqlite`와 Paseo의 `projects/`를 변경하지 않는다. 정상 서비스 재시작은 데이터를 보존하고 기존의 승인된 전용 루트 전체 초기화는 이 DB도 제거한다. 소속만으로 Agent·cwd·파일 권한·Module 실행 맥락을 연결하지 않으며 숨은 Workspace나 Project를 만들지 않는다. 변경·검증 근거는 [Issue #51](https://github.com/NaruForge/worknaru-dev/issues/51)에 있다.
 

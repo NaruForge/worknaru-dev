@@ -33,6 +33,12 @@ if (status.outcome === 'available') {
 
 상태 호출은 독립된 클라이언트를 사용하고 종료 시 연결을 정리한다. 자동 재접속은 꺼져 있다. `timeoutMs`는 연결과 상태 요청을 합친 제한 시간이며 기본값은 5초, 허용 범위는 정수 1~300000ms다. 반환 필드의 의미는 [Runtime 계약](../runtime/README.md)에 설명한다.
 
+## Workspace·Project RPC
+
+[workspace-rpc.ts](src/workspace-rpc.ts)는 `Runtime.workspace`의 여섯 메서드를 기존 플러그인의 `workspace.execute`에 연결한다. 각 요청 전에 예상 서버 ID·0.8.0 버전을 확인하고 연결부터 RPC 완료까지 하나의 `timeoutMs` 예산을 적용한다. 자동 재접속·재전송 없이 연결을 닫는다.
+
+반환 엔티티의 구조·UUID·ISO 시각과 요청 ID·Project 부모 소속을 검증한다. 기존 도메인 오류를 보존하고 원격 오류 원문을 노출하지 않는다. 잘못된 envelope·알 수 없는 도메인 코드는 `invalid_response`, SDK RPC 실패는 `service_error`다. Paseo가 구분하지 않는 플러그인 부재와 handler 실패를 메시지로 추측하지 않는다. 연결·인증·시간 초과·대상·버전 오류는 각각의 확인 가능한 코드로 반환한다. 생성 요청을 보낸 뒤 결과가 불명확하면 중복 생성 가능성과 수동 목록 확인을 안내한다.
+
 ## Agent RPC와 실행 Driver
 
 앱은 `Runtime.agents.create()`·`send()` 등 명시적인 메서드를 통해 전용 플러그인의 `agents.execute` RPC를 호출한다. [agent-rpc.ts](src/agent-rpc.ts)는 매 호출에서 서버 ID·0.8.0 버전을 확인한 뒤 Worknaru 결과·오류를 반환하고 연결을 닫는다. `timeoutMs`는 이 경로의 연결 제한이며 RPC는 SDK의 응답 제한을 따른다. 승인된 요청 뒤 연결 정리 오류 때문에 자동 재전송을 유도하지 않는다. 원시 SDK 예외는 제품 오류로 변환한다.

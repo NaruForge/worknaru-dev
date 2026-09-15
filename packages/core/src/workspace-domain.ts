@@ -1,21 +1,9 @@
-/** Worknaru business containers, not filesystem paths or Paseo entities. */
-export interface Workspace {
-  readonly id: string;
-  readonly name: string;
-  readonly createdAt: string;
-}
-
-export interface Project {
-  readonly id: string;
-  readonly workspaceId: string;
-  readonly name: string;
-  readonly createdAt: string;
-}
-
-export interface CreateWorkspaceInput { readonly name: string }
-export interface CreateProjectInput { readonly workspaceId: string; readonly name: string }
-export interface EntityInput { readonly id: string }
-export interface ListProjectsInput { readonly workspaceId: string }
+import { WorkspaceDomainError, type Workspace, type Project, type WorkspaceDomain } from '@worknaru/runtime';
+export { WorkspaceDomainError } from '@worknaru/runtime';
+export type {
+  Workspace, Project, WorkspaceDomain, WorkspaceDomainErrorCode,
+  CreateWorkspaceInput, CreateProjectInput, EntityInput, ListProjectsInput,
+} from '@worknaru/runtime';
 
 type Stored<T> = T | Promise<T>;
 
@@ -27,25 +15,6 @@ export interface WorkspaceStore {
   insertProject(project: Project): Stored<void>;
   findProject(id: string): Stored<Project | null>;
   listProjects(workspaceId: string): Stored<readonly Project[]>;
-}
-
-export type WorkspaceDomainErrorCode =
-  | 'invalid_input' | 'workspace_not_found' | 'project_not_found' | 'storage_error';
-
-export class WorkspaceDomainError extends Error {
-  constructor(readonly code: WorkspaceDomainErrorCode, message: string) {
-    super(message);
-    this.name = 'WorkspaceDomainError';
-  }
-}
-
-export interface WorkspaceDomain {
-  createWorkspace(input: CreateWorkspaceInput): Promise<Workspace>;
-  listWorkspaces(): Promise<Workspace[]>;
-  getWorkspace(input: EntityInput): Promise<Workspace>;
-  createProject(input: CreateProjectInput): Promise<Project>;
-  listProjects(input: ListProjectsInput): Promise<Project[]>;
-  getProject(input: EntityInput): Promise<Project>;
 }
 
 function fields(input: unknown, allowed: readonly string[]): Record<string, unknown> {
