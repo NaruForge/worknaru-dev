@@ -2,7 +2,7 @@ import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
 // Opt-in: creates real Codex sessions and incurs Provider usage. Own data only.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rename, readdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import test from 'node:test';
@@ -70,20 +70,6 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
   assert.equal((await cli('agent', 'send', agent.id, 'must not run', '--no-wait')).data.error.code, 'archived');
   assert.equal(await readFile(path.join(project, 'keep.txt'), 'utf8'), 'Archive must preserve this file.');
   await success('dev', 'stop'); started = false;
-  let priorId = id;
-  for (let cycle = 0; cycle < 2; cycle++) {
-    await success('dev', 'reset', '--yes');
-    assert.deepEqual(await readdir(data), ['worknaru-data.json']);
-    assert.equal(await readFile(path.join(project, 'keep.txt'), 'utf8'), 'Archive must preserve this file.');
-    assert.equal((await readFile(path.join(project, 'result.txt'), 'utf8')).trim(), '검증완료');
-    await success('doctor'); await verification.setup(); await verification.start(); started = true;
-    const freshId = (await readFile(path.join(data, 'server-id'), 'utf8')).trim();
-    assert.notEqual(freshId, priorId); priorId = freshId;
-    assert.deepEqual(await success('agent', 'list'), []);
-    assert.deepEqual(await success('agent', 'list', '--archived'), []);
-    assert.equal((await success('settings', 'get', 'send-mode')).sendMode, 'queue');
-    await success('dev', 'stop'); started = false;
-  }
   assert.equal(verification.builds, 1, 'One verified build covers setup and all restarts.');
   t.diagnostic(`Builds: ${verification.builds}. Evidence retained under ${path.relative(root, folder)}; Provider data is local only.`);
 });

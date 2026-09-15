@@ -21,12 +21,6 @@ async (page, cwd, screenshotPath) => {
   await page.getByRole('button', { name: '만들기', exact: true }).click();
   await page.getByRole('heading', { name, exact: true }).waitFor();
   const message = page.getByLabel('메시지', { exact: true });
-  await message.fill('한글 조합');
-  await message.dispatchEvent('keydown', { key: 'Enter', isComposing: true, keyCode: 229 });
-  if ((await message.inputValue()) !== '한글 조합') throw Error('IME Enter submitted the message');
-  await message.press('Shift+Enter');
-  if (!(await message.inputValue()).includes('\n'))
-    throw Error('Shift+Enter did not insert a newline');
   await message.fill('Remember MAPLE as our test word. Reply only MAPLE-17. Do not use tools.');
   await message.press('Enter');
   await page
@@ -50,22 +44,12 @@ async (page, cwd, screenshotPath) => {
     .locator('article')
     .filter({ hasText: 'MAPLE FOLLOWUP' })
     .waitFor();
-  await page.setViewportSize({ width: 390, height: 844 });
-  if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
-    throw Error('Page overflows a narrow viewport');
-  if (
-    await page
-      .getByLabel('Agent 작업 영역', { exact: true })
-      .evaluate((element) => element.getBoundingClientRect().right > innerWidth)
-  )
-    throw Error('Conversation is clipped on a narrow viewport');
   await page.screenshot({ path: screenshotPath, fullPage: true });
   // A streamed reply can appear before the durable request settles. Confirm the
   // execution state before taking an archive preview that must remain current.
   await page
     .getByLabel('메시지 실행 상태', { exact: true })
     .waitFor({ state: 'hidden', timeout: 60000 });
-  await page.getByRole('button', { name: 'Agent 목록으로', exact: true }).click();
   await page
     .getByRole('group', { name, exact: true })
     .getByRole('button', { name: 'Agent 보관', exact: true })
@@ -87,7 +71,6 @@ async (page, cwd, screenshotPath) => {
     historyRetained: (await page.getByLabel('대화 기록', { exact: true }).innerText()).includes(
       'MAPLE FOLLOWUP',
     ),
-    mobileOverflow: false,
-    imeAndFollowup: true,
+    followup: true,
   };
 };

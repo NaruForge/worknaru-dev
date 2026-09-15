@@ -53,6 +53,11 @@ for (const width of [390, 768, 1440])
         true,
       );
       expect(
+        await page
+          .getByLabel('Agent 작업 영역', { exact: true })
+          .evaluate((element) => element.getBoundingClientRect().right <= innerWidth),
+      ).toBe(true);
+      expect(
         (
           await new AxeBuilder({ page })
             .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])

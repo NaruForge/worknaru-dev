@@ -184,6 +184,8 @@ pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id <확인�
 
 작은 CLI 변경은 필요한 선행 빌드 후 관련 CLI 테스트와 영향을 받는 호출부를 선택한다. 자체 test 명령이 없는 공통 패키지의 소비자 검사와 실연동 발동 조건은 [검증 선택](../paseo-dev/README.md#검증-선택)을 따른다. 검증 전용 실행은 같은 입력의 setup/start 빌드 결과를 실행 안에서만 재사용하며 일반 CLI setup/start는 기존처럼 빌드한다.
 
+초기화의 등록·대기열·설정 삭제는 `pnpm --filter @worknaru/cli... build` 후 `node --test apps/cli/test/reset.test.mjs`로 선택한다. 설치된 Paseo의 유효한 활성/보관 등록과 실제 SQLite의 요청·정지·생성 ID·비기본 설정을 새 reader로 확인한 뒤 reset하고, 다시 새 객체로 삭제·기본값·외부 파일 보존을 검사한다. Provider 실행이나 로그인이 필요 없다. `pnpm agent:verify`는 실제 생성·FIFO·파일·권한·정상 재시작·보관 경계를 유지하며 후속 reset 반복은 수행하지 않는다. 실제 Web의 초기화·새 controller 재진입은 [Web 데이터 관리 검사](../web/README.md#데이터-관리)를 사용한다.
+
 최초 구현의 범위와 검증 증거는 [Issue #15](https://github.com/NaruForge/worknaru-dev/issues/15), 검증 범위·빌드 재사용 결정은 [ADR 0014](../../docs/adr/0014-scoped-development-verification.md)에 둔다.
 
 ### Web에서 요청한 데이터 초기화

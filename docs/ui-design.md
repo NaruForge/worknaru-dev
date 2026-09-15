@@ -47,6 +47,8 @@ Linear의 중립적인 바탕과 정보 위계, Paseo·VS Code의 탐색/작업 
 
 저장소 루트에서 `pnpm ui:storybook`으로 개발용 카탈로그를 연다. Storybook은 실제 부품과 실제 제품 화면에 고정 Core 데이터를 주입하며 Provider를 호출하지 않는다. 제품 배포에는 포함하지 않는다. 공개 API의 타입은 소스가 원본이고 예제는 같은 컴포넌트를 import한다. 별도 MCP는 필요하지 않다.
 
+SDK 연결 계약용 `Verification/Connection` story만 Core를 주입하지 않고 실제 App의 bootstrap을 실행한다. `sdk-identity.spec.ts`가 iframe의 접속 설정과 WebSocket 응답을 고정해 서버 ID 변경 시 전송 차단을 검사하며 실제 Daemon·Provider는 사용하지 않는다. 일반 화면 견본과 같은 Storybook 소스 빌드 및 아래 의존 패키지 선행 빌드 규칙을 따른다.
+
 `pnpm test`는 전체 빌드·타입·경계/스타일 검사·기존 Node 테스트·React 사용자 동작 테스트를 실행한다. 개별 화면을 수정하는 동안에는 필요한 선행 빌드와 해당 Web 테스트·`pnpm ui:lint`를 선택한다. 브라우저 검증은 다음 명령으로 범위를 구분한다. 브라우저가 없으면 `pnpm --filter @worknaru/web exec playwright install chromium`을 먼저 실행한다.
 
 | 명령 | 범위 |
