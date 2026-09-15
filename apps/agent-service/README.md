@@ -41,4 +41,15 @@ RPC 입력은 `{ operation, input }`이며 아래 여섯 작업과 각 입력의
 
 저장 파일은 `WORKNARU_AGENT_DATA_ROOT` 아래의 `worknaru-domain.sqlite`다. 별도 경로 환경 변수·기본 Workspace·로컬 작업 폴더를 만들지 않는다. DB·부속 파일의 링크를 거부하고 외래키·행 단위 원자적 insert·WAL·`synchronous=FULL`을 사용한다. 여러 연결은 DB의 현재 행을 조회하며 Agent queue의 상태 스냅샷/revision을 공유하지 않는다. 정상 재시작은 보존하고, 기존 승인된 전용 루트 전체 초기화는 이 DB와 부속 파일도 삭제한다. [저장·보존 범위](../../docs/data-storage.md)
 
-`pnpm test`는 소속·입력 검증, 저장 실패, 별도 프로세스 재시작, 동시 생성, 소유권/초기화 차단 회귀를 포함한다. 이 검증은 Provider 호출을 하지 않는다. 변경 범위와 실행 근거는 [Issue #51](https://github.com/NaruForge/worknaru-dev/issues/51)에 둔다.
+기존 DB는 `user_version=1`만으로 신뢰하지 않는다. 초기화 잠금 안에서 `sqlite_schema`의 앱 소유 객체 전체를 v1 생성 DDL과 대조하고, `quick_check`와 `foreign_key_check`로 기존 행도 검사한 뒤에만 WAL을 설정한다. PK·FK·NOT NULL·CHECK·STRICT·인덱스가 다르거나 예상하지 않은 객체가 있으면 변경 없이 거부한다. 공백 배치를 제외한 앱 생성 DDL만 허용하며, 외부 도구가 재작성한 의미상 동등한 스키마의 호환성까지 제공하지 않는다. 자동 복구·마이그레이션·데이터 삭제는 하지 않는다.
+
+`pnpm test`는 소속·입력 검증, 저장 실패, 별도 프로세스 재시작, 동시 생성, 소유권/초기화 차단 회귀를 포함한다. `workspace-schema.test.mjs`는 수정 전 정상 v1 DB의 호환성과 잘못된 v1 DB의 무변경 거부를 DELETE/WAL 양쪽에서 검사한다. 이 검증은 Provider 호출을 하지 않는다. 변경 범위와 실행 근거는 [Issue #51](https://github.com/NaruForge/worknaru-dev/issues/51)에 둔다.
+
+실제 RPC 연결은 Windows에서 아래 명령으로 별도 검증한다. 먼저 관리형 개발 환경을 정상 종료하고 [검증 데이터 격리](../paseo-dev/README.md#검증-데이터-격리) 규칙을 따른다.
+
+```powershell
+pnpm build
+node --test apps/agent-service/test/workspace.integration.mjs
+```
+
+이 검사는 외부 임시 데이터 루트와 기존 전용 Daemon 실행기를 사용한다. 실제 `workspace.execute`의 여섯 API·오류 응답, 정상 종료 후 새 프로세스의 ID·소속·생성 시각 보존, 잘못된 스키마의 `service_error` 응답과 DB 보존을 확인한다. Agent 생성·Provider 로그인·메시지 전송은 하지 않는다. 고정 포트를 쓰므로 다른 실연동과 동시에 실행하지 않는다. Windows CI의 `tests` 작업이 전체 `pnpm test` 이후 이 검사를 직렬 실행하며, 일반 패키지 단위 테스트에는 포함하지 않는다. Linux의 명시적 skip은 실연동 성공 근거가 아니다.
