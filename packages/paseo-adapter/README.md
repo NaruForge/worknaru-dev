@@ -1,5 +1,9 @@
 # Paseo Adapter
 
+## Module RPC
+
+[module-rpc.ts](src/module-rpc.ts)는 Runtime.modules의 네 작업을 기존 `worknaru-agent-service/modules.execute`에 연결한다. 서버 ID·고정 버전을 확인한 뒤 요청하며 연결부터 RPC 응답까지 하나의 제한 시간과 연결 정리를 적용한다. 자동 재전송은 하지 않는다. 응답의 상태·귀속·요청 ID·조회 대상을 검증하고 원시 SDK/서버 오류를 안전한 ModuleError로 변환한다. API와 수명은 [Runtime](../runtime/README.md#module-실행), CLI 사용은 [CLI 안내](../../apps/cli/README.md#module-실행과-run-조회)를 따른다.
+
 `@worknaru/runtime`의 `Runtime.getDaemonStatus()`를 구현한다. Paseo SDK의 타입·응답·오류는 이 패키지 내부에서 처리한다. Core에는 factory가 반환한 `Runtime`을 전달하며, 제품 CLI와 Web UI는 [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)에 따라 Core를 호출한다.
 
 ## 사용

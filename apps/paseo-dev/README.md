@@ -72,6 +72,7 @@ Remove-Item Env:WORKNARU_DATA_DIR
 | reset의 등록·요청 삭제, 기본값·외부 파일 보존 | `pnpm --filter @worknaru/cli... build` 후 `node --test apps/cli/test/reset.test.mjs`. 설치된 Paseo 등록 parser/storage와 실제 SQLite를 새 객체로 재조회하며 Provider를 만들거나 호출하지 않는다. |
 | 최초 실행·시작/종료·빌드 실패·소유권 정리 | `pnpm dev:verify`. 별도 checkout 설치와 실제 Windows 수명 검증이 필요한 변경에 사용한다. |
 | SDK·Adapter 연결·Paseo 버전 호환성 | `pnpm paseo:verify`. 실제 Daemon 연결을 확인하며 Provider 메시지를 보내지 않는다. |
+| Module 실행·요청 중복·Run 영속화 | `pnpm build` 후 `node --test apps/agent-service/test/modules.integration.mjs`. 새 외부 데이터에서 실제 CLI·RPC·Daemon 재시작을 검증한다. Provider를 사용하지 않고 다른 고정 포트 검사와 직렬 실행한다. |
 | 실제 Provider 세션·권한·Agent 실행 경계 | `pnpm agent:verify`. 로그인과 Provider 사용량이 필요하다. |
 | Web과 실제 Provider 연결 동작 | `pnpm ui:live`. 일반 UI 문구·스타일 변경은 고정 데이터 검사로 확인한다. |
 | Workspace·Project CLI/Web 교차 사용 | `node apps/web/test/workspace-browser.mjs`. 외부 전용 환경에서 양쪽의 생성·조회와 정상 재시작 후 데이터·선택 보존을 확인한다. Provider 호출 없이 실행하며 첫 setup의 빌드를 재사용한다. |

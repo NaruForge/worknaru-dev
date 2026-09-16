@@ -1,5 +1,15 @@
 # Agent 실행 서비스
 
+## Module 서비스
+
+[서버 구성](server/module-service.mjs)이 소유권과 ready 마커를 확인하고 Core 실행 정책에 [내장 구현](server/modules.mjs), Workspace 조회와 [Module 저장소](server/module-store.mjs)를 주입한다. 기존 플러그인의 `modules.execute`는 `list`, `execute`, `getRun`, `listRuns`만 받으며 입력은 Core에서 검증한다. Agent/Provider 초기화와 별개로 동작한다. 실패 시 내부 파일 경로나 실행 예외를 RPC로 노출하지 않는다.
+
+`module-runs.sqlite`는 입력·결과·요청 ID·업무 귀속·수명을 저장한다. SQL 유일 제약으로 접수 ID를 중복 방지하고, 조건부 상태 전이·WAL·FULL 동기화를 사용한다. 앱 생성 DDL과 quick_check를 확인하며 알 수 없는 스키마와 DB/부속 파일 링크는 거부한다. 시작 시 미완료 실행을 uncertain으로 기록하고 자동 실행하지 않는다. 정확한 수명은 [ADR 0016](../../docs/adr/0016-module-run-idempotency-and-recovery.md)에 있다.
+
+`pnpm test`는 동시 접수·서로 다른 업무 조회·실행 실패·실제 자식 프로세스 종료·재시작·저장 검증을 포함한다. 실제 CLI/RPC와 Daemon 재시작 검증은 빌드 후 `node --test apps/agent-service/test/modules.integration.mjs`로 실행한다. 외부 실행별 데이터만 사용하고 Provider를 호출하지 않으며 Workspace 실연동과 직렬 실행한다. [#55](https://github.com/NaruForge/worknaru-dev/issues/55)
+
+## Agent 서비스
+
 전용 Paseo Daemon에 로드하는 신뢰된 로컬 서버 플러그인이다. `worknaru-agent-service`의 `agents.execute` RPC로 CLI와 Web의 요청을 받고, Core 정책을 사용해 지속 대기열을 실행한다. UI나 CLI 프로세스의 수명에 의존하지 않는다.
 
 RPC envelope는 Adapter와 이 앱의 통신 구현에 한정한다. `operation`은 Agent 메서드의 고정 enum으로 검증하며 임의 명령이나 서비스 수명 메서드를 실행할 수 없다. Core 정책 서비스도 공개 `execute()` 없이 Agent별 명시적 메서드를 제공한다. Module·Workspace 작업을 이 RPC에 추가하지 않는다.

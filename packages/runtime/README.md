@@ -1,10 +1,18 @@
 # Worknaru Runtime 계약
 
-Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. `Runtime.getDaemonStatus()`, Agent 작업, Workspace·Project 계약이 있으며 외부 SDK 의존성이 없다. [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)의 Runtime 경계를 유지한다.
+Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. `Runtime.getDaemonStatus()`, Agent 작업, Workspace·Project와 Module 계약이 있으며 외부 SDK 의존성이 없다. [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)의 Runtime 경계를 유지한다.
 
 ## Workspace·Project
 
 [workspace-domain.ts](src/workspace-domain.ts)가 엔티티·입력·오류와 여섯 메서드의 `WorkspaceDomain` 계약을 소유한다. `Runtime.workspace`는 선택 기능이며 앱은 Core의 `workspace`를 통해 호출한다. 저장 포트·생성·입력 정책은 [Core](../core/README.md#workspaceproject-최소-도메인)에 있다. Runtime은 Core를 가져오거나 저장 구현을 제공하지 않는다.
+
+## Module 실행
+
+[modules.ts](src/modules.ts)의 `ModuleAPI`는 `list()`, `execute({ requestId, moduleId, target, input })`, `getRun({ id })`, `listRuns({ target })`를 정의한다. `Runtime.modules`는 선택 기능이며 앱은 `Core.modules`를 사용한다. target은 명시적인 `standalone`, `workspace`+workspaceId, `project`+projectId 중 하나다. 결과의 context에는 서버가 확인한 Workspace·Project 귀속이 포함된다.
+
+Run은 Module ID·최초 접수 버전·요청 ID·입력·귀속·시각·상태·결과/오류를 보관한다. `accepted`·`running` 응답은 완료가 아니다. `succeeded`만 결과 검증·저장 완료이며 `failed`는 실행/결과 검증 실패, `uncertain`은 재시작 후 결과를 확정하지 못한 상태다. 같은 요청 ID를 다시 사용하면 기존 Run을 반환하며 다른 입력·대상·Module은 `request_conflict`로 거부한다. 자동 재전송은 하지 않는다. 상세 수명은 [ADR 0016](../../docs/adr/0016-module-run-idempotency-and-recovery.md)을 따른다.
+
+목록은 지정한 맥락에 직접 귀속된 Run만 반환하며 Workspace 목록에 하위 Project Run을 합치지 않는다. 이는 업무 조회 범위이며 사용자별 접근 권한을 구현한 것은 아니다. `ModuleError`는 입력·없는 대상·충돌·저장·연결 실패를 구분한다. 원시 실행 오류와 SQL은 노출하지 않는다.
 
 ## Daemon 상태 조회
 

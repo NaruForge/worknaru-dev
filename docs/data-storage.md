@@ -1,6 +1,6 @@
 # 데이터 저장 위치
 
-Worknaru의 전용 실행 데이터, 실제 작업 파일, 개인 Provider 환경, 브라우저 상태는 서로 다른 곳에 저장된다. 이 문서는 현재 Windows 개발 환경에서 **어떤 데이터가 어디에 있고, 언제 지워지는지**를 설명한다. Worknaru Workspace·Project의 최소 메타데이터 저장을 포함하며, Module·Run 저장은 후속 범위다.
+Worknaru의 전용 실행 데이터, 실제 작업 파일, 개인 Provider 환경, 브라우저 상태는 서로 다른 곳에 저장된다. 이 문서는 현재 Windows 개발 환경에서 **어떤 데이터가 어디에 있고, 언제 지워지는지**를 설명한다. Worknaru Workspace·Project의 최소 메타데이터와 내장 Module 실행 기록을 포함한다.
 
 ## 한눈에 보기
 
@@ -12,6 +12,7 @@ Worknaru의 전용 실행 데이터, 실제 작업 파일, 개인 Provider 환�
 | Agent 이름·작업 폴더·모델·보관 상태·Provider 세션 연결 정보 | `D\agents\<작업 폴더별 디렉터리>\<Agent ID>.json` | Paseo |
 | 접수한 메시지·전송 결과·대기열 정지 상태·공유 전송 설정 | `D\agent-state.sqlite`와 SQLite 부속 파일 | Worknaru Agent 서비스 |
 | Worknaru Workspace·Project의 ID·이름·소속·생성 시각 | `D\worknaru-domain.sqlite`와 SQLite 부속 파일 | Worknaru 도메인 서비스 |
+| Module Run의 요청 ID·정의 버전·입력·귀속·상태·결과·시각 | `D\module-runs.sqlite`와 SQLite 부속 파일 | Worknaru Module 서비스 |
 | 대화·도구 실행 이력 | Provider 자체 세션 저장소. Paseo가 조회해 화면에 전달 | Provider와 Paseo |
 | 관리되는 Git worktree·임시 파일 | `D\worktrees`, `D\tmp` | 전용 실행 환경 |
 | Agent가 읽고 수정하는 실제 프로젝트 | Agent 생성 시 지정한 작업 폴더 (`--cwd` 또는 Web 입력) | 사용자와 Agent |
@@ -26,6 +27,10 @@ Worknaru의 전용 실행 데이터, 실제 작업 파일, 개인 Provider 환�
 작업 폴더는 Daemon이 실행되는 컴퓨터의 경로다. 새 Agent에는 기본 작업 폴더가 없으며 사용자가 명시한다. 실제 작업 프로젝트는 전용 데이터 루트 밖에 두어 수명을 분리한다.
 
 `worknaru-domain.sqlite`는 Worknaru 업무 구조의 원본이다. Agent 대화·파일·Paseo의 project/workspace를 복제하지 않으며 브라우저 Local Storage에도 저장하지 않는다. 소유 checkout과 `ready` 마커를 확인한 서버 플러그인만 이 경로에 DB를 연다. 처음 사용하면 빈 스키마를 생성하되 Workspace·Project 레코드는 자동 생성하지 않는다. 알 수 없는 스키마는 자동 삭제·변환하지 않고 오류로 중단한다. [도메인 저장 구현](../apps/agent-service/server/workspace-store.mjs)
+
+`module-runs.sqlite`는 내장 Module의 실행 기록을 보관한다. Module 정의는 서버 코드이며 DB에 실행 코드나 사용자 설치 패키지를 저장하지 않는다. 같은 Module을 실행한 서로 다른 업무의 입력·결과는 각각의 Run에 남는다. 목록은 정확한 실행 맥락으로 구분하며 접근 권한 경계를 뜻하지 않는다. 재시작 시 accepted/running은 uncertain으로 기록하고 자동 실행하지 않는다. 입력 원문과 결과는 전용 DB에 남으므로 사용자가 민감한 텍스트를 입력하면 그 내용도 저장된다.
+
+Module 저장 도입으로 루트 저장 버전은 2다. 버전 1 루트는 DB를 열기 전에 `reset_required`로 거부하며 자동 변환·삭제하지 않는다. 기존 데이터를 보존하려면 새 외부 데이터 루트를 지정한다. 전체 초기화를 선택하면 아래 기존 보존/삭제 범위를 그대로 따른다.
 
 ## 설정에서 데이터 관리
 
@@ -101,6 +106,9 @@ D/
 ├── worknaru-domain.sqlite          # Worknaru Workspace·Project 메타데이터
 ├── worknaru-domain.sqlite-wal      # SQLite가 필요할 때 생성하는 부속 파일
 ├── worknaru-domain.sqlite-shm
+├── module-runs.sqlite             # Module 입력·귀속·상태·결과·접수 ID
+├── module-runs.sqlite-wal          # SQLite 부속 파일
+├── module-runs.sqlite-shm
 ├── dev-instance.json              # 관리 실행기 소유권·제어 기록
 ├── paseo.pid                      # 전용 Daemon 프로세스 기록
 ├── dev-operation.lock             # setup·시작·종료·초기화의 동시 작업 잠금
@@ -128,6 +136,7 @@ D/
 | --- | --- | --- | --- |
 | 전용 설정·서버 ID·인증 키·Agent 등록·대기열·공유 전송 설정 | 유지 | 유지 | 삭제 후 새 setup/start에서 새로 생성 |
 | Worknaru Workspace·Project | 유지 | 같은 ID·소속·생성 시각으로 유지 | DB·부속 파일 삭제, 다음 시작 시 빈 저장소 |
+| Module Run | 유지 | 완료 기록 보존, 미완료는 uncertain으로 보존 | DB·부속 파일 삭제, 다음 시작 시 빈 저장소 |
 | 전용 로그 | 유지 | 다음 실행에서 추가·갱신 (`build.log`는 빌드 시 덮어씀) | 삭제 |
 | 설정 백업·관리 worktree | 유지 | 유지 | 삭제 |
 | 실행 기록·PID·작업 잠금 | 관리형 실행은 터미널과 독립 | 정상 종료·작업 완료 시 소유한 기록과 잠금 정리 | 정지·소유권 확인 후 정리 |

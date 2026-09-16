@@ -3,6 +3,8 @@ import { AgentError, WorkspaceDomainError, type AgentAPI, type WorkspaceDomain }
 export * from '@worknaru/runtime';
 export { conversationMessages } from './conversation.js';
 export * from './workspace-domain.js';
+export * from './module-service.js';
+import { ModuleError, type ModuleAPI } from '@worknaru/runtime';
 
 export type { DaemonStatus } from '@worknaru/runtime';
 
@@ -10,6 +12,7 @@ export type { DaemonStatus } from '@worknaru/runtime';
 export interface WorknaruCore {
   readonly agents: AgentAPI;
   readonly workspace: WorkspaceDomain;
+  readonly modules: ModuleAPI;
   getDaemonStatus(): Promise<DaemonStatus>;
 }
 
@@ -23,7 +26,17 @@ export function createWorknaruCore({ runtime }: { readonly runtime: Runtime }): 
     if (!runtime.workspace) throw new WorkspaceDomainError('feature_unavailable', 'Workspace 기능을 사용할 수 없습니다.');
     return runtime.workspace;
   };
+  const modules = () => {
+    if (!runtime.modules) throw new ModuleError('feature_unavailable', 'Module 기능을 사용할 수 없습니다.');
+    return runtime.modules;
+  };
   return {
+    modules: {
+      list: async () => modules().list(),
+      execute: async input => modules().execute(input),
+      getRun: async input => modules().getRun(input),
+      listRuns: async input => modules().listRuns(input),
+    },
     workspace: {
       createWorkspace: async input => workspace().createWorkspace(input),
       listWorkspaces: async () => workspace().listWorkspaces(),

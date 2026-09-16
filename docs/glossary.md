@@ -17,7 +17,7 @@ Worknaru의 제품 계약과 현재 실행 기반을 이해하는 데 필요한 
 | **Model** | Provider가 Agent 실행에 사용하는 AI 모델이다. Agent 생성 시 해당 Provider에서 사용할 수 있는 모델을 선택한다. |
 | **Module** | 특정 업무 기능을 제공하며 여러 업무에서 재사용할 수 있는 독립 기능 단위다. Workspace·Project는 이를 참조해 사용하며, 외부·로컬 서비스, AI Agent, 사용자 검수·수정을 필요한 만큼 구성할 수 있다. |
 | **Module Execution Context** | Module Run의 업무 대상과 기록·결과의 논리적 귀속을 나타내는 실행 맥락이다. Standalone은 Workspace·Project 없이, Workspace는 선택한 공간에서, Project는 선택한 업무와 그 소속 Workspace에서 실행하며 파일 접근 권한·cwd는 별도로 정한다. |
-| **Module Run** | Module을 특정 입력·설정·실행 맥락으로 수행하는 개별 실행이다. 기록이 남거나 실행이 반복된다는 사실만으로 Project가 되지 않으며, 현재 Run API는 구현하지 않았다. |
+| **Module Run** | Module을 특정 입력·설정·실행 맥락으로 수행하는 개별 실행이다. 기록이 남거나 실행이 반복된다는 사실만으로 Project가 되지 않는다. 현재 내장 Module 실행·상태/결과 저장·CLI 조회를 제공한다. |
 | **Paseo Adapter** | Runtime 계약을 Paseo 호출로 구현하고, Paseo의 응답·오류·이벤트를 Worknaru가 사용하는 형태로 변환하는 계층이다. Agent Service가 사용하는 실행 Driver도 이 패키지에서 제공한다. |
 | **Paseo Client** | Paseo Daemon에 연결해 요청을 보내고 응답과 이벤트를 받는 SDK다. Worknaru의 CLI나 Web UI 자체를 가리키지 않는다. |
 | **Paseo Daemon** | Agent 실행·세션·기록 관리와 플러그인 호스팅 등을 제공하는 Paseo의 실행 서비스다. Worknaru 전용 인스턴스는 이 서비스를 별도로 실행한 것이며, 자체 개발한 별도 Daemon을 뜻하지 않는다. |
@@ -37,6 +37,6 @@ Worknaru의 제품 계약과 현재 실행 기반을 이해하는 데 필요한 
 | **Worknaru Project** | 하나의 목표나 관리 대상에 관한 자료·대화·결과·결정을 축적하고, 후속 작업에서 다시 활용하도록 관리하는 업무 단위다. 정확히 하나의 Worknaru Workspace에 속하며, 기간·실행 횟수·기록 존재만으로 구분하지 않고 Git 저장소나 Agent cwd와도 구분한다. |
 | **Worknaru Workspace** | 관련 Project를 담고, 함께 사용할 Module과 설정을 구성하는 업무 공간이다. Project를 조직하는 구조에서 최상위이며 앱 수준 Agent·단독 Module 실행의 필수 부모나 로컬 디렉터리를 뜻하지 않는다. |
 
-Module·Worknaru Workspace·Worknaru Project의 정의와 관계는 채택한 제품 계약이다. Workspace·Project의 생성·조회·저장과 CLI·Web 진입점은 구현했으며 수정·삭제·Module 관리·실행과 Paseo 매핑은 후속 범위다. 구성·관계·실행 맥락과 현재 구현의 차이는 [개념 아키텍처](architecture.md#제품-개념과-현재-구현의-관계), 선택 이유는 [ADR 0015](adr/0015-workspace-project-module-contract.md)에 둔다.
+Module·Worknaru Workspace·Worknaru Project의 정의와 관계는 채택한 제품 계약이다. Workspace·Project 생성·조회·저장과 CLI·Web 진입점, 내장 Module 실행·기록의 CLI 진입점은 구현했다. 수정·삭제·사용자 Module 설치·AI 실행과 Paseo 매핑은 후속 범위다. 구성·관계·실행 맥락과 현재 구현의 차이는 [개념 아키텍처](architecture.md#제품-개념과-현재-구현의-관계), 선택 이유는 [ADR 0015](adr/0015-workspace-project-module-contract.md)에 둔다.
 
 현재 입력·결과는 [Runtime 계약](../packages/runtime/README.md), 전송 정책의 결정 근거는 [ADR 0008](adr/0008-native-paseo-send-settings.md)에 있다. 실제 명령과 화면 사용법은 [CLI 안내](../apps/cli/README.md)와 [Web UI 안내](../apps/web/README.md)를 참고한다. Paseo Project·Workspace의 기본 의미는 [Paseo 공식 Workspace 설명](https://paseo.sh/docs/workspaces.md)을 따른다.

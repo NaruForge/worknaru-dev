@@ -46,6 +46,30 @@ pnpm exec worknaru project show <Project-ID> --json
 
 JSON 성공 결과는 엔티티 객체 또는 배열이며 실패는 `{ "error": { "code", "message" } }`다. 종료 코드는 성공/도움말 0, 작업·연결 실패 1, 입력·설정 오류 2, 예상하지 못한 내부 오류 3이다. 결과가 불명확한 생성은 자동 재전송하지 않는다. 목록을 확인한 뒤 새 생성을 명시적으로 실행한다. 이름이 같다는 사실만으로 직전 요청의 성공 여부를 확정할 수 없다.
 
+## Module 실행과 Run 조회
+
+Workspace 기능과 같은 서버 플러그인 준비가 필요하다. 내장 `text-stats`는 Provider 없이 문자열의 Unicode code point 수와 CRLF/CR/LF 기준 줄 수를 반환한다. 줄바꿈 문자도 글자 수에 포함하며 빈 문자열은 0글자·0줄이다. 입력은 최대 100000 UTF-16 code unit이다.
+
+```powershell
+pnpm exec worknaru module list --json
+$requestId = [guid]::NewGuid().ToString()
+pnpm exec worknaru module run text-stats --text "안녕하세요" --request-id $requestId --standalone --json
+pnpm exec worknaru run list --standalone --json
+pnpm exec worknaru run show <Run-ID> --json
+# 업무에 귀속하려면 --standalone 대신 하나만 지정합니다.
+pnpm exec worknaru module run text-stats --text "Project 자료" --request-id <새-요청-UUID> --project <Project-ID> --json
+pnpm exec worknaru run list --project <Project-ID> --json
+pnpm exec worknaru run list --workspace <Workspace-ID> --json
+```
+
+실행과 목록 조회는 `--standalone`, `--workspace`, `--project` 중 하나를 명시한다. Project의 Workspace는 서버가 결정하며 Workspace 목록은 그 공간에 직접 실행한 Run만 반환한다. 연결 옵션·환경 변수·관리형 기본값은 Workspace 명령과 같다. 이름이 아닌 전체 UUID로 조회한다.
+
+요청 ID는 실행 전에 호출자가 생성·보관한다. 응답 유실 시 같은 ID·Module·입력·대상으로 명령을 다시 실행하면 기존 Run을 확인한다. 서버가 중단됐다면 pending 실행은 `uncertain`으로 남고 같은 ID로 재실행되지 않는다. 새 ID는 별도 실행이므로 결과를 확인한 뒤 사용한다. 자동 재시도·취소·재개는 제공하지 않는다.
+
+`module run`의 accepted/running은 접수·진행 상태이며 성공 완료가 아니다. succeeded는 결과 저장 완료, failed는 실행 실패, uncertain은 결과 미확정이다. 실행 명령의 failed/uncertain은 종료 코드 1, 입력·요청 충돌은 2다. 정상 조회는 반환된 Run 상태와 관계없이 0이다. JSON 출력은 성공 데이터 한 문서 또는 `{ "error": { "code", "message" } }`다.
+
+저장 루트 버전 2부터 `module-runs.sqlite`를 사용한다. 이전 저장 루트는 `reset_required`로 거부하며 자동 초기화하지 않는다. 기존 데이터를 보존하려면 새 외부 `WORKNARU_DATA_DIR`를 지정해 setup/start한다. 전체 초기화를 선택할 때는 아래 초기화 절차와 보존 범위를 확인한다.
+
 ## Agent 생성부터 보관까지
 
 Codex 설치·로그인을 준비한 뒤 정지된 개발 환경에서 `pnpm exec worknaru agent setup`을 한 번 실행한다. 기존 기본 설정은 데이터 루트의 `config.before-agents-<시각>.json`에 백업하고 전용 실행 플러그인을 등록한다. 변경된 사용자 설정은 덮어쓰지 않으며 실행 중인 환경에서는 거부한다. 다음 `dev start`가 플러그인 준비까지 확인한다. 이미 준비된 설정에서 setup은 재사용한다.

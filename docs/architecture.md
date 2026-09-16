@@ -15,8 +15,8 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 | 범위 | 채택한 제품 계약 | 현재 구현과 후속 범위 |
 | --- | --- | --- |
 | 업무 구조 | Workspace → Project 소속, 독립 Module의 참조·사용 | Workspace·Project 생성·목록·단건 조회 API, SQLite 저장과 CLI·Web 진입점 구현. 수정·삭제·이동·Module 관리는 후속 범위 |
-| Module 실행 | Standalone / Workspace / Project의 명시적 실행 맥락 | Run API·물리 저장·패키징·버전·실행 수명 구현은 후속 범위 |
-| Agent | 직접 대화 및 Module 개발·실행에 참여할 수 있는 실행 대상 | Core는 Agent API와 상태 조회를 제공하며 Module 실행·Project 연결은 미구현 |
+| Module 실행 | Standalone / Workspace / Project의 명시적 실행 맥락 | 내장 text-stats 실행·Run 저장·CLI 조회 구현. AI 실행·사용자 설치·패키징·버전 배포·취소/재개는 후속 범위 |
+| Agent | 직접 대화 및 Module 개발·실행에 참여할 수 있는 실행 대상 | Core는 Agent API와 상태 조회를 제공하며 Agent를 사용하는 Module 실행·Project 연결은 미구현 |
 | System Agent | 앱 수준의 안내·작업 진입점 | 전용 기능·cwd·세션·위임 구조는 후속 설계 |
 
 ### 업무 구조와 Project 선택
@@ -40,7 +40,7 @@ Module 추가·고정은 기능 정의의 소유권 이전이나 코드 복제�
 
 ### Module 실행 맥락
 
-Module Execution Context는 업무 대상과 기록·결과의 논리적 귀속이다. 아래 표는 도메인 불변식이며 실제 API 타입·엔드포인트나 저장 스키마가 아니다.
+Module Execution Context는 업무 대상과 기록·결과의 논리적 귀속이다. 아래 표는 도메인 불변식이며 실제 API 타입은 [Runtime Module 계약](../packages/runtime/README.md#module-실행)이 소유한다.
 
 | 실행 맥락 | 지정할 대상 | Workspace | Project | 기록·결과 귀속 |
 | --- | --- | --- | --- | --- |
@@ -120,7 +120,7 @@ flowchart LR
 
 Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에서는 CLI 프로세스 안에서, Web UI에서는 브라우저 안에서 실행한다. Paseo Client도 Adapter가 사용하는 라이브러리이며 같은 환경 안에서 동작한다. 실제 통신 대상인 Paseo Daemon은 별도 프로세스로 실행된다.
 
-여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Workspace·Project는 서버의 `worknaru-domain.sqlite`에 보관하며 CLI·Web이 Core의 `workspace`를 통해 같은 전용 RPC를 사용한다. Module 저장은 후속 범위다.
+여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Workspace·Project는 서버의 `worknaru-domain.sqlite`에 보관하며 CLI·Web이 Core의 `workspace`를 통해 같은 전용 RPC를 사용한다. Module Run은 `module-runs.sqlite`에 저장하며 현재 CLI에서 사용한다.
 
 ## 구성요소의 책임
 
@@ -137,7 +137,7 @@ Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에
 | Paseo Client | Adapter 내부에서 사용하는 Paseo SDK. Daemon 연결과 메시지 송수신 처리 | [Paseo SDK 안내](https://paseo.sh/docs/sdk.md) |
 | Paseo Daemon | 상태·WebSocket·플러그인 호스팅·Codex Agent 실행·세션과 기록 관리 | [전용 개발 환경](../apps/paseo-dev/README.md) |
 
-Core는 구체적인 Paseo SDK, CLI 출력 형식이나 웹 화면을 알지 못한다. 앱의 Core API는 Runtime을 통해 요청하고, 서버 플러그인에서 사용하는 Core 정책은 주입된 Driver·저장소로 Agent 운영을 처리한다. Workspace·Project의 생성·조회 정책은 별도 `createWorkspaceDomain({ store })`가 처리한다. Module 정책과 Workspace·Project 수정·삭제는 후속 범위다.
+Core는 구체적인 Paseo SDK, CLI 출력 형식이나 웹 화면을 알지 못한다. 앱의 Core API는 Runtime을 통해 요청하고, 서버 플러그인에서 사용하는 Core 정책은 주입된 Driver·저장소로 Agent 운영을 처리한다. Workspace·Project의 생성·조회 정책은 `createWorkspaceDomain({ store })`, 내장 Module의 실행 정책은 `createModuleService`가 처리한다. Workspace·Project 수정·삭제는 후속 범위다.
 
 Paseo SDK 호출, SDK 고유의 응답·예외 처리와 버전별 대응은 제품 코드에서 Adapter 내부에 모은다. 다른 실행 기반을 도입할 때도 Core가 사용하는 Runtime 계약을 기준으로 연결할 수 있다.
 
@@ -185,6 +185,12 @@ Core의 `createWorkspaceDomain({ store })`는 생성·목록·단건 조회의 �
 기존 서버 플러그인이 이 Core API에 Node 전용 SQLite 저장소를 주입하고 별도의 `workspace.execute` RPC를 등록한다. 이는 고정된 여섯 작업의 전송용 envelope이며 임의 메서드 호출은 허용하지 않는다. Agent 초기화·Provider 연결과 별도로 실행하며 새 서버나 포트를 추가하지 않는다. CLI·Web은 `Core.workspace → Runtime.workspace → Adapter`로 호출한다. 공통 타입·오류·API 계약은 Runtime에, 저장 포트와 업무 정책은 Core에 있다. Web의 선택은 URL에 보존하는 탐색 상태이며 Agent 실행 맥락을 변경하지 않는다. 앱 연결의 근거는 [Issue #53](https://github.com/NaruForge/worknaru-dev/issues/53)에 있다.
 
 저장은 [소유권이 확인된 전용 루트](data-storage.md)의 `worknaru-domain.sqlite`를 사용한다. `agent-state.sqlite`와 Paseo의 `projects/`를 변경하지 않는다. 정상 서비스 재시작은 데이터를 보존하고 기존의 승인된 전용 루트 전체 초기화는 이 DB도 제거한다. 소속만으로 Agent·cwd·파일 권한·Module 실행 맥락을 연결하지 않으며 숨은 Workspace나 Project를 만들지 않는다. 변경·검증 근거는 [Issue #51](https://github.com/NaruForge/worknaru-dev/issues/51)에 있다.
+
+## 내장 Module 실행과 Run 기록
+
+CLI는 `Core.modules → Runtime.modules → Adapter`로 기존 서버 플러그인의 `modules.execute`를 호출한다. 서버 앱은 Core의 `createModuleService`에 Workspace 조회, 신뢰된 내장 구현과 SQLite 저장 포트를 주입한다. 첫 구현은 Provider 없이 문자열을 분석하는 `text-stats`다. 명시적인 Standalone/Workspace/Project 대상만 받고 Project에서 Workspace를 도출한다. 업무 맥락이 Agent cwd나 파일 권한을 자동 부여하지 않는다.
+
+Run은 `module-runs.sqlite`에 입력·결과·귀속·Module 버전·시각과 함께 저장한다. 요청 UUID로 중복 접수를 막고 accepted/running 저장 뒤 실행한다. 실행·결과 검증·저장 성공은 succeeded, 실행 예외는 failed, 재시작 시 미완료 기록은 uncertain이다. 정상 종료는 실행 중인 호출을 기다리고 비정상 종료 후 자동 재실행하지 않는다. [ADR 0016](adr/0016-module-run-idempotency-and-recovery.md), [CLI 사용법](../apps/cli/README.md#module-실행과-run-조회), [#55](https://github.com/NaruForge/worknaru-dev/issues/55)에 경계와 근거가 있다.
 
 ## Agent 작업과 지속 대기열
 
@@ -257,6 +263,6 @@ Agent의 작업 폴더는 호출자가 명시하고 서버 경계에서 실제 �
 
 ## 이후 설계에서 이어갈 부분
 
-제품 기능을 늘릴 때는 필요한 Core API와 Runtime 기능을 정하고, 실행 기반의 호출을 Adapter에서 연결한다. 업무 구조와 Module 실행 맥락은 위 제품 계약을 따른다. Workspace·Project의 수정·삭제·이동 API, Module·Run API와 물리 저장 구조, 패키징·배포·버전, 일반적인 설정 상속·동기화, 공유 상태, Project 이동·공유, System Agent의 세션·위임과 권한의 구체 모델은 후속 설계다. 초기 지원 기능에 대한 검토 내용은 [Paseo Adapter 설계 초안](paseo-adapter-initial-design.md)에 있으며, 그 제안과 실제 구현은 구분해서 읽는다.
+제품 기능을 늘릴 때는 필요한 Core API와 Runtime 기능을 정하고, 실행 기반의 호출을 Adapter에서 연결한다. 업무 구조와 Module 실행 맥락은 위 제품 계약을 따른다. Workspace·Project의 수정·삭제·이동 API, AI 기반 Module 실행·사용자 설치·취소/재개·Web 진입점, 패키징·배포·버전, 일반적인 설정 상속·동기화, 공유 상태, Project 이동·공유, System Agent의 세션·위임과 권한의 구체 모델은 후속 설계다. 초기 지원 기능에 대한 검토 내용은 [Paseo Adapter 설계 초안](paseo-adapter-initial-design.md)에 있으며, 그 제안과 실제 구현은 구분해서 읽는다.
 
 패키지를 추가하거나 이동할 때는 [저장소 구조 규칙](repository-structure.md)을 따른다. 이 문서는 구성요소와 흐름을 설명하고, 중요한 결정의 근거는 ADR에 남긴다.
