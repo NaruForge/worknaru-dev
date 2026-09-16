@@ -5,7 +5,7 @@ Worknaru의 제품 계약과 현재 실행 기반을 이해하는 데 필요한 
 | 용어 | 정의 |
 | --- | --- |
 | **Agent** | 작업을 맡기고 응답을 확인하며 후속 대화를 이어가는 실행 대상이다. 하나의 Agent에서 여러 Request와 Turn이 이어질 수 있다. |
-| **Agent Request (Request)** | Worknaru가 접수하고 상태를 추적하는 메시지 전송 요청이다. 접수 성공, 실행 완료, 결과 내용의 정확성은 각각 별개다. |
+| **Agent Request (Request)** | Worknaru가 접수하고 상태를 추적하는 메시지 전송 요청이다. 접수 시 확정한 업무 컨텍스트 snapshot을 함께 보관한다. 접수 성공, 실행 완료, 결과 내용의 정확성은 각각 별개다. |
 | **Agent Service** | Core 정책에 실행 Driver와 저장소를 연결해 Agent 요청과 지속 대기열을 처리하는 Worknaru 서비스다. 현재 Paseo 서버 플러그인으로 실행한다. |
 | **Agent Session** | Agent가 대화 맥락을 유지하며 후속 작업을 이어가는 실행 세션을 가리킨다. 현재 별도의 Worknaru Session 엔티티나 API를 정의하지 않는다. |
 | **Archive** | 영향 범위를 확인한 Agent와 하위 Agent의 진행 중인 작업을 중단하고 대기 요청을 취소한 뒤 보관하는 동작이다. 대화 기록과 작업 파일은 보존하며, 보관된 Agent에는 메시지를 보낼 수 없다. |

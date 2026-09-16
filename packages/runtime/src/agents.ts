@@ -1,3 +1,4 @@
+import type { AgentExecutionContext, ExecutionTarget } from './execution-context.js';
 export type SendMode = 'queue' | 'steer';
 export type RequestState = 'queued' | 'sending' | 'running' | 'completed' | 'failed' | 'canceled' | 'uncertain';
 export interface Permission {
@@ -10,6 +11,7 @@ export interface Agent {
   permissions: Permission[];
 }
 export interface AgentRequest {
+  readonly context: AgentExecutionContext;
   id: string; agentId: string; text: string; mode: SendMode; state: RequestState;
   turnId: string | null; createdAt: string; error: string | null;
 }
@@ -29,7 +31,8 @@ export interface AgentAPI {
   list(input?: { archived?: boolean }): Promise<Agent[]>;
   show(input: { agent: string }): Promise<Agent>;
   history(input: { agent: string; cursor?: unknown }): Promise<AgentHistory>;
-  send(input: { agent: string; id: string; text: string }): Promise<AgentRequest>;
+  /** Omitted target is accepted only for legacy standalone callers. */
+  send(input: { agent: string; id: string; text: string; target?: ExecutionTarget }): Promise<AgentRequest>;
   requests(input: { agent: string }): Promise<{ requests: AgentRequest[]; paused: boolean }>;
   cancel(input: { agent: string; id: string }): Promise<AgentRequest>;
   discard(input: { agent: string; id: string }): Promise<AgentRequest>;

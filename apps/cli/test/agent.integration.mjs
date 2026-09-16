@@ -31,20 +31,32 @@ test('real Codex lifecycle, FIFO, permission acknowledgement, restart and archiv
   const id = (await readFile(path.join(data, 'server-id'), 'utf8')).trim();
   const create = ['agent', 'create', '--name', 'Integration Agent', '--cwd', project, '--id', 'integration-create'];
   const agent = await success(...create); assert.equal((await success(...create)).id, agent.id);
+  const workspace = await success('workspace', 'create', '--name', 'Context integration');
+  const businessProject = await success('project', 'create', '--workspace', workspace.id, '--name', 'Explicit context');
+  for (const flag of ['--workspace', '--project']) {
+    const rejected = await cli('agent', 'send', agent.id, 'must not execute', flag, '99999999-9999-4999-8999-999999999999', '--id', `invalid-${flag.slice(2)}`, '--no-wait');
+    assert.equal(rejected.data.error.code, flag === '--workspace' ? 'workspace_not_found' : 'project_not_found');
+  }
+  assert.deepEqual((await success('agent', 'queue', 'list', agent.id)).requests, []);
   await success('agent', 'send', agent.id, 'Remember ORCHID as our test word. Reply only ORCHID. Do not use tools.', '--id', 'integration-first', '--no-wait');
-  const second = await success('agent', 'send', agent.id, 'What test word did I tell you? Reply only that word followed by FOLLOWUP. Do not use tools.', '--id', 'integration-second', '--no-wait');
+  const second = await success('agent', 'send', agent.id, 'What test word did I tell you? Reply only that word followed by FOLLOWUP. Do not use tools.', '--project', businessProject.id, '--id', 'integration-second', '--no-wait');
+  assert.deepEqual(second.context, { type: 'project', workspaceId: workspace.id, projectId: businessProject.id });
   assert.equal(second.state, 'queued');
   const done = await success('agent', 'wait', agent.id, '--request', 'integration-second', '--wait-timeout', '90');
   assert.equal(done.request.state, 'completed'); assert.match(done.entries.map(e => e.text).join(''), /ORCHID.*FOLLOWUP/s);
   const queue = await success('agent', 'queue', 'list', agent.id); assert.ok(queue.requests.every(r => r.state === 'completed'));
+  assert.deepEqual(queue.requests[0].context, { type: 'standalone', workspaceId: null, projectId: null });
   assert.notEqual(queue.requests[0].turnId, queue.requests[1].turnId);
   await success('settings', 'set', 'send-mode', 'steer');
   await success('dev', 'stop'); started = false; await verification.start(); started = true;
   assert.equal((await readFile(path.join(data, 'server-id'), 'utf8')).trim(), id);
   assert.equal((await success('settings', 'get', 'send-mode')).sendMode, 'steer');
-  assert.equal((await success('agent', 'queue', 'list', agent.id)).requests.length, 2);
+  assert.deepEqual((await success('agent', 'queue', 'list', agent.id)).requests, queue.requests);
+  const conflict = await cli('agent', 'send', agent.id, 'What test word did I tell you? Reply only that word followed by FOLLOWUP. Do not use tools.', '--workspace', workspace.id, '--id', 'integration-second', '--no-wait');
+  assert.equal(conflict.data.error.code, 'id_conflict');
   await success('settings', 'set', 'send-mode', 'queue');
-  await success('agent', 'send', agent.id, '작업 폴더에 result.txt 파일을 만들고 그 안에 검증완료라는 한글만 저장해 주세요. keep.txt는 변경하지 마세요. 완료 후 검증완료라고 답하세요.', '--id', 'integration-file', '--wait-timeout', '90');
+  const withWorkspace = await success('agent', 'send', agent.id, '작업 폴더에 result.txt 파일을 만들고 그 안에 검증완료라는 한글만 저장해 주세요. keep.txt는 변경하지 마세요. 완료 후 검증완료라고 답하세요.', '--workspace', workspace.id, '--id', 'integration-file', '--wait-timeout', '90');
+  assert.deepEqual(withWorkspace.request.context, { type: 'workspace', workspaceId: workspace.id, projectId: null });
   assert.equal((await readFile(path.join(project, 'result.txt'), 'utf8')).trim(), '검증완료');
   const moved = project + '-moved';
   // Windows holds the Provider's cwd open until the owned daemon stops.

@@ -3,7 +3,7 @@ export const agentHelp = `Agent 사용법 (pnpm exec worknaru ...)
   agent create [--name 이름] [--cwd 폴더] [--model 모델]
   agent list [--archived]
   agent show <이름 또는 ID>
-  agent send <agent> "메시지" [--no-wait]
+  agent send <agent> "메시지" [--no-wait] [--standalone | --workspace UUID | --project UUID]
   agent wait <agent> [--request 요청ID] [--wait-timeout 초]
   agent history <agent> [--all]
   agent queue list <agent>
@@ -19,14 +19,15 @@ export const agentHelp = `Agent 사용법 (pnpm exec worknaru ...)
 이름이 겹치면 agent list에서 전체 ID 또는 유일한 4자 이상 접두사를 선택하세요.
 create의 작업 폴더에는 기본값이 없습니다. 대화형에서는 직접 입력하고, 비대화형/--json에서는 --cwd가 필수입니다.
 전송 방식은 settings set send-mode queue|steer에서 변경합니다.
+업무 대상 생략 시 독립 실행입니다. Project의 Workspace는 서버가 결정하며 cwd와 별개입니다.
 send는 기본 600초 대기합니다. --wait-timeout은 관찰만 제한하며 작업을 중단하지 않습니다.
 --id로 생성/전송 요청 ID를 지정할 수 있습니다. 기본은 자동 생성입니다.
 --json: 질문 없이 JSON 한 문서. --no-wait: 접수 후 반환. Ctrl+C: 관찰만 종료.
 명시적 연결: --endpoint URL --server-id ID (기존 WORKNARU_* 설정도 적용)
 `;
 
-const flags = new Set(['--json', '--yes', '--no-wait', '--archived', '--allow', '--deny', '--all']);
-const values = new Set(['--name', '--cwd', '--model', '--id', '--request', '--wait-timeout', '--action', '--answers', '--endpoint', '--server-id', '--target', '--timeout-ms']);
+const flags = new Set(['--json', '--yes', '--no-wait', '--archived', '--allow', '--deny', '--all', '--standalone']);
+const values = new Set(['--name', '--cwd', '--model', '--id', '--request', '--wait-timeout', '--action', '--answers', '--endpoint', '--server-id', '--target', '--timeout-ms', '--workspace', '--project']);
 export function parseAgentArgs(args) {
   const positional = []; const options = {};
   for (let i = 0; i < args.length; i++) {
@@ -40,12 +41,14 @@ export function parseAgentArgs(args) {
   if (options['--wait-timeout'] && (!/^\d+$/.test(options['--wait-timeout']) || Number(options['--wait-timeout']) < 1 || Number(options['--wait-timeout']) > 86400)) throw Error('대기 시간은 1~86400초 정수입니다.');
   const allowed = {
     create: ['--name', '--cwd', '--model', '--id'], list: ['--archived'], show: [], permissions: [], history: ['--all'],
-    send: ['--id', '--no-wait', '--wait-timeout'], wait: ['--request', '--wait-timeout'],
+    send: ['--id', '--no-wait', '--wait-timeout', '--standalone', '--workspace', '--project'], wait: ['--request', '--wait-timeout'],
     archive: ['--yes'], 'queue list': [], 'queue cancel': [], 'queue resume': [], 'queue discard': ['--yes'],
     'permission respond': ['--allow', '--deny', '--action', '--answers'], settings: [],
   };
   const command = positional[0] === 'settings' ? 'settings' : ['queue', 'permission'].includes(positional[1]) ? positional.slice(1, 3).join(' ') : positional[1];
   const accepted = new Set(['--json', '--endpoint', '--server-id', '--target', '--timeout-ms', ...(allowed[command] ?? [])]);
   if (Object.keys(options).some(option => !accepted.has(option))) throw Error('이 명령에서 사용할 수 없는 옵션입니다. agent --help');
+  if (['--standalone', '--workspace', '--project'].filter(key => Object.hasOwn(options, key)).length > 1) throw Error('업무 실행 대상은 하나만 지정해 주세요.');
+  for (const key of ['--workspace', '--project']) if (Object.hasOwn(options, key) && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(options[key])) throw Error('업무 대상의 전체 UUID를 지정해 주세요.');
   return { positional, options };
 }

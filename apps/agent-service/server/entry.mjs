@@ -2,13 +2,14 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createAgentService } from '@worknaru/core/agent-service';
+import { createContextResolver } from '@worknaru/core';
 import { connectAgentDriver } from '@worknaru/paseo-adapter/agent-driver';
 import { AgentError } from '@worknaru/runtime';
 import { openStore } from './store.mjs';
 import { resolveDataPaths, directoryQuery, validateDirectory as validateWorkingDirectory } from '@worknaru/dev-environment/paths';
 import { assertStorage } from '@worknaru/dev-environment/storage';
 
-export async function initialize() {
+export async function initialize(workspace) {
   // The owned launcher supplies these only to its dedicated daemon subprocess.
   const root = process.env.WORKNARU_AGENT_DATA_ROOT;
   if (!root || !path.isAbsolute(root) || !process.env.WORKNARU_REPOSITORY_ROOT) throw new Error('Missing owned launcher configuration');
@@ -26,12 +27,19 @@ export async function initialize() {
     try { return await directories(await directoryQuery(query)); }
     catch (error) { throw new AgentError('invalid_directory', error.message); }
   };
-  const store = openStore(stateFile);
-  const service = createAgentService({ driver, store,
-    async validateDirectory(directory) {
-      try { await validateWorkingDirectory(directory); }
-      catch (error) { throw new AgentError('invalid_directory', error.message); }
-    } });
-  try { await service.initialize(); } catch (error) { await service.close().catch(() => {}); throw error; }
-  return service;
+  let store, service;
+  try {
+    store = openStore(stateFile);
+    service = createAgentService({ driver, store, resolveContext: createContextResolver(workspace),
+      async validateDirectory(directory) {
+        try { await validateWorkingDirectory(directory); }
+        catch (error) { throw new AgentError('invalid_directory', error.message); }
+      } });
+    await service.initialize();
+    return service;
+  } catch (error) {
+    if (service) await service.close().catch(() => {});
+    else { try { store?.close(); } finally { await driver.close().catch(() => {}); } }
+    throw error;
+  }
 }

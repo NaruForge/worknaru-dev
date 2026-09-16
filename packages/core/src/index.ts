@@ -3,6 +3,7 @@ import { AgentError, WorkspaceDomainError, type AgentAPI, type WorkspaceDomain }
 export * from '@worknaru/runtime';
 export { conversationMessages } from './conversation.js';
 export * from './workspace-domain.js';
+export * from './execution-context.js';
 export * from './module-service.js';
 import { ModuleError, type ModuleAPI } from '@worknaru/runtime';
 

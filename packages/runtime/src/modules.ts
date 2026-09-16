@@ -1,11 +1,8 @@
 import type { WorkspaceDomainErrorCode } from './workspace-domain.js';
+import type { ExecutionTarget, ExecutionContext } from './execution-context.js';
 
-export type ModuleTarget = { readonly type: 'standalone' }
-  | { readonly type: 'workspace'; readonly workspaceId: string }
-  | { readonly type: 'project'; readonly projectId: string };
-export type ModuleContext = { readonly type: 'standalone'; readonly workspaceId: null; readonly projectId: null }
-  | { readonly type: 'workspace'; readonly workspaceId: string; readonly projectId: null }
-  | { readonly type: 'project'; readonly workspaceId: string; readonly projectId: string };
+export type ModuleTarget = ExecutionTarget;
+export type ModuleContext = ExecutionContext;
 export interface ModuleDefinition {
   readonly id: string;
   readonly version: string;

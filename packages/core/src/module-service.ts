@@ -1,7 +1,8 @@
 import {
-  ModuleError, WorkspaceDomainError, type ModuleAPI, type ModuleDefinition, type ModuleRun,
-  type ModuleContext, type ModuleTarget, type WorkspaceDomain,
+  ModuleError, ExecutionContextError, type ModuleAPI, type ModuleDefinition, type ModuleRun,
+  type ModuleContext, type WorkspaceDomain,
 } from '@worknaru/runtime';
+import { createContextResolver } from './execution-context.js';
 
 /** Only trusted, app-supplied implementations are executable. Validators return canonical JSON. */
 export interface ModuleImplementation {
@@ -47,26 +48,12 @@ export function createModuleService({ store, workspace, implementations }: {
   storage(() => store.recover());
   let closed = false;
   const active = new Set<Promise<ModuleRun>>();
+  const resolveContext = createContextResolver(workspace);
   async function context(value: unknown): Promise<ModuleContext> {
     try {
-      const type = (value as ModuleTarget | null)?.type;
-      if (type === 'standalone') {
-        fields(value, ['type']);
-        return { type, workspaceId: null, projectId: null };
-      }
-      if (type === 'workspace') {
-        const id = uuid(fields(value, ['type', 'workspaceId']).workspaceId);
-        await workspace.getWorkspace({ id });
-        return { type, workspaceId: id, projectId: null };
-      }
-      if (type === 'project') {
-        const id = uuid(fields(value, ['type', 'projectId']).projectId);
-        const project = await workspace.getProject({ id });
-        return { type, projectId: id, workspaceId: project.workspaceId };
-      }
-      throw invalid();
+      return await resolveContext(value);
     } catch (error) {
-      if (error instanceof WorkspaceDomainError) throw new ModuleError(error.code, error.message);
+      if (error instanceof ExecutionContextError) throw new ModuleError(error.code, error.message);
       throw error;
     }
   }

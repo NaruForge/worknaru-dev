@@ -94,3 +94,8 @@ Agent 전송용 protocol/server 패치는 제거했다. 현재 남은 패치는 
 브라우저 적용과 실제 Web UI 조회·오류·시간 초과·소켓 정리 검증은 [Issue #9](https://github.com/NaruForge/worknaru-dev/issues/9)에 연결한다. 실행 방법은 [Web UI 안내](../../apps/web/README.md)를 참고한다.
 
 정식 버전 전환과 위 두 호환 대응의 유지 근거·재검증은 [Issue #11](https://github.com/NaruForge/worknaru-dev/issues/11)에 연결한다.
+## Agent 실행 컨텍스트 전달
+
+Agent RPC는 target을 변형 없이 전달한다. send와 요청 조회/취소/실행 포기/보관 미리보기 응답의 context 형식을 검증하며, send 결과의 요청 ID·텍스트·대상이 입력과 다르면 invalid_response로 거부한다. target은 서버의 Core Resolver가 검증한다.
+
+Agent 실행 Driver는 `send(id, text, messageId, mode, context)`로 snapshot을 받는다. context는 Worknaru 실행 메타데이터이며 요청 ID에 연결된 서버 기록에서 추적한다. Paseo SDK에는 동일한 업무 필드가 없으므로 prompt·cwd·Provider 옵션에 붙이지 않는다. 같은 Agent의 기존 대화는 분리되지 않는다. 형식이 잘못된 snapshot은 SDK 메시지 전송 전에 거부한다.

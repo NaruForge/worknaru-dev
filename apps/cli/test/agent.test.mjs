@@ -13,6 +13,12 @@ function creationFixture() {
   return { calls, agents, output: { stderr() {} } };
 }
 
+test('Agent execution context flags accept explicit targets and reject contradictions before connecting', () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  for (const args of [['--standalone'], ['--workspace', id], ['--project', id]]) assert.doesNotThrow(() => parseAgentArgs(['agent', 'send', 'agent', 'hello', ...args]));
+  for (const args of [['--workspace', id, '--project', id], ['--standalone', '--project', id], ['--project', 'prefix'], ['--workspace', id, '--workspace', id]]) assert.throws(() => parseAgentArgs(['agent', 'send', 'agent', 'hello', ...args]));
+  assert.throws(() => parseAgentArgs(['agent', 'create', '--project', id]));
+});
 test('noninteractive creation requires a nonblank explicit working directory before any Agent API call', async () => {
   for (const options of [{}, { '--cwd': '' }, { '--cwd': '   ' }]) {
     const f = creationFixture();

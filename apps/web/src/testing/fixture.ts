@@ -112,6 +112,7 @@ export function createFixture(scenario: Scenario = 'conversation') {
             agentId: agent.id,
             text: '주간 보고서를 정리해 주세요.',
             mode: 'queue',
+            context: { type: 'standalone', workspaceId: null, projectId: null },
             state: 'uncertain',
             turnId: null,
             createdAt: date,
@@ -205,6 +206,7 @@ export function createFixture(scenario: Scenario = 'conversation') {
         const existing = requests.find((value) => value.id === input.id);
         if (existing) return copy(existing);
         const request: AgentRequest = {
+          context: { type: 'standalone', workspaceId: null, projectId: null },
           id: input.id,
           agentId: input.agent,
           text: input.text,

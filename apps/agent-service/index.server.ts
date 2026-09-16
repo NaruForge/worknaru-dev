@@ -86,7 +86,7 @@ export default function contribute(server: PluginServerContext) {
         : { code: 'service_error', message: '업무 저장소를 준비하지 못했습니다. doctor와 전용 데이터 설정을 확인해 주세요.' } };
     }
   });
-  const service = initialize();
+  const service = workspaceDomain.then(({ api }) => initialize(api));
   // Initialization errors are surfaced through health without exposing raw local errors.
   service.catch(() => console.error('Agent service initialization failed. Inspect configuration and data storage.'));
   server.handle(contract, async ({ operation, input }) => {
@@ -99,6 +99,7 @@ export default function contribute(server: PluginServerContext) {
   });
   return async () => {
     await modules.then(value => value.close()).catch(() => {});
-    await Promise.allSettled([service.then(value => value.close()), workspaceDomain.then(value => value.close())]);
+    await service.then(value => value.close()).catch(() => {});
+    await workspaceDomain.then(value => value.close()).catch(() => {});
   };
 }

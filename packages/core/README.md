@@ -18,7 +18,7 @@ Core는 Paseo SDK, 구체적인 Adapter, 명령행 옵션, 환경 변수와 화�
 
 `agents`는 Agent 도메인에 한정된 명시적인 메서드 집합이다. 공개 `execute(operation, input)`이나 임의 문자열 dispatcher를 제공하지 않는다. Workspace·Project와 Module은 각각 독립 도메인 API를 사용한다. 자세한 Agent 경계는 [ADR 0008](../../docs/adr/0008-native-paseo-send-settings.md)을 따른다.
 
-Node 실행부는 별도 export `@worknaru/core/agent-service`의 `createAgentService({ driver, store, validateDirectory })`를 사용한다. [Agent 플러그인 앱](../../apps/agent-service/README.md)이 저장소·폴더 검증과 [실행 Driver](../paseo-adapter/src/agent-driver.mjs)를 주입한다. Core 정책은 이름·ID 해석, 생성/전송 멱등성, FIFO, 권한 대기, 실패 시 정지, 보관 영향 확인을 담당한다. 저장 파일이나 DB 구현을 직접 가져오지 않는다. 브라우저 빌드에 실행부나 SQLite를 포함하지 않는다.
+Node 실행부는 별도 export `@worknaru/core/agent-service`의 `createAgentService({ driver, store, validateDirectory, resolveContext })`를 사용한다. [Agent 플러그인 앱](../../apps/agent-service/README.md)이 저장소·폴더 검증과 [실행 Driver](../paseo-adapter/src/agent-driver.mjs)를 주입한다. Core 정책은 이름·ID 해석, 생성/전송 멱등성, FIFO, 권한 대기, 실패 시 정지, 보관 영향 확인을 담당한다. 저장 파일이나 DB 구현을 직접 가져오지 않는다. 브라우저 빌드에 실행부나 SQLite를 포함하지 않는다.
 
 설정과 요청은 저장 성공 후에만 실행한다. Agent별 직렬 처리와 여러 Agent의 보관 잠금으로 동시 요청을 조정한다. 수신 확인이 불명확한 요청을 자동 재전송하지 않는다. 보관은 확인 토큰의 영향 범위와 현재 상태를 다시 대조한다. Module·Workspace·Project의 [제품 계약](../../docs/architecture.md#제품-개념과-현재-구현의-관계)을 따른다. Workspace·Project 생성·조회와 내장 Module 실행은 아래 API가 처리하며 설정 상속·수정·삭제는 후속 범위다.
 
@@ -62,3 +62,10 @@ Workspace는 `{ id, name, createdAt }`, Project는 `{ id, workspaceId, name, cre
 앱은 `Core.modules`를 사용한다. 서버는 [createModuleService](src/module-service.ts)에 `ModuleStore`, Workspace 조회 API와 신뢰된 `ModuleImplementation` 목록을 주입한다. Core는 파일·SQLite·Provider를 직접 사용하지 않으며 구현의 입력/결과 검증을 실행한다. Workspace·Project가 없는 Standalone 실행도 기록한다.
 
 접수는 저장소의 유일한 요청 ID로 원자적으로 확정한다. 기존 요청과 입력·귀속이 다르면 충돌이며, 같은 요청은 현재 Run을 반환한다. 서비스는 한 Daemon에 하나만 생성하며 초기화 시 미완료 기록을 `uncertain`으로 처리한다. 실행 전에 accepted/running을 각각 저장하고 결과 저장 성공 뒤에만 succeeded를 반환한다. close는 새 접수를 거부하고 진행 중인 호출을 기다린다. [Runtime 계약](../runtime/README.md#module-실행), [ADR 0016](../../docs/adr/0016-module-run-idempotency-and-recovery.md), [#55](https://github.com/NaruForge/worknaru-dev/issues/55)를 따른다.
+## 공통 Context Resolver와 Agent 요청
+
+`createContextResolver(workspace)`는 명시적 target을 받아 기존 Workspace·Project와 Project의 소속 Workspace를 확인하고 불변 context snapshot을 반환한다. 조회 API는 앱이 주입한다. prompt·cwd·파일·권한·UI 상태는 읽지 않는다. Module도 같은 Resolver를 사용한다.
+
+Agent 서버는 접수 전에 Resolver를 호출하고 snapshot을 요청과 함께 저장한다. 같은 요청 ID는 Agent·텍스트·target을 대조해 충돌을 거부하며, 동일 재접수는 다시 해석하지 않고 기존 snapshot을 반환한다. 대기 실행과 재시작도 저장된 snapshot을 사용한다. 조회/취소/보관 미리보기에서 돌려주는 요청은 저장 값과 분리한다. Driver는 다섯 번째 인자로 검증된 context를 받는다.
+
+기존 target 생략 호출은 standalone으로 수용한다. Resolver 미주입은 standalone만 처리하고 업무 대상은 feature_unavailable로 거부하므로 조용한 무맥락 실행은 없다. Agent 상태 문서 버전은 2이며 이전 버전·snapshot이 없는 저장 요청은 실행 전에 거부한다. [ADR 0017](../../docs/adr/0017-agent-request-execution-context.md), [#59](https://github.com/NaruForge/worknaru-dev/issues/59).
