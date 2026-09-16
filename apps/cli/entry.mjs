@@ -20,6 +20,7 @@ Usage (from the repository, after pnpm install --frozen-lockfile):
   pnpm exec worknaru agent setup     Prepare Agent features once, while stopped
   pnpm exec worknaru agent --help    Create, converse, queue and archive Agents
   pnpm exec worknaru workspace --help  Create and inspect Workspaces and Projects
+  pnpm exec worknaru module --help   Execute built-in Modules and inspect Runs
   pnpm exec worknaru settings get send-mode
 
 Use --json for one JSON document; --help or -h for help.
@@ -56,6 +57,16 @@ function parseLocal(args) {
 }
 export async function run(args, env, output = { stdout: text => process.stdout.write(text), stderr: text => process.stderr.write(text) }) {
   try {
+    if (['module', 'run'].includes(args[0])) {
+      const { moduleHelp, parseModuleArgs } = await import('./module-arguments.mjs');
+      if (args.length < 2) { output.stdout(moduleHelp); return 0; }
+      let parsed;
+      try { parsed = parseModuleArgs(args); } catch (error) { throw new LocalError('invalid_arguments', error.message, 2); }
+      if (parsed.help) { output.stdout(moduleHelp); return 0; }
+      let module;
+      try { module = await import('./module-cli.mjs'); } catch { throw new LocalError('build_required', 'Module 기능을 빌드해 주세요. pnpm build'); }
+      return module.runModules(parsed, env, output);
+    }
     if (['workspace', 'project'].includes(args[0])) {
       const { workspaceHelp, parseWorkspaceArgs } = await import('./workspace-arguments.mjs');
       if (args.includes('--help') || args.includes('-h') || args.length < 2) { output.stdout(workspaceHelp); return 0; }

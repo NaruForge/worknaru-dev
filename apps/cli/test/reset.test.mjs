@@ -53,7 +53,7 @@ test('reset discards incompatible data, retains a management marker and is repea
   const f = await fixture(t); await claim(f.paths);
   const marker = JSON.parse(await readFile(f.paths.marker, 'utf8')); marker.storageVersion = 999;
   await writeFile(f.paths.marker, JSON.stringify(marker));
-  for (const name of ['agent-state.sqlite', 'agent-state.sqlite-wal', 'agent-state.sqlite-shm', 'server-id', 'config.before-agents-1.json']) await writeFile(path.join(f.paths.dataHome, name), 'old');
+  for (const name of ['agent-state.sqlite', 'agent-state.sqlite-wal', 'agent-state.sqlite-shm', 'module-runs.sqlite', 'module-runs.sqlite-wal', 'module-runs.sqlite-shm', 'server-id', 'config.before-agents-1.json']) await writeFile(path.join(f.paths.dataHome, name), 'old');
   await assert.rejects(assertStorage(f.paths), { code: 'reset_required' });
   const before = await readFile(f.paths.marker, 'utf8');
   assert.equal((await resetPlan(f.paths, { stopped })).state, 'planned');
@@ -64,6 +64,18 @@ test('reset discards incompatible data, retains a management marker and is repea
   assert.equal((await resetData(f.paths, { stopped })).state, 'reset');
   await claim(f.paths); await writeFile(path.join(f.paths.dataHome, 'new-data'), 'new');
   await resetData(f.paths, { stopped }); assert.deepEqual(await readdir(f.paths.dataHome), ['worknaru-data.json']);
+});
+
+test('pre-Module storage version requires explicit reset without modifying existing data', async t => {
+  const f = await fixture(t); await claim(f.paths);
+  const marker = JSON.parse(await readFile(f.paths.marker, 'utf8')); marker.storageVersion = 1;
+  await writeFile(f.paths.marker, JSON.stringify(marker));
+  const file = path.join(f.paths.dataHome, 'worknaru-domain.sqlite');
+  await writeFile(file, 'existing user data');
+  const before = await readFile(f.paths.marker, 'utf8');
+  await assert.rejects(assertStorage(f.paths, { claim: true }), { code: 'reset_required' });
+  assert.equal(await readFile(f.paths.marker, 'utf8'), before);
+  assert.equal(await readFile(file, 'utf8'), 'existing user data');
 });
 
 test('reset clears readable Agent registrations and durable request state without a Provider', async t => {

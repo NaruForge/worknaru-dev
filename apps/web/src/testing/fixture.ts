@@ -1,5 +1,6 @@
 import {
   AgentError,
+  ModuleError,
   type Agent,
   type AgentHistory,
   type AgentRequest,
@@ -131,6 +132,16 @@ export function createFixture(scenario: Scenario = 'conversation') {
     return found;
   };
   const core: WorknaruCore = {
+    modules: {
+      list: async () => [],
+      execute: async () => {
+        throw new ModuleError('feature_unavailable', 'Module 실행은 CLI에서 사용합니다.');
+      },
+      getRun: async () => {
+        throw new ModuleError('feature_unavailable', 'Module 조회는 CLI에서 사용합니다.');
+      },
+      listRuns: async () => [],
+    },
     workspace: workspaceFixture(scenario === 'empty'),
     getDaemonStatus: async () => ({
       outcome: 'available',

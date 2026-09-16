@@ -2,6 +2,8 @@ import type { PluginServerContext } from '@getpaseo/plugin/server';
 import { defineRpc } from '@getpaseo/plugin';
 import { z } from 'zod';
 import { AgentError } from '@worknaru/runtime';
+import { ModuleError } from '@worknaru/runtime';
+import { initializeModules } from './server/module-service.mjs';
 import { WorkspaceDomainError } from '@worknaru/core';
 import { initialize } from './server/entry.mjs';
 import { initializeWorkspaceDomain } from './server/workspace-domain.mjs';
@@ -45,6 +47,27 @@ export default function contribute(server: PluginServerContext) {
   });
   // Product metadata does not wait for a Paseo Agent driver or Provider connection.
   const workspaceDomain = initializeWorkspaceDomain();
+  const modules = workspaceDomain.then(({ api }) => initializeModules(api));
+  modules.catch(() => console.error('Module initialization failed. Inspect owned data storage.'));
+  server.handle(defineRpc({ name: 'modules.execute',
+    input: z.object({ operation: z.enum(['list', 'execute', 'getRun', 'listRuns']), input: z.unknown() }).strict(),
+    output: z.discriminatedUnion('ok', [z.object({ ok: z.literal(true), data: z.unknown() }),
+      z.object({ ok: z.literal(false), error: z.object({ code: z.string(), message: z.string() }) })]),
+  }), async ({ operation, input }) => {
+    try {
+      const { api } = await modules;
+      if (operation === 'list') {
+        if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length) throw new ModuleError('invalid_input', '목록에는 입력 필드를 지정하지 않습니다.');
+        return { ok: true as const, data: await api.list() };
+      }
+      // Core validates untrusted RPC values before any storage or execution.
+      return { ok: true as const, data: await api[operation](input as never) };
+    } catch (error) {
+      return { ok: false as const, error: error instanceof ModuleError
+        ? { code: error.code, message: error.message }
+        : { code: 'service_error', message: 'Module 서비스를 준비하거나 요청을 처리하지 못했습니다.' } };
+    }
+  });
   workspaceDomain.catch(() => console.error('Workspace domain initialization failed. Inspect owned data storage.'));
   server.handle(workspaceContract, async request => {
     try {
@@ -75,6 +98,7 @@ export default function contribute(server: PluginServerContext) {
     }
   });
   return async () => {
+    await modules.then(value => value.close()).catch(() => {});
     await Promise.allSettled([service.then(value => value.close()), workspaceDomain.then(value => value.close())]);
   };
 }

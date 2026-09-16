@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { actualPath, DataError, legacyPaths, samePath, validateDataLocation, validateDirectory } from './paths.mjs';
 
-export const storageVersion = 1;
+export const storageVersion = 2;
 export async function exists(file) {
   try { await lstat(file); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
 }
@@ -95,6 +95,7 @@ export async function writeMarker(paths, state) {
 async function validateAdministrativeEntries(paths) {
   const names = ['config.json', 'server-id', 'daemon-keypair.json', 'paseo.pid',
     'dev-instance.json', 'agent-state.sqlite', 'agent-state.sqlite-wal', 'agent-state.sqlite-shm',
+    'module-runs.sqlite', 'module-runs.sqlite-wal', 'module-runs.sqlite-shm', 'module-runs.sqlite-journal',
     'daemon.log', 'launcher.log', 'dev-runner.log', 'build.log', 'runtime', 'schedules', 'tmp', 'worktrees'];
   for (const name of names) {
     const file = path.join(paths.dataHome, name);

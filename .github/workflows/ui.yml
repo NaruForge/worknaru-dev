@@ -66,6 +66,10 @@ jobs:
         run: node --test apps/agent-service/test/workspace.integration.mjs
         env:
           WORKNARU_TEST_ROOT: ${{ runner.temp }}/worknaru-tests
+      - name: Verify Module CLI with a real Daemon (no Provider)
+        run: node --test apps/agent-service/test/modules.integration.mjs
+        env:
+          WORKNARU_TEST_ROOT: ${{ runner.temp }}/worknaru-tests
   browser:
     needs: scope
     if: needs.scope.outputs.code == 'true'

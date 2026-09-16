@@ -1,11 +1,14 @@
 export * from './agents.js';
 export * from './workspace-domain.js';
+export * from './modules.js';
+import type { ModuleAPI } from './modules.js';
 import type { AgentAPI } from './agents.js';
 import type { WorkspaceDomain } from './workspace-domain.js';
 /** Worknaru-owned execution contract. No provider SDK types cross this boundary. */
 export interface Runtime {
   agents?: AgentAPI;
   workspace?: WorkspaceDomain;
+  modules?: ModuleAPI;
   /** Read-only probe. Does not start, restart or stop a daemon or agent. */
   getDaemonStatus(): Promise<DaemonStatus>;
 }
