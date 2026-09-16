@@ -15,7 +15,7 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 | 범위 | 채택한 제품 계약 | 현재 구현과 후속 범위 |
 | --- | --- | --- |
 | 업무 구조 | Workspace → Project 소속, 독립 Module의 참조·사용 | Workspace·Project 생성·목록·단건 조회 API, SQLite 저장과 CLI·Web 진입점 구현. 수정·삭제·이동·Module 관리는 후속 범위 |
-| Module 실행 | Standalone / Workspace / Project의 명시적 실행 맥락 | 내장 text-stats 실행·Run 저장·CLI 조회 구현. AI 실행·사용자 설치·패키징·버전 배포·취소/재개는 후속 범위 |
+| Module 실행 | Standalone / Workspace / Project의 명시적 실행 맥락 | 내장 text-stats 실행·Run 저장·CLI/Web 실행·조회 구현. AI 실행·사용자 설치·패키징·버전 배포·취소/재개는 후속 범위 |
 | Agent | 직접 대화 및 Module 개발·실행에 참여할 수 있는 실행 대상 | Core는 Agent API와 상태 조회를 제공하며 Agent를 사용하는 Module 실행·Project 연결은 미구현 |
 | System Agent | 앱 수준의 안내·작업 진입점 | 전용 기능·cwd·세션·위임 구조는 후속 설계 |
 
@@ -120,7 +120,7 @@ flowchart LR
 
 Core API는 앱 안에서 호출하는 TypeScript 라이브러리 API다. CLI에서는 CLI 프로세스 안에서, Web UI에서는 브라우저 안에서 실행한다. Paseo Client도 Adapter가 사용하는 라이브러리이며 같은 환경 안에서 동작한다. 실제 통신 대상인 Paseo Daemon은 별도 프로세스로 실행된다.
 
-여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Workspace·Project는 서버의 `worknaru-domain.sqlite`에 보관하며 CLI·Web이 Core의 `workspace`를 통해 같은 전용 RPC를 사용한다. Module Run은 `module-runs.sqlite`에 저장하며 현재 CLI에서 사용한다.
+여기서 공유하는 것은 Core·Runtime·Adapter의 코드와 계약이다. CLI와 Web UI가 하나의 Core 인스턴스나 메모리를 함께 쓰는 것은 아니다. 각 앱은 자신의 연결을 만들고 같은 Daemon을 대상으로 동작할 수 있다. Workspace·Project는 서버의 `worknaru-domain.sqlite`에 보관하며 CLI·Web이 Core의 `workspace`를 통해 같은 전용 RPC를 사용한다. Module Run은 `module-runs.sqlite`에 저장하며 CLI·Web이 Core의 `modules`를 통해 실행·조회한다.
 
 ## 구성요소의 책임
 

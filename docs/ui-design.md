@@ -5,7 +5,7 @@
 ## 화면을 만드는 순서
 
 1. 사용자가 할 일과 정상·빈 상태·로딩·오류·권한 대기 상태를 정리한다.
-2. [공개 타입과 구현](../packages/ui/src/index.tsx), [부품 예제](../packages/ui/src/UI.stories.tsx), [패널 예제](../packages/ui/src/Panel.stories.tsx), [Agent 화면](../apps/web/src/features/agents/Agents.stories.tsx), [Workspace 화면](../apps/web/src/features/workspaces/Workspaces.stories.tsx)과 [통합 설정 예제](../apps/web/src/shell/Shell.stories.tsx)를 찾는다.
+2. [공개 타입과 구현](../packages/ui/src/index.tsx), [부품 예제](../packages/ui/src/UI.stories.tsx), [패널 예제](../packages/ui/src/Panel.stories.tsx), [Agent 화면](../apps/web/src/features/agents/Agents.stories.tsx), [Workspace 화면](../apps/web/src/features/workspaces/Workspaces.stories.tsx), [Module 화면](../apps/web/src/features/modules/Modules.stories.tsx)과 [통합 설정 예제](../apps/web/src/shell/Shell.stories.tsx)를 찾는다.
 3. `@worknaru/ui`에서 가져온 부품과 패턴에 데이터·명시적인 callback을 연결한다. 도메인 호출은 Web 기능에서 Core API로 수행한다.
 4. 변경된 동작에 필요한 Storybook 상태와 사용자 동작 검증을 갱신한다. 아래 [검증 선택](#실행과-검증)에 따라 해당 화면부터 확인하며, 공통 UI 변경과 병합 단계에서 전체 회귀로 확대한다.
 
@@ -13,7 +13,7 @@
 
 ## 시각과 동작
 
-Linear의 중립적인 바탕과 정보 위계, Paseo·VS Code의 탐색/작업 영역 분리를 참고한다. 사용자가 선택한 B안에 따라 앱 전체 탐색(Agent·Workspace·설정), 현재 기능의 목록, 중앙 작업, 선택적 상세 정보의 책임을 분리한다. 생성은 중앙 입력 창이다. 작은 화면에서는 앱 탐색을 위에 두고 목록과 대화를 전환한다. 기능이 없는 미래 메뉴를 만들지 않는다. [App Shell 결정](adr/0010-app-shell-and-work-context.md)을 따른다.
+Linear의 중립적인 바탕과 정보 위계, Paseo·VS Code의 탐색/작업 영역 분리를 참고한다. 사용자가 선택한 B안에 따라 앱 전체 탐색(Agent·Workspace·Module·설정), 현재 기능의 목록, 중앙 작업, 선택적 상세 정보의 책임을 분리한다. 생성은 중앙 입력 창이다. 작은 화면에서는 앱 탐색을 위에 두고 목록과 대화를 전환한다. 기능이 없는 미래 메뉴를 만들지 않는다. [App Shell 결정](adr/0010-app-shell-and-work-context.md)을 따른다.
 
 실제 디자인 값의 원본은 [CSS 토큰](../packages/ui/src/tokens.css)이다. 색상·간격·서체·크기·모서리·그림자·움직임은 여기에서 읽는다. 다른 문서·JSON·Figma에 값을 수동 복제하지 않는다. 브랜드의 강조색과 글자색은 기존 branding 패키지가 주입한다. 상태 색상은 브랜드와 독립적이다.
 

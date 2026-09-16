@@ -11,6 +11,7 @@ import {
 import { Dialog as PrimitiveDialog, DropdownMenu } from 'radix-ui';
 import {
   Archive,
+  Blocks,
   ArrowLeft,
   Check,
   ChevronDown,
@@ -53,6 +54,7 @@ export function Button({
 }
 const icons = {
   archive: Archive,
+  module: Blocks,
   back: ArrowLeft,
   check: Check,
   chevron: ChevronDown,

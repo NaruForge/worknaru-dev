@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ModuleTarget } from '@worknaru/core';
+
+export type ModuleView = { kind: 'modules'; target: ModuleTarget; runId: string | null };
+export const initialModuleView: ModuleView = {
+  kind: 'modules',
+  target: { type: 'standalone' },
+  runId: null,
+};
 
 export type SettingsSection = 'appearance' | 'behavior' | 'connection' | 'data';
 export type AgentView = {
@@ -14,9 +22,11 @@ export type WorkspaceView = {
   pane: 'list' | 'detail';
 };
 export type NavigableView =
-  AgentView | WorkspaceView | { kind: 'settings'; section: SettingsSection };
+  AgentView | WorkspaceView | ModuleView | { kind: 'settings'; section: SettingsSection };
 export type View =
-  NavigableView | { kind: 'legacy'; agentId: string } | { kind: 'invalid'; feature?: 'workspaces' };
+  | NavigableView
+  | { kind: 'legacy'; agentId: string }
+  | { kind: 'invalid'; feature?: 'workspaces' | 'modules' };
 export const initialWorkspaceView: WorkspaceView = {
   kind: 'workspaces',
   workspaceId: null,
@@ -40,6 +50,32 @@ export function parseView(hash: string): View {
     }
   }
   const [path, query = ''] = value.split('?');
+  if (path === '/modules') {
+    const params = new URLSearchParams(query);
+    const workspaceId = params.get('workspace');
+    const projectId = params.get('project');
+    const runId = params.get('run');
+    if (
+      [workspaceId, projectId, runId].some(
+        (id) =>
+          id !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id),
+      ) ||
+      (workspaceId && projectId) ||
+      [...params.keys()].some(
+        (key) => !['workspace', 'project', 'run'].includes(key) || params.getAll(key).length !== 1,
+      )
+    )
+      return { kind: 'invalid', feature: 'modules' };
+    return {
+      kind: 'modules',
+      target: projectId
+        ? { type: 'project', projectId }
+        : workspaceId
+          ? { type: 'workspace', workspaceId }
+          : { type: 'standalone' },
+      runId,
+    };
+  }
   if (path === '/workspaces') {
     const params = new URLSearchParams(query);
     const workspaceId = params.get('workspace');
@@ -82,6 +118,13 @@ export function parseView(hash: string): View {
   return { kind: 'invalid' };
 }
 export function viewHash(view: NavigableView): string {
+  if (view.kind === 'modules') {
+    const params = new URLSearchParams();
+    if (view.target.type === 'workspace') params.set('workspace', view.target.workspaceId);
+    if (view.target.type === 'project') params.set('project', view.target.projectId);
+    if (view.runId) params.set('run', view.runId);
+    return `#/modules${params.size ? `?${params}` : ''}`;
+  }
   if (view.kind === 'settings') return `#/settings/${view.section}`;
   if (view.kind === 'workspaces') {
     const params = new URLSearchParams();
@@ -101,12 +144,15 @@ export function useNavigation() {
   const lastWorkspace = useRef<WorkspaceView>(
     view.kind === 'workspaces' ? view : initialWorkspaceView,
   );
-  const lastWork = useRef<AgentView | WorkspaceView>(
-    view.kind === 'workspaces' ? view : lastAgent.current,
+  const lastModule = useRef<ModuleView>(view.kind === 'modules' ? view : initialModuleView);
+  const lastWork = useRef<AgentView | WorkspaceView | ModuleView>(
+    view.kind === 'modules' || view.kind === 'workspaces' ? view : lastAgent.current,
   );
   if (view.kind === 'agents') lastAgent.current = view;
   if (view.kind === 'workspaces') lastWorkspace.current = view;
-  if (view.kind === 'agents' || view.kind === 'workspaces') lastWork.current = view;
+  if (view.kind === 'modules') lastModule.current = view;
+  if (view.kind === 'agents' || view.kind === 'workspaces' || view.kind === 'modules')
+    lastWork.current = view;
   const navigate = useCallback((next: NavigableView, replace = false) => {
     const hash = viewHash(next);
     if (location.hash !== hash)
@@ -126,6 +172,7 @@ export function useNavigation() {
     view,
     agentView: lastAgent.current,
     workspaceView: lastWorkspace.current,
+    moduleView: lastModule.current,
     workView: lastWork.current,
     navigate,
   };

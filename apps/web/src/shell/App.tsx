@@ -17,15 +17,18 @@ import {
 import { loadCore } from '../bootstrap.js';
 import { AgentScreen } from '../features/agents/AgentScreen.js';
 import { WorkspaceScreen } from '../features/workspaces/WorkspaceScreen.js';
+import { ModuleScreen } from '../features/modules/ModuleScreen.js';
 import { useAgentSession } from '../features/agents/useAgentSession.js';
 import { useTheme } from './theme.js';
 import {
   initialAgentView,
   initialWorkspaceView,
+  initialModuleView,
   useNavigation,
   type SettingsSection,
   type AgentView,
   type WorkspaceView,
+  type ModuleView,
 } from './navigation.js';
 import { usePanelLayout } from './layout.js';
 import { SettingsView, useSharedSettings } from './SettingsView.js';
@@ -56,17 +59,28 @@ function ConnectedApp({
   const shared = useSharedSettings(core, ui.settings, resetting);
   const [help, setHelp] = useState(false);
   const [routeNotice, setRouteNotice] = useState('');
-  const lastFocus = useRef<{ agents: HTMLElement | null; workspaces: HTMLElement | null }>({
+  const lastFocus = useRef<{
+    agents: HTMLElement | null;
+    workspaces: HTMLElement | null;
+    modules: HTMLElement | null;
+  }>({
     agents: null,
     workspaces: null,
+    modules: null,
   });
   const lastSection = useRef<SettingsSection>('appearance');
   const active = !resetting && navigation.view.kind === 'agents';
   const workspaceActive = !resetting && navigation.view.kind === 'workspaces';
+  const moduleActive = !resetting && navigation.view.kind === 'modules';
   const settingsActive = resetting || navigation.view.kind === 'settings';
   if (navigation.view.kind === 'settings') lastSection.current = navigation.view.section;
   useEffect(() => {
     if (navigation.view.kind === 'invalid' || (navigation.view.kind === 'agents' && ui.missing)) {
+      if (navigation.view.kind === 'invalid' && navigation.view.feature === 'modules') {
+        setRouteNotice('사용할 수 없는 Module 주소입니다. 실행 대상과 기록을 다시 선택해 주세요.');
+        navigation.navigate(initialModuleView, true);
+        return;
+      }
       if (navigation.view.kind === 'invalid' && navigation.view.feature === 'workspaces') {
         setRouteNotice('사용할 수 없는 업무 공간 주소입니다. 목록에서 다시 선택해 주세요.');
         navigation.navigate(initialWorkspaceView, true);
@@ -116,12 +130,16 @@ function ConnectedApp({
   }, [navigation.view, navigation.navigate, ui.selected]);
   const openSettings = (section = lastSection.current) =>
     navigation.navigate({ kind: 'settings', section });
-  const returnToWork = (view: AgentView | WorkspaceView) => {
+  const returnToWork = (view: AgentView | WorkspaceView | ModuleView) => {
     navigation.navigate(view);
     requestAnimationFrame(() => {
       const target = lastFocus.current[view.kind];
       if (target?.isConnected && target.getClientRects().length && !target.matches(':disabled'))
         target.focus({ preventScroll: true });
+      else if (view.kind === 'modules')
+        document
+          .querySelector<HTMLElement>('[aria-label="Module 작업"] h1')
+          ?.focus({ preventScroll: true });
       else if (view.kind === 'workspaces')
         [
           ...document.querySelectorAll<HTMLElement>(
@@ -164,6 +182,14 @@ function ConnectedApp({
             variant={workspaceActive ? 'secondary' : 'ghost'}
             aria-current={workspaceActive ? 'page' : undefined}
             onClick={() => returnToWork(navigation.workspaceView)}
+          />
+          <IconButton
+            icon="module"
+            label="Module"
+            disabled={resetting}
+            variant={moduleActive ? 'secondary' : 'ghost'}
+            aria-current={moduleActive ? 'page' : undefined}
+            onClick={() => returnToWork(navigation.moduleView)}
           />
           <div className={styles.settingsNavigation}>
             <IconButton
@@ -241,6 +267,20 @@ function ConnectedApp({
             view={navigation.workspaceView}
             onNavigate={navigation.navigate}
             panels={panels}
+          />
+        </div>
+        <div
+          className={styles.featureView}
+          hidden={!moduleActive}
+          onFocusCapture={(event) => {
+            lastFocus.current.modules = event.target as HTMLElement;
+          }}
+        >
+          <ModuleScreen
+            core={core}
+            active={moduleActive}
+            view={navigation.moduleView}
+            onNavigate={navigation.navigate}
           />
         </div>
         <div className={styles.featureView} hidden={!settingsActive}>
