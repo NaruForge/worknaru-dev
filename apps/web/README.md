@@ -1,6 +1,6 @@
 # Worknaru Web UI
 
-Codex Agent 생성·대화·보관과 Workspace·Project 생성·조회·선택을 제공한다. CLI와 같은 Daemon의 데이터를 사용한다. 앱 탐색의 **Agent / Workspace / 설정**으로 이동하며 **설정 → 연결**에서 Daemon 상태를 조회한다.
+Codex Agent 생성·대화·보관, Workspace·Project 생성·조회·선택과 내장 Module 실행·Run 조회를 제공한다. CLI와 같은 Daemon의 데이터를 사용한다. 앱 탐색의 **Agent / Workspace / Module / 설정**으로 이동하며 **설정 → 연결**에서 Daemon 상태를 조회한다.
 
 ## Workspace·Project
 
