@@ -37,3 +37,23 @@ test('Module CLI calls Core and emits one JSON document with meaningful exit sta
   assert.equal(await runModules(parseModuleArgs(command), env, out, () => ({ modules: { execute: async () => { throw new ModuleError('request_conflict', 'Different input'); } } })), 2);
   assert.equal(JSON.parse(out.value.stdout).error.code, 'request_conflict');
 });
+test('Module entry distinguishes literal help text from help options', async () => {
+  for (const text of ['--help', '-h']) {
+    const args = command.map((value, index) => index === 4 ? text : value);
+    const parsed = parseModuleArgs(args);
+    assert.equal(parsed.input.input.text, text);
+    const out = output();
+    // Invalid explicit configuration stops before connecting, after entry dispatch.
+    assert.equal(await run(args, { WORKNARU_ENDPOINT: '' }, out), 2);
+    assert.equal(JSON.parse(out.value.stdout).error.code, 'invalid_configuration');
+    const executed = output();
+    assert.equal(await runModules(parsed, env, executed, () => ({ modules: { execute: async input => {
+      assert.equal(input.input.text, text); return { id, status: 'succeeded' };
+    } } })), 0);
+    for (const helpArgs of [['module', text], [...args, text]]) {
+      const help = output();
+      assert.equal(await run(helpArgs, { WORKNARU_ENDPOINT: '' }, help), 0);
+      assert.match(help.value.stdout, /Module 사용법/);
+    }
+  }
+});

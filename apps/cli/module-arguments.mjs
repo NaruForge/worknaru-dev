@@ -20,6 +20,7 @@ export function parseModuleArgs(args) {
   const values = ['--text', '--request-id', '--workspace', '--project', '--endpoint', '--server-id', '--target', '--timeout-ms'];
   for (let i = 0; i < args.length; i++) {
     const token = args[i];
+    if (token === '--help' || token === '-h') return { help: true };
     if (!token.startsWith('-')) { positional.push(token); continue; }
     if ((!flags.includes(token) && !values.includes(token)) || Object.hasOwn(options, token)) throw Error('알 수 없거나 중복된 옵션입니다. module --help');
     options[token] = flags.includes(token) ? true : args[++i];

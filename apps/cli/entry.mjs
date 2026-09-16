@@ -59,9 +59,10 @@ export async function run(args, env, output = { stdout: text => process.stdout.w
   try {
     if (['module', 'run'].includes(args[0])) {
       const { moduleHelp, parseModuleArgs } = await import('./module-arguments.mjs');
-      if (args.includes('--help') || args.includes('-h') || args.length < 2) { output.stdout(moduleHelp); return 0; }
+      if (args.length < 2) { output.stdout(moduleHelp); return 0; }
       let parsed;
       try { parsed = parseModuleArgs(args); } catch (error) { throw new LocalError('invalid_arguments', error.message, 2); }
+      if (parsed.help) { output.stdout(moduleHelp); return 0; }
       let module;
       try { module = await import('./module-cli.mjs'); } catch { throw new LocalError('build_required', 'Module 기능을 빌드해 주세요. pnpm build'); }
       return module.runModules(parsed, env, output);
