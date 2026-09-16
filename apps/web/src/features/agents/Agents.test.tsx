@@ -31,6 +31,7 @@ describe('request identity and drafts', () => {
         if (state === 'lost') throw Error('lost acknowledgement');
         if (state === 'completed') return original(input);
         return {
+          context: { type: 'standalone', workspaceId: null, projectId: null },
           id: input.id,
           agentId: input.agent,
           text: input.text,
@@ -68,6 +69,7 @@ describe('request identity and drafts', () => {
         else expect(ids[2]).toBe(ids[0]);
       }
       expect(send.mock.calls.every(([input]) => !('mode' in input))).toBe(true);
+      expect(send.mock.calls.every(([input]) => input.target?.type === 'standalone')).toBe(true);
     });
   }
   it('observes CLI cancellation before issuing a new request ID', async () => {
@@ -78,6 +80,7 @@ describe('request identity and drafts', () => {
         agentId: input.agent,
         text: input.text,
         mode: 'queue',
+        context: { type: 'standalone', workspaceId: null, projectId: null },
         state: 'uncertain',
         turnId: null,
         createdAt: '',

@@ -66,16 +66,18 @@ test('reset discards incompatible data, retains a management marker and is repea
   await resetData(f.paths, { stopped }); assert.deepEqual(await readdir(f.paths.dataHome), ['worknaru-data.json']);
 });
 
-test('pre-Module storage version requires explicit reset without modifying existing data', async t => {
-  const f = await fixture(t); await claim(f.paths);
-  const marker = JSON.parse(await readFile(f.paths.marker, 'utf8')); marker.storageVersion = 1;
-  await writeFile(f.paths.marker, JSON.stringify(marker));
-  const file = path.join(f.paths.dataHome, 'worknaru-domain.sqlite');
-  await writeFile(file, 'existing user data');
-  const before = await readFile(f.paths.marker, 'utf8');
-  await assert.rejects(assertStorage(f.paths, { claim: true }), { code: 'reset_required' });
-  assert.equal(await readFile(f.paths.marker, 'utf8'), before);
-  assert.equal(await readFile(file, 'utf8'), 'existing user data');
+test('old storage versions require explicit reset without modifying existing data', async t => {
+  for (const version of [1, 2]) {
+    const f = await fixture(t); await claim(f.paths);
+    const marker = JSON.parse(await readFile(f.paths.marker, 'utf8')); marker.storageVersion = version;
+    await writeFile(f.paths.marker, JSON.stringify(marker));
+    const file = path.join(f.paths.dataHome, 'worknaru-domain.sqlite');
+    await writeFile(file, 'existing user data');
+    const before = await readFile(f.paths.marker, 'utf8');
+    await assert.rejects(assertStorage(f.paths, { claim: true }), { code: 'reset_required' });
+    assert.equal(await readFile(f.paths.marker, 'utf8'), before);
+    assert.equal(await readFile(file, 'utf8'), 'existing user data');
+  }
 });
 
 test('reset clears readable Agent registrations and durable request state without a Provider', async t => {
@@ -88,6 +90,7 @@ test('reset clears readable Agent registrations and durable request state withou
   seed.settings = { sendMode: 'steer', revision: 3 };
   seed.requests = ['completed', 'uncertain', 'queued'].map((state, index) => ({
     id: `request-${index}`, agentId: 'active-agent', text: `Durable ${state}`, mode: 'queue', state,
+    context: { type: 'standalone', workspaceId: null, projectId: null },
     turnId: state === 'queued' ? null : `turn-${index}`, createdAt: '2026-09-15T00:00:00.000Z', error: null,
   }));
   seed.paused['active-agent'] = true;

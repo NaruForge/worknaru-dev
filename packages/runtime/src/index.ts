@@ -1,4 +1,5 @@
 export * from './agents.js';
+export * from './execution-context.js';
 export * from './workspace-domain.js';
 export * from './modules.js';
 import type { ModuleAPI } from './modules.js';

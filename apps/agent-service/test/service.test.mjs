@@ -93,12 +93,12 @@ test('failure pauses remaining queue; explicit resume and cancel operate only on
 
 test('restart preserves queued messages and settings, while ambiguous accepted sends are not retried', async t => {
   const seed = initialAgentState(); seed.settings = { sendMode: 'steer', revision: 3 };
-  seed.requests.push({ id: 'old', agentId: 'agent-one', text: 'old', state: 'running', mode: 'queue', turnId: 'old-turn' }, { id: 'later', agentId: 'agent-one', text: 'later', state: 'queued', mode: 'queue' });
+  seed.requests.push({ id: 'old', agentId: 'agent-one', text: 'old', context: { type: 'standalone', workspaceId: null, projectId: null }, state: 'running', mode: 'queue', turnId: 'old-turn' }, { id: 'later', agentId: 'agent-one', text: 'later', context: { type: 'standalone', workspaceId: null, projectId: null }, state: 'queued', mode: 'queue' });
   const f = await fixture(t, seed); await f.settle(); assert.equal(f.calls.length, 0);
   assert.equal(f.state().requests[0].state, 'uncertain'); assert.equal((await f.call('settings')).sendMode, 'steer');
   await assert.rejects(f.call('resume', { agent: 'agent-one' }), { code: 'uncertain_request' });
   await f.call('discard', { agent: 'agent-one', id: 'old' }); await f.call('resume', { agent: 'agent-one' }); await f.settle(); assert.equal(f.calls[0][1], 'later');
-  const pending = initialAgentState(); pending.requests.push({ id: 'persisted', agentId: 'agent-one', text: 'persisted', state: 'queued', mode: 'queue' });
+  const pending = initialAgentState(); pending.requests.push({ id: 'persisted', agentId: 'agent-one', text: 'persisted', context: { type: 'standalone', workspaceId: null, projectId: null }, state: 'queued', mode: 'queue' });
   const resumed = await fixture(t, pending); await resumed.settle(); assert.equal(resumed.calls[0][1], 'persisted');
 });
 
@@ -264,7 +264,7 @@ test('a changed folder pauses only its queued Agent before sending and permits c
 
 test('restart pauses a queued Agent with an invalid folder without introducing an uncertain send', async t => {
   const state = initialAgentState();
-  state.requests.push({ id: 'persisted', agentId: 'agent-one', text: 'hello', state: 'queued', mode: 'queue' });
+  state.requests.push({ id: 'persisted', agentId: 'agent-one', text: 'hello', context: { type: 'standalone', workspaceId: null, projectId: null }, state: 'queued', mode: 'queue' });
   const f = await fixture(t, state, {}, async () => { throw new AgentError('invalid_directory', 'Folder is missing'); });
   await f.settle();
   assert.equal(f.calls.length, 0);

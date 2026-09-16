@@ -210,7 +210,7 @@ export function useAgentSession(core: WorknaruCore, view: AgentView) {
     current.sending = true;
     notify();
     try {
-      const request = await core.agents.send(requestInput);
+      const request = await core.agents.send({ ...requestInput, target: { type: 'standalone' } });
       if (request.state === 'uncertain')
         current.notice = request.error ?? '전송 결과를 확인해 주세요.';
       else if (request.state === 'failed' || request.state === 'canceled') {

@@ -29,6 +29,7 @@ function Example({ scenario }: { scenario: Scenario }) {
         agentId: agent.id,
         text: '새 대기 메시지',
         mode: 'queue',
+        context: { type: 'standalone', workspaceId: null, projectId: null },
         state: 'queued',
         turnId: null,
         createdAt: '2026-09-14T01:00:00.000Z',

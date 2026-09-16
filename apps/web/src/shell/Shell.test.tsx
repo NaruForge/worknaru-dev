@@ -58,6 +58,7 @@ it('keeps request ownership during navigation and late acknowledgements', async 
       agentId: input.agent,
       text: input.text,
       mode: 'queue',
+      context: { type: 'standalone', workspaceId: null, projectId: null },
       state: 'queued',
       turnId: null,
       createdAt: '',

@@ -236,3 +236,8 @@ pnpm exec worknaru status --endpoint ws://127.0.0.1:6868/ws --server-id <확인�
 Agent 설정을 마친 관리형 `dev start` 환경은 **설정 → 데이터 관리**에서 저장 위치 조회·폴더 열기·초기화를 요청할 수 있다. 기존 Daemon RPC가 실행기 제어 채널에 전달하고, 실행기가 소유권·서버 ID와 60초짜리 미리보기를 확인한다. 정지·삭제·새 환경 시작 전체에서 같은 데이터 작업 잠금을 보유한다. 삭제는 `data-reset.mjs`를 재사용하며 정지 확인을 생략하지 않는다.
 
 Web에서 확인한 **삭제하고 다시 시작**은 새 기본 설정·Agent 서비스와 기존 빌드로 재시작까지 수행한다. 일반 `dev reset --yes`는 기존대로 삭제만 수행하고 setup/start를 자동 실행하지 않는다. 정상 stop/start의 보존 정책과 Provider 기록 보호는 유지한다. 실행 도중 실패하면 자동 삭제 재시도나 다른 환경으로의 접속을 하지 않는다. [Web 사용·실연동 검증](../web/README.md#데이터-관리), [ADR 0012](../../docs/adr/0012-settings-data-management.md)
+## Agent 업무 실행 대상
+
+`agent send <Agent> "메시지"`에 `--standalone`, `--workspace <UUID>`, `--project <UUID>` 중 하나를 지정할 수 있다. 생략하면 독립 실행이며 CLI는 이를 명시적인 standalone target으로 전송한다. `--target`은 접속 대상 ID로, 업무 target과 다르다.
+
+Project의 Workspace는 서버가 도출한다. 같은 `--id`로 다른 업무 대상을 보내면 충돌이며 재확인은 원래 대상·입력·ID를 사용한다. `--json` 접수/대기 결과와 `agent queue list` 결과의 context에서 확정된 업무 맥락을 확인한다. 업무 대상은 cwd·파일 접근 권한·AI 프롬프트를 바꾸지 않고 Agent에 영구 소속을 만들지 않는다.

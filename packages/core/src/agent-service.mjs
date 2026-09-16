@@ -1,7 +1,8 @@
-import { AgentError } from '@worknaru/runtime';
+import { AgentError, ExecutionContextError, parseExecutionTarget, parseExecutionContext } from '@worknaru/runtime';
+import { createContextResolver } from '../dist/execution-context.js';
 
 const terminal = new Set(['completed', 'failed', 'canceled', 'uncertain']);
-export const initialAgentState = () => ({ version: 1, settings: { sendMode: 'queue', revision: 0 }, requests: [], paused: {}, creations: {} });
+export const initialAgentState = () => ({ version: 2, settings: { sendMode: 'queue', revision: 0 }, requests: [], paused: {}, creations: {} });
 const fail = (code, message) => { throw new AgentError(code, message); };
 function text(value, label, max = 65536) {
   if (typeof value !== 'string' || !value.trim() || value.length > max) fail('invalid_input', `${label}을(를) 올바르게 입력해 주세요.`);
@@ -11,9 +12,12 @@ function mode(value) { if (!['queue', 'steer'].includes(value)) fail('invalid_in
 function key(value) { const result = text(value, '요청 ID', 100); if (!/^[a-zA-Z0-9_-]+$/.test(result) || ['__proto__', 'constructor', 'prototype'].includes(result)) fail('invalid_input', '잘못된 요청 ID입니다.'); return result; }
 
 /** Platform policy; persistence and the concrete execution driver are injected. */
-export function createAgentService({ driver, store, validateDirectory, now = () => new Date().toISOString() }) {
+export function createAgentService({ driver, store, validateDirectory, resolveContext = createContextResolver(), now = () => new Date().toISOString() }) {
   const state = store.load() ?? initialAgentState();
-  if (state.version !== 1) fail('storage_version', '지원하지 않는 실행 데이터 버전입니다.');
+  if (state.version !== 2) fail('storage_version', '지원하지 않는 실행 데이터 버전입니다.');
+  // Reject corrupt/missing snapshots before initialization can resume any queued work.
+  try { for (const request of state.requests) request.context = parseExecutionContext(request.context); }
+  catch { fail('storage_version', '저장된 요청의 업무 컨텍스트를 확인할 수 없습니다.'); }
   const locks = new Map(); const previews = new Map(); const watching = new Set();
   let stopped = false; let ready = false; let timer;
   const archiving = new Set();
@@ -24,10 +28,12 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     try { save(); } catch { /* fail closed */ }
   };
   const requests = id => state.requests.filter(r => r.agentId === id);
-  const priorRequest = (id, agentId, message) => {
+  const priorRequest = (id, agentId, message, target) => {
     const prior = state.requests.find(r => r.id === id);
-    if (prior && (prior.agentId !== agentId || prior.text !== message)) fail('id_conflict', '같은 요청 ID에 다른 내용이 전달됐습니다.');
-    return prior ? { ...prior } : null;
+    if (prior && (prior.agentId !== agentId || prior.text !== message || prior.context.type !== target.type
+      || (target.type === 'workspace' && prior.context.workspaceId !== target.workspaceId)
+      || (target.type === 'project' && prior.context.projectId !== target.projectId))) fail('id_conflict', '같은 요청 ID에 다른 내용 또는 업무 대상이 전달됐습니다.');
+    return prior ? structuredClone(prior) : null;
   };
   const serial = (id, fn) => {
     const current = (locks.get(id) ?? Promise.resolve()).catch(() => {}).then(fn);
@@ -98,7 +104,7 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     await observe(current.id);
     request.state = 'sending'; save();
     try {
-      await driver.send(current.id, request.text, request.id, request.mode);
+      await driver.send(current.id, request.text, request.id, request.mode, parseExecutionContext(request.context));
       const after = await get(current.id);
       request.turnId ??= after.turnId;
       request.state = 'running'; save();
@@ -163,12 +169,12 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     const selected = await resolve(input.agent);
     if (operation === 'show') return get(selected.id);
     if (operation === 'history') return driver.history(selected.id, input.cursor);
-    if (operation === 'requests') return { requests: requests(selected.id).map(r => ({ ...r })), paused: !!state.paused[selected.id] };
+    if (operation === 'requests') return { requests: structuredClone(requests(selected.id)), paused: !!state.paused[selected.id] };
     if (operation === 'archivePreview') {
       for (const [token, preview] of previews) if (Date.now() > preview.expires) previews.delete(token);
       const agents = await subtree(selected.id); const token = crypto.randomUUID();
       previews.set(token, { root: selected.id, ids: agents.map(a => a.id), fingerprint: fingerprint(agents), expires: Date.now() + 120000 });
-      return { token, agents, queued: agents.flatMap(a => requests(a.id).filter(r => r.state === 'queued')) };
+      return { token, agents, queued: structuredClone(agents.flatMap(a => requests(a.id).filter(r => r.state === 'queued'))) };
     }
     return serial(selected.id, async () => {
       const current = await get(selected.id);
@@ -177,26 +183,35 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
         if (archiving.has(current.id)) fail('archiving', '보관 중인 Agent에는 전송할 수 없습니다.');
         key(input.id); text(input.text, '메시지');
         if (Object.hasOwn(input, 'mode')) fail('invalid_input', '전송 방식은 공통 설정에서 변경해 주세요. settings set send-mode queue 또는 steer');
-        const prior = priorRequest(input.id, current.id, input.text);
+        if (Reflect.ownKeys(input).some(field => !['agent', 'id', 'text', 'target'].includes(field))) fail('invalid_input', '지원하지 않는 Agent 전송 필드입니다.');
+        let target;
+        try { target = parseExecutionTarget(Object.hasOwn(input, 'target') ? input.target : { type: 'standalone' }); }
+        catch (error) { throw new AgentError('invalid_input', error.message); }
+        const prior = priorRequest(input.id, current.id, input.text, target);
         if (prior) return prior;
+        let context;
+        try { context = parseExecutionContext(await resolveContext(target)); }
+        catch (error) { throw new AgentError(error instanceof ExecutionContextError ? error.code : 'context_unavailable', error instanceof ExecutionContextError ? error.message : '업무 컨텍스트를 확인하지 못했습니다.'); }
+        if (context.type !== target.type || (target.type === 'workspace' && context.workspaceId !== target.workspaceId)
+          || (target.type === 'project' && context.projectId !== target.projectId)) fail('invalid_input', '업무 컨텍스트가 요청 대상과 다릅니다.');
         await validateDirectory(current.cwd);
         // Request IDs are global; another Agent can admit this ID during validation.
         // Keep this recheck through registration/save synchronous.
-        const admitted = priorRequest(input.id, current.id, input.text);
+        const admitted = priorRequest(input.id, current.id, input.text, target);
         if (admitted) return admitted;
         const chosen = state.settings.sendMode;
         if (chosen === 'steer' && (current.permissions.length || state.paused[current.id] || requests(current.id).some(r => r.state === 'queued'))) fail('steer_blocked', '권한 요청이나 앞선 대기열을 먼저 처리하거나 공통 전송 설정을 queue로 변경해 주세요.');
         const effective = chosen === 'steer' && !current.turnId && current.status !== 'running' ? 'queue' : chosen;
-        const request = { id: input.id, agentId: current.id, text: input.text, mode: effective, state: 'queued', turnId: null, createdAt: now(), error: null };
+        const request = { id: input.id, agentId: current.id, text: input.text, context, mode: effective, state: 'queued', turnId: null, createdAt: now(), error: null };
         state.requests.push(request); save(); await observe(current.id);
         if (effective === 'steer') { try { await transmit(current, request); } catch (error) { pause(current.id, error); throw error; } } else schedule(current.id);
-        return { ...request };
+        return structuredClone(request);
       }
       if (operation === 'cancel') {
         const r = requests(current.id).find(r => r.id === input.id);
         if (!r) fail('not_found', '대기 요청을 찾을 수 없습니다.');
         if (r.state !== 'queued') fail('not_queued', '아직 실행하지 않은 대기 메시지만 취소할 수 있습니다.');
-        r.state = 'canceled'; save(); return { ...r };
+        r.state = 'canceled'; save(); return structuredClone(r);
       }
       if (operation === 'resume') {
         await validateDirectory(current.cwd);
@@ -207,7 +222,7 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
         const r = requests(current.id).find(r => r.id === input.id);
         if (!r || r.state !== 'uncertain') fail('not_uncertain', '결과가 불명확한 요청만 실행 포기 처리할 수 있습니다.');
         if (current.turnId || current.status === 'running' || current.permissions.length) fail('busy', '현재 작업이나 권한 요청을 먼저 처리해 주세요.');
-        r.state = 'canceled'; r.error = '사용자가 기록 확인 후 자동 재실행을 포기했습니다.'; save(); return { ...r };
+        r.state = 'canceled'; r.error = '사용자가 기록 확인 후 자동 재실행을 포기했습니다.'; save(); return structuredClone(r);
       }
       if (operation === 'permission') {
         if (!['allow', 'deny'].includes(input.behavior)) fail('invalid_input', '승인 또는 거부를 선택해 주세요.');
@@ -231,7 +246,8 @@ export function createAgentService({ driver, store, validateDirectory, now = () 
     list: input => execute('list', input),
     show: input => execute('show', input),
     history: input => execute('history', input),
-    send: input => execute('send', input),
+    // Capture mutable caller input before the first asynchronous Agent lookup.
+    send: input => execute('send', structuredClone(input)),
     requests: input => execute('requests', input),
     cancel: input => execute('cancel', input),
     discard: input => execute('discard', input),

@@ -63,3 +63,8 @@ node --test apps/agent-service/test/workspace.integration.mjs
 ```
 
 이 검사는 외부 임시 데이터 루트와 기존 전용 Daemon 실행기를 사용한다. 실제 `workspace.execute`의 여섯 API·오류 응답, 정상 종료 후 새 프로세스의 ID·소속·생성 시각 보존, 잘못된 스키마의 `service_error` 응답과 DB 보존을 확인한다. Agent 생성·Provider 로그인·메시지 전송은 하지 않는다. 고정 포트를 쓰므로 다른 실연동과 동시에 실행하지 않는다. Windows CI의 `tests` 작업이 전체 `pnpm test` 이후 이 검사를 직렬 실행하며, 일반 패키지 단위 테스트에는 포함하지 않는다. Linux의 명시적 skip은 실연동 성공 근거가 아니다.
+## Agent 업무 컨텍스트
+
+앱은 Workspace 조회를 기다리는 함수를 공통 Core Resolver에 주입한다. 업무 컨텍스트 요청에서만 도메인 준비를 기다리므로 업무 저장소 오류가 standalone Agent 기능·health까지 막지 않는다. target이 없는 이전 API 호출은 standalone으로 수용하며 잘못된 target은 메시지 접수·Driver 전송 전에 거부한다. 저장된 요청의 context는 불변 snapshot이고 요청 ID 재확인·대기열 dispatch·재시작에서 그대로 사용한다. Agent 상태 문서는 버전 2이며 기존 루트의 자동 초기화/변환은 하지 않는다.
+
+`pnpm agent:verify`는 전용 외부 데이터·작업 폴더에서 실제 Codex 대화와 세 업무 대상, 없는 대상 거부, 대상 변경 재시도 충돌, 정상 재시작 후 snapshot 보존, 기존 queue/archive를 확인한다. Provider 설치·로그인·사용량이 필요하다. 단위 검사는 Provider 없이 잘못된 대상의 전송 0회, caller/반환 객체 변조 방지와 저장된 snapshot 사용을 검증한다.

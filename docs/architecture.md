@@ -16,7 +16,7 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 | --- | --- | --- |
 | 업무 구조 | Workspace → Project 소속, 독립 Module의 참조·사용 | Workspace·Project 생성·목록·단건 조회 API, SQLite 저장과 CLI·Web 진입점 구현. 수정·삭제·이동·Module 관리는 후속 범위 |
 | Module 실행 | Standalone / Workspace / Project의 명시적 실행 맥락 | 내장 text-stats 실행·Run 저장·CLI/Web 실행·조회 구현. AI 실행·사용자 설치·패키징·버전 배포·취소/재개는 후속 범위 |
-| Agent | 직접 대화 및 Module 개발·실행에 참여할 수 있는 실행 대상 | Core는 Agent API와 상태 조회를 제공하며 Agent를 사용하는 Module 실행·Project 연결은 미구현 |
+| Agent | 직접 대화 및 Module 개발·실행에 참여할 수 있는 실행 대상 | Core는 Agent API·상태 조회와 요청별 명시적 업무 컨텍스트를 제공한다. Agent를 사용하는 Module 실행·Agent의 영구 Project 소속은 미구현 |
 | System Agent | 앱 수준의 안내·작업 진입점 | 전용 기능·cwd·세션·위임 구조는 후속 설계 |
 
 ### 업무 구조와 Project 선택
@@ -266,3 +266,8 @@ Agent의 작업 폴더는 호출자가 명시하고 서버 경계에서 실제 �
 제품 기능을 늘릴 때는 필요한 Core API와 Runtime 기능을 정하고, 실행 기반의 호출을 Adapter에서 연결한다. 업무 구조와 Module 실행 맥락은 위 제품 계약을 따른다. Workspace·Project의 수정·삭제·이동 API, AI 기반 Module 실행·사용자 설치·취소/재개·Web 진입점, 패키징·배포·버전, 일반적인 설정 상속·동기화, 공유 상태, Project 이동·공유, System Agent의 세션·위임과 권한의 구체 모델은 후속 설계다. 초기 지원 기능에 대한 검토 내용은 [Paseo Adapter 설계 초안](paseo-adapter-initial-design.md)에 있으며, 그 제안과 실제 구현은 구분해서 읽는다.
 
 패키지를 추가하거나 이동할 때는 [저장소 구조 규칙](repository-structure.md)을 따른다. 이 문서는 구성요소와 흐름을 설명하고, 중요한 결정의 근거는 ADR에 남긴다.
+## Agent 요청의 업무 실행 컨텍스트
+
+Agent 메시지 요청은 standalone/Workspace/Project target을 지정한다. Core의 공통 Context Resolver가 존재를 확인하고 Project 소속 Workspace를 도출해 AgentRequest.context snapshot으로 저장한다. Module도 같은 Resolver를 사용한다. 기존 API의 대상 생략만 standalone으로 수용하고, CLI/Web 신규 호출은 명시적으로 보낸다. Web 직접 대화는 항상 standalone이다.
+
+대기·재시도·재시작은 최초 접수 snapshot을 유지하며 Driver에 구조화된 값으로 전달한다. cwd·최근 UI 선택은 대상 결정에 사용하지 않고, 자료·권한·프롬프트를 자동 주입하지 않는다. 컨텍스트가 다른 요청도 같은 Agent에서는 기존 대화를 공유하므로 업무별 대화 격리 기능이 아니다. System Agent·프롬프트 렌더링·자료 주입은 후속 범위다. [ADR 0017](adr/0017-agent-request-execution-context.md)을 따른다.

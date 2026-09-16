@@ -1,5 +1,5 @@
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
-import { AgentError, type AgentAPI } from '@worknaru/runtime';
+import { AgentError, parseExecutionContext, type AgentAPI, type ExecutionTarget } from '@worknaru/runtime';
 import type { PaseoAdapterOptions } from './index.js';
 import { createStatusWebSocket } from './status-websocket.js';
 
@@ -19,6 +19,21 @@ export function agentRpc(options: PaseoAdapterOptions): AgentAPI {
         { ok: true; data: never } | { ok: false; error: { code: string; message: string } };
       if (!response || typeof response !== 'object' || typeof response.ok !== 'boolean') throw new AgentError('invalid_response', 'Agent 응답 형식을 확인할 수 없습니다.');
       if (!response.ok) throw new AgentError(response.error.code, response.error.message);
+      try {
+        const data = response.data as unknown as Record<string, unknown>;
+        const records = ['send', 'cancel', 'discard'].includes(operation) ? [data]
+          : operation === 'requests' ? data.requests : operation === 'archivePreview' ? data.queued : [];
+        if (!Array.isArray(records)) throw Error();
+        for (const record of records) parseExecutionContext(record.context);
+        if (operation === 'send') {
+          const request = input as { id: string; text: string; target?: ExecutionTarget };
+          const target = request.target ?? { type: 'standalone' };
+          const context = parseExecutionContext(data.context);
+          if (data.id !== request.id || data.text !== request.text || context.type !== target.type
+            || (target.type === 'workspace' && context.workspaceId !== target.workspaceId)
+            || (target.type === 'project' && context.projectId !== target.projectId)) throw Error();
+        }
+      } catch { throw new AgentError('invalid_response', 'Agent 요청의 업무 컨텍스트를 확인할 수 없습니다.'); }
       return response.data;
     } catch (error) {
       if (error instanceof AgentError) throw error;
@@ -33,7 +48,7 @@ export function agentRpc(options: PaseoAdapterOptions): AgentAPI {
     list: (input = {}) => invoke('list', input),
     show: input => invoke('show', input),
     history: input => invoke('history', input),
-    send: input => invoke('send', input),
+    send: input => invoke('send', structuredClone(input)),
     requests: input => invoke('requests', input),
     cancel: input => invoke('cancel', input),
     discard: input => invoke('discard', input),

@@ -1,5 +1,5 @@
 import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
-import { AgentError } from '@worknaru/runtime';
+import { AgentError, parseExecutionContext } from '@worknaru/runtime';
 import path from 'node:path';
 import { createStatusWebSocket } from '../dist/status-websocket.js';
 
@@ -79,7 +79,12 @@ export async function connectAgentDriver({ endpoint, serverId }) {
       listeners.set(id, listener);
       try { await subscription.ready; } catch (error) { watches.delete(id); listeners.delete(id); subscription(); throw error; }
     },
-    send(id, text, messageId, mode) { return safe(() => client.sendAgentMessage(id, text, { messageId, activeTurnBehavior: mode === 'steer' ? 'steer' : 'interrupt' })); },
+    send(id, text, messageId, mode, context) {
+      // Context is Worknaru execution metadata, correlated by messageId in AgentRequest.
+      // Paseo has no equivalent business-context parameter; do not inject it into prompts/cwd.
+      parseExecutionContext(context);
+      return safe(() => client.sendAgentMessage(id, text, { messageId, activeTurnBehavior: mode === 'steer' ? 'steer' : 'interrupt' }));
+    },
     async permission(id, input) {
       const response = input.behavior === 'allow'
         ? { behavior: 'allow', ...(input.answers ? { updatedInput: input.answers } : {}), ...(input.actionId ? { selectedActionId: input.actionId } : {}) }
