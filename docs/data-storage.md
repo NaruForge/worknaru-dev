@@ -163,7 +163,7 @@ D/
 | 패널 너비·접힘·상세 패널 열림 | `worknaru.ui.server.<인코딩한 server ID>.layout.v1` |
 | 접속 환경의 마지막 서버 ID | `worknaru.ui.environment.<인코딩한 접속 환경>` |
 | 선택한 Agent·보관함·설정 섹션 | URL과 현재 탭의 탐색 상태 |
-| Agent별 초안·대화 캐시·읽던 위치·미저장 편집 | 현재 탭 메모리. Local Storage에 대화·초안을 저장하지 않음 |
+| Agent별 초안·대화 캐시·읽던 위치·미저장 편집, Module 대상별 초안·응답 확인 중 요청 ID | 현재 탭 메모리. Local Storage에 대화·초안·Module 입력을 저장하지 않음 |
 
 서버 ID는 `encodeURIComponent`, 접속 환경은 `[endpoint, target]`의 JSON을 같은 함수로 인코딩한다. 브라우저 저장이 차단되어도 현재 탭에서는 화면 설정을 사용할 수 있다. 초기화 후 새 서버 ID를 읽으면 이전 선호를 정리하며, 정상 stop/start는 같은 ID를 사용한다. [Web 사용 안내](../apps/web/README.md#전체-초기화-후-새로고침)
 

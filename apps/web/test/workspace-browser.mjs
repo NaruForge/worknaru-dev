@@ -1,5 +1,6 @@
 // One real CLI/Web crossing, including normal restart. No Provider execution.
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -87,6 +88,43 @@ try {
   assert.deepEqual(await cli('project', 'list', '--workspace', workspace.id), [project]);
   assert.deepEqual(await cli('project', 'list', '--workspace', webWorkspace.id), [webProject]);
   await page.screenshot({ path: path.join(directory, 'workspace-desktop.png') });
+  const cliRun = await cli(
+    'module',
+    'run',
+    'text-stats',
+    '--text',
+    'CLI 기록',
+    '--request-id',
+    randomUUID(),
+    '--standalone',
+  );
+  await page.getByRole('button', { name: 'Module', exact: true }).click();
+  await page.getByRole('button', { name: new RegExp(cliRun.id) }).click();
+  await expect(
+    page.getByRole('region', { name: '실행 결과' }).getByText('6', { exact: true }),
+  ).toBeVisible();
+  const moduleRuns = [];
+  for (const [target, flags] of [
+    ['standalone', ['--standalone']],
+    [`workspace:${webWorkspace.id}`, ['--workspace', webWorkspace.id]],
+    [`project:${webProject.id}`, ['--project', webProject.id]],
+  ]) {
+    await page.getByLabel('실행 대상').selectOption(target);
+    await page.getByLabel('분석할 텍스트').fill('한글😀\n둘');
+    const previousUrl = page.url();
+    await page.getByRole('button', { name: '실행', exact: true }).click();
+    await expect.poll(() => page.url()).not.toBe(previousUrl);
+    await expect(page.getByText('글자 수', { exact: true })).toBeVisible();
+    const runId = new URL(page.url()).hash.match(/run=([^&]+)/)[1];
+    const run = await cli('run', 'show', runId);
+    assert.equal(run.status, 'succeeded');
+    assert.deepEqual(run.result, { characters: 5, lines: 2 });
+    assert.equal(run.input.text, '한글😀\n둘');
+    assert.ok((await cli('run', 'list', ...flags)).some((item) => item.id === run.id));
+    moduleRuns.push(run);
+  }
+  const moduleUrl = page.url();
+  await page.screenshot({ path: path.join(directory, 'module-desktop.png') });
   await cli('dev', 'stop');
   await verification.start();
   assert.deepEqual(await cli('workspace', 'show', workspace.id), workspace);
@@ -94,6 +132,10 @@ try {
   assert.deepEqual(await cli('workspace', 'show', webWorkspace.id), webWorkspace);
   assert.deepEqual(await cli('project', 'show', webProject.id), webProject);
   await page.reload();
+  await expect(page.getByText('글자 수', { exact: true })).toBeVisible();
+  assert.equal(page.url(), moduleUrl);
+  for (const run of moduleRuns) assert.deepEqual(await cli('run', 'show', run.id), run);
+  await page.goto(selectedUrl);
   await expect(detail.getByText(webProject.id, { exact: true })).toBeVisible();
   await expect(detail.getByText(webProject.createdAt, { exact: true })).toBeVisible();
   assert.equal(page.url(), selectedUrl);
@@ -108,6 +150,7 @@ try {
     cliToWeb: true,
     webToCli: true,
     restartPreservesEntitiesAndSelection: true,
+    moduleCliWebThreeContextsAndRestart: true,
     commands,
     observedRpc: [...new Set(rpc)],
     screenshots: directory,
