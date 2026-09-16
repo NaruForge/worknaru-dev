@@ -86,7 +86,12 @@ export default function contribute(server: PluginServerContext) {
         : { code: 'service_error', message: '업무 저장소를 준비하지 못했습니다. doctor와 전용 데이터 설정을 확인해 주세요.' } };
     }
   });
-  const service = workspaceDomain.then(({ api }) => initialize(api));
+  // A damaged business store must not disable standalone Agent operations/health.
+  // Only contextual requests depend on the business domain becoming available.
+  const service = initialize({
+    getWorkspace: async (input: { id: string }) => (await workspaceDomain).api.getWorkspace(input),
+    getProject: async (input: { id: string }) => (await workspaceDomain).api.getProject(input),
+  });
   // Initialization errors are surfaced through health without exposing raw local errors.
   service.catch(() => console.error('Agent service initialization failed. Inspect configuration and data storage.'));
   server.handle(contract, async ({ operation, input }) => {
