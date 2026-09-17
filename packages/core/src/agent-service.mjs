@@ -2,7 +2,8 @@ import { AgentError, ExecutionContextError, parseExecutionTarget, parseExecution
 import { createContextResolver } from '../dist/execution-context.js';
 
 const terminal = new Set(['completed', 'failed', 'canceled', 'uncertain']);
-const systemCreateId = 'worknaru-system-agent';
+// Outside key()'s public namespace, including IDs accepted by earlier versions.
+const systemCreateId = 'worknaru:system-agent';
 export const initialAgentState = () => ({ version: 2, settings: { sendMode: 'queue', revision: 0 }, requests: [], paused: {}, creations: {} });
 const fail = (code, message) => { throw new AgentError(code, message); };
 function text(value, label, max = 65536) {
@@ -169,7 +170,7 @@ export function createAgentService({ driver, store, validateDirectory, systemAge
     if (operation === 'list') return (await driver.list()).filter(a => a.managed && (input.archived ? !!a.archivedAt : !a.archivedAt));
     if (operation === 'create') return serial('creation', async () => {
       key(input.id); text(input.name, '이름', 120); text(input.model, '모델', 300); text(input.cwd, '작업 폴더', 4096);
-      if (input.id === systemCreateId || Object.hasOwn(input, 'role')) fail('invalid_input', 'System Agent는 전용 열기 기능을 사용해 주세요.');
+      if (Object.hasOwn(input, 'role')) fail('invalid_input', 'System Agent는 전용 열기 기능을 사용해 주세요.');
       const prior = state.creations[input.id]; const signature = JSON.stringify([input.name, input.cwd, input.model]);
       if (prior && prior.signature !== signature) fail('id_conflict', '같은 요청 ID의 생성 내용이 다릅니다.');
       if (prior?.agentId) return get(prior.agentId);

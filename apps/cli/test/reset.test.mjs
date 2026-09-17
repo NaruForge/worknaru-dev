@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { link, lstat, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { link, lstat, mkdir, open, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import test from 'node:test';
@@ -98,6 +98,51 @@ test('System Agent instruction write failure is reported without replacing files
   try { await assert.rejects(prepareSystemAgent(f.paths), { code: 'system_agent_directory' }); }
   finally { await exec('icacls', [directory, '/remove:d', '*' + sid], { windowsHide: true }); }
   assert.deepEqual(await readdir(directory), []);
+});
+
+test('System Agent partial write and sync failures never publish incomplete instructions and prepare can retry', async t => {
+  const template = await readFile(new URL('../../../packages/dev-environment/assets/system-agent/AGENTS.md', import.meta.url), 'utf8');
+  for (const failure of ['write', 'sync']) await t.test(failure, async t => {
+    const f = await fixture(t); await claim(f.paths);
+    const directory = path.join(f.paths.dataHome, 'system-agent'); const filename = path.join(directory, 'AGENTS.md');
+    let faultInjected = false;
+    const openFile = async (temporary, flags) => {
+      const handle = await open(temporary, flags);
+      const fail = async () => {
+        assert.ok((await readFile(temporary, 'utf8')).length > 0);
+        await assert.rejects(lstat(filename), { code: 'ENOENT' });
+        faultInjected = true;
+        throw Object.assign(Error('injected ' + failure + ' failure'), { code: 'EIO' });
+      };
+      return {
+        writeFile: async content => { await handle.writeFile(failure === 'write' ? content.slice(0, 17) : content); if (failure === 'write') await fail(); },
+        sync: async () => { if (failure === 'sync') await fail(); await handle.sync(); },
+        close: () => handle.close(),
+      };
+    };
+    await assert.rejects(prepareSystemAgent(f.paths, { openFile }), { code: 'system_agent_directory', message: /EIO/ });
+    assert.equal(faultInjected, true);
+    assert.deepEqual(await readdir(directory), []);
+    await prepareSystemAgent(f.paths);
+    assert.equal(await readFile(filename, 'utf8'), template);
+    assert.equal((await lstat(filename)).nlink, 1);
+  });
+});
+
+test('System Agent atomic publication preserves instructions created during preparation', async t => {
+  const f = await fixture(t); await claim(f.paths);
+  const directory = path.join(f.paths.dataHome, 'system-agent'); const filename = path.join(directory, 'AGENTS.md');
+  const openFile = async (temporary, flags) => {
+    const handle = await open(temporary, flags);
+    return {
+      writeFile: content => handle.writeFile(content), sync: () => handle.sync(),
+      close: async () => { await handle.close(); await writeFile(filename, 'User instructions', { flag: 'wx' }); },
+    };
+  };
+  await assert.rejects(prepareSystemAgent(f.paths, { openFile }), { code: 'system_agent_directory', message: /EEXIST/ });
+  assert.deepEqual(await readdir(directory), ['AGENTS.md']);
+  await prepareSystemAgent(f.paths);
+  assert.equal(await readFile(filename, 'utf8'), 'User instructions');
 });
 
 test('preview of an absent root is read-only; unknown directories cannot be claimed or reset', async t => {

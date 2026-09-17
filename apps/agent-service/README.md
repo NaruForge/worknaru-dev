@@ -10,7 +10,7 @@
 
 ## Agent 서비스
 
-`openSystem({})`은 서버가 주입한 전용 cwd·지침 검사를 사용한다. 최초 열기는 기본 Codex 모델로 별도 Agent를 만들며 메시지는 보내지 않는다. 기존 상태 문서의 `creations.worknaru-system-agent`와 Provider 라벨(`worknaru-source`, `worknaru-create-id`, `worknaru-role`)을 함께 확인한다. 생성 직전 예약을 저장하고 동시 열기를 직렬화하며, 응답 유실은 라벨로 복구하되 결과가 없거나 모순되면 중복 생성하지 않는다. 정상 재시작은 연결을 재사용한다. 일반 생성은 예약 ID·role 입력을 거부한다. System Agent는 standalone 대화만 받으며 개별 보관은 제공하지 않는다.
+`openSystem({})`은 서버가 주입한 전용 cwd·지침 검사를 사용한다. 최초 열기는 기본 Codex 모델로 별도 Agent를 만들며 메시지는 보내지 않는다. 기존 상태 문서의 `creations['worknaru:system-agent']`와 Provider 라벨(`worknaru-source`, `worknaru-create-id`, `worknaru-role`)을 함께 확인한다. 내부 ID는 일반 생성 ID 문법 밖에 두므로 기존 일반 Agent의 생성 기록과 충돌하지 않는다. 생성 직전 예약을 저장하고 동시 열기를 직렬화하며, 응답 유실은 라벨로 복구하되 결과가 없거나 모순되면 중복 생성하지 않는다. 정상 재시작은 연결을 재사용한다. 일반 생성은 내부 ID·role 입력을 거부한다. System Agent는 standalone 대화만 받으며 개별 보관은 제공하지 않는다.
 
 제품 파일 준비는 setup/start가 수행하고 서비스의 열기·전송 검사는 읽기 전용이다. [제품 기본 지침](../../packages/dev-environment/assets/system-agent/AGENTS.md)은 개발용 루트 지침과 별도 자산이다. Codex는 지정 cwd의 지침을 읽고 개인 전역 지침을 함께 사용할 수 있다. `pnpm ui:live`는 새 System Agent의 실제 질문·응답과 Provider rollout에 기록된 지침 입력, 별도 Agent/Provider ID·cwd, 반복 열기·정상 재시작을 확인한다. 전체 지침 원문·개인 Provider 파일은 공개 증거에 포함하지 않는다.
 

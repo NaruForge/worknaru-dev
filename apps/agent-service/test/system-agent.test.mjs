@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAgentService, initialAgentState } from '@worknaru/core/agent-service';
 
-function fixture(t) {
-  let state = initialAgentState();
+function fixture(t, initial = initialAgentState()) {
+  let state = structuredClone(initial);
   const agents = new Map(); const calls = [];
   const driver = {
     list: async () => structuredClone([...agents.values()]), get: async id => structuredClone(agents.get(id)),
@@ -54,6 +54,30 @@ test('lost creation acknowledgement recovers from matching labels, absent result
   assert.equal(f.calls.length, 1);
 });
 
+test('existing v2 normal creation IDs remain independent of the internal System Agent ID', async t => {
+  for (const acknowledged of [true, false]) await t.test(acknowledged ? 'acknowledged creation' : 'lost acknowledgement', async t => {
+    const input = { id: 'worknaru-system-agent', name: 'Existing normal Agent', cwd: '/checkout', model: 'model' };
+    const initial = initialAgentState();
+    assert.equal(initial.version, 2);
+    initial.creations[input.id] = { signature: JSON.stringify([input.name, input.cwd, input.model]), agentId: acknowledged ? 'existing-normal' : null };
+    const f = fixture(t, initial);
+    const normal = { ...input, id: 'existing-normal', createId: input.id, managed: true, permissions: [], archivedAt: null };
+    f.agents.set(normal.id, structuredClone(normal));
+    const service = await f.start();
+    const system = await service.openSystem();
+    assert.equal(system.createId, 'worknaru:system-agent');
+    assert.notEqual(system.id, normal.id);
+    assert.deepEqual(f.state().creations[input.id], initial.creations[input.id]);
+    assert.deepEqual(await service.create(input), normal);
+    await service.close();
+    const restarted = await f.start();
+    assert.equal((await restarted.openSystem()).id, system.id);
+    assert.deepEqual(await restarted.create(input), normal);
+    assert.deepEqual(f.agents.get(normal.id), normal);
+    assert.equal(f.calls.length, 1);
+  });
+});
+
 test('provider readiness and invalid instructions fail before reserving creation', async t => {
   const f = fixture(t); const service = await f.start();
   f.driver.options = async () => ({ available: false, models: [] });
@@ -67,7 +91,7 @@ test('provider readiness and invalid instructions fail before reserving creation
 test('reserved identity, supplied cwd, label mismatch and non-standalone messages are rejected', async t => {
   const f = fixture(t); const service = await f.start();
   await assert.rejects(service.openSystem({ cwd: '/checkout' }), { code: 'invalid_input' });
-  await assert.rejects(service.create({ id: 'worknaru-system-agent', name: 'fake', cwd: '/checkout', model: 'model' }), { code: 'invalid_input' });
+  await assert.rejects(service.create({ id: 'worknaru:system-agent', name: 'fake', cwd: '/checkout', model: 'model' }), { code: 'invalid_input' });
   await assert.rejects(service.create({ id: 'fake', role: 'system', name: 'fake', cwd: '/checkout', model: 'model' }), { code: 'invalid_input' });
   const opened = await service.openSystem();
   await assert.rejects(service.send({ agent: opened.id, id: 'context', text: 'hello', target: { type: 'workspace', workspaceId: '11111111-1111-4111-8111-111111111111' } }), { code: 'invalid_input' });

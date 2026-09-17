@@ -1,4 +1,5 @@
-import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { link, lstat, mkdir, open, readFile, realpath, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { DataError, samePath, validateDataLocation } from './paths.mjs';
 
@@ -27,7 +28,7 @@ export async function validateSystemAgentDirectory(paths) {
 }
 
 // Called only during setup/start, with the owned data operation lock held.
-export async function prepareSystemAgent(paths) {
+export async function prepareSystemAgent(paths, { openFile = open } = {}) {
   await validateDataLocation(paths);
   const directory = path.join(paths.dataHome, 'system-agent');
   try {
@@ -40,8 +41,14 @@ export async function prepareSystemAgent(paths) {
     const file = await lstat(filename).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
     if (!file) {
       const template = await readFile(new URL('./assets/system-agent/AGENTS.md', import.meta.url), 'utf8');
-      const handle = await open(filename, 'wx');
-      try { await handle.writeFile(template); await handle.sync(); } finally { await handle.close(); }
+      const temporary = path.join(directory, '.AGENTS-' + randomUUID() + '.tmp');
+      const handle = await openFile(temporary, 'wx');
+      try {
+        try { await handle.writeFile(template); await handle.sync(); } finally { await handle.close(); }
+        // Publish only complete bytes; link fails if another file appeared meanwhile.
+        // Unlike rename, this never replaces an existing instruction file.
+        await link(temporary, filename);
+      } finally { await unlink(temporary); }
     }
     return await validateSystemAgentDirectory(paths);
   } catch (error) {
