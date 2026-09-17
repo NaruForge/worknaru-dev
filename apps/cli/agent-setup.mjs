@@ -11,7 +11,6 @@ export async function setupAgents(paths, { build = buildDevelopment } = {}) {
   await assertNoLegacy(paths);
   await assertStorage(paths);
   if ((await inspect(paths)).state !== 'stopped') throw new LocalError('operation_busy', '먼저 pnpm exec worknaru dev stop으로 개발 환경을 종료해 주세요.');
-  if (await agentsEnabled(paths)) return { ready: true, reused: true, next: 'pnpm exec worknaru dev start' };
   const checks = await prerequisites();
   if (checks.some(c => !c.ok)) throw new LocalError('prerequisite_failed', 'doctor로 의존성과 Node·pnpm을 확인해 주세요.');
   if (await configState(paths) === 'conflict') throw new LocalError('configuration_conflict', '기존 설정이 기본 개발 설정과 다릅니다. 설정을 덮어쓰지 않았습니다.');
@@ -22,6 +21,7 @@ export async function setupAgents(paths, { build = buildDevelopment } = {}) {
     await assertStorage(paths, { claim: true, ignoreLock: true });
     await prepareDataDirectories(paths);
     if ((await inspect({ ...paths, lock: `${paths.lock}.ignored` })).state !== 'stopped') throw new LocalError('operation_busy', '개발 환경 상태가 변경됐습니다.');
+    if (await agentsEnabled(paths)) return { ready: true, reused: true, next: 'pnpm exec worknaru dev start' };
     const before = existsSync(paths.config) ? await readFile(paths.config, 'utf8') : null;
     await mkdir(path.join(root, '.local'), { recursive: true });
     const releaseBuild = await acquireLock(path.join(root, '.local/dev-build.lock'));

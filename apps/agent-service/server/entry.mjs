@@ -8,12 +8,14 @@ import { AgentError } from '@worknaru/runtime';
 import { openStore } from './store.mjs';
 import { resolveDataPaths, directoryQuery, validateDirectory as validateWorkingDirectory } from '@worknaru/dev-environment/paths';
 import { assertStorage } from '@worknaru/dev-environment/storage';
+import { validateSystemAgentDirectory } from '@worknaru/dev-environment/system-agent';
 
 export async function initialize(workspace) {
   // The owned launcher supplies these only to its dedicated daemon subprocess.
   const root = process.env.WORKNARU_AGENT_DATA_ROOT;
   if (!root || !path.isAbsolute(root) || !process.env.WORKNARU_REPOSITORY_ROOT) throw new Error('Missing owned launcher configuration');
-  await assertStorage(resolveDataPaths({ WORKNARU_DATA_DIR: root }, process.env.WORKNARU_REPOSITORY_ROOT));
+  const paths = resolveDataPaths({ WORKNARU_DATA_DIR: root }, process.env.WORKNARU_REPOSITORY_ROOT);
+  await assertStorage(paths);
   const stateFile = process.env.WORKNARU_AGENT_STATE_FILE;
   if (!stateFile || path.dirname(stateFile) !== path.normalize(root)) throw new Error('Missing owned state path');
   const serverId = (await readFile(path.join(root, 'server-id'), 'utf8')).trim();
@@ -31,6 +33,10 @@ export async function initialize(workspace) {
   try {
     store = openStore(stateFile);
     service = createAgentService({ driver, store, resolveContext: createContextResolver(workspace),
+      systemAgent: { cwd: path.join(root, 'system-agent'), async validate() {
+        try { await validateSystemAgentDirectory(paths); }
+        catch (error) { throw new AgentError(error.code, error.message); }
+      } },
       async validateDirectory(directory) {
         try { await validateWorkingDirectory(directory); }
         catch (error) { throw new AgentError('invalid_directory', error.message); }

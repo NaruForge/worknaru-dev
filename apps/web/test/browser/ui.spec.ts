@@ -9,6 +9,38 @@ async function select(page: Page) {
   await expect(page.getByLabel('메시지', { exact: true })).toBeVisible();
 }
 
+for (const width of [390, 768, 1440]) {
+  test(`System Agent keyboard entry and standalone conversation ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await story(page, 'empty');
+    const open = page.getByRole('button', { name: 'System Agent 열기' });
+    await open.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'System Agent', exact: true })).toBeVisible();
+    await expect(page.getByText('제품 안내', { exact: true })).toBeVisible();
+    const message = page.getByLabel('메시지', { exact: true });
+    await message.fill('WorkNaru가 무엇인가요?');
+    await page.getByRole('button', { name: '보내기', exact: true }).click();
+    await expect(
+      page.getByLabel('대화 기록').getByText('WorkNaru가 무엇인가요?', { exact: true }),
+    ).toBeVisible();
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    if (width < 768) await page.getByRole('button', { name: 'Agent 목록으로' }).click();
+    await open.click();
+    await expect(page.getByRole('heading', { name: 'System Agent', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '보관', exact: true })).toHaveCount(0);
+  });
+}
+
 for (const width of [390, 1440]) {
   test(`incoming permission and queue follow the bottom, archive restores focus ${width}`, async ({
     page,

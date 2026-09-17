@@ -1,5 +1,7 @@
 # Worknaru Web UI
 
+Agent 화면의 **System Agent 열기**는 제품 소개와 요청 이해를 위한 독립 대화를 연다. 최초 준비는 CLI의 [System Agent 초기 준비](../cli/README.md#system-agent-초기-준비)를 따른다. 별도 작업 폴더 입력이나 Workspace/Project 선택은 필요 없으며, 기존 Agent 목록·초안·대화는 유지한다. 현재 System Agent에는 Module 생성/실행·위임 도구가 없다. 열기만으로 메시지를 보내지 않으며, 반복 열기·정상 재시작에서 같은 세션을 사용한다.
+
 Codex Agent 생성·대화·보관, Workspace·Project 생성·조회·선택과 내장 Module 실행·Run 조회를 제공한다. CLI와 같은 Daemon의 데이터를 사용한다. 앱 탐색의 **Agent / Workspace / Module / 설정**으로 이동하며 **설정 → 연결**에서 Daemon 상태를 조회한다.
 
 ## Workspace·Project

@@ -20,7 +20,7 @@ const management = defineRpc({ name: 'development.data',
 });
 
 const contract = defineRpc({ name: 'agents.execute',
-  input: z.object({ operation: z.enum(['health', 'options', 'directories', 'create', 'list', 'show', 'history', 'send', 'requests', 'cancel', 'discard', 'resume', 'permission', 'archivePreview', 'archive', 'settings', 'saveSettings']), input: z.record(z.string(), z.unknown()) }).strict(),
+  input: z.object({ operation: z.enum(['openSystem', 'health', 'options', 'directories', 'create', 'list', 'show', 'history', 'send', 'requests', 'cancel', 'discard', 'resume', 'permission', 'archivePreview', 'archive', 'settings', 'saveSettings']), input: z.record(z.string(), z.unknown()) }).strict(),
   output: z.discriminatedUnion('ok', [z.object({ ok: z.literal(true), data: z.unknown() }),
     z.object({ ok: z.literal(false), error: z.object({ code: z.string(), message: z.string() }) })]) });
 

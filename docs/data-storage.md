@@ -26,6 +26,8 @@ Worknaru의 전용 실행 데이터, 실제 작업 파일, 개인 Provider 환�
 
 작업 폴더는 Daemon이 실행되는 컴퓨터의 경로다. 새 Agent에는 기본 작업 폴더가 없으며 사용자가 명시한다. 실제 작업 프로젝트는 전용 데이터 루트 밖에 두어 수명을 분리한다.
 
+앱이 관리하는 System Agent만 `D/system-agent`를 고정 작업 폴더로 사용한다. 이는 일반 사용자 작업 폴더 원칙의 제한된 예외이며 데이터 루트 전체를 작업 대상으로 지정하지 않는다. 기본 지침 `AGENTS.md`는 제품의 별도 텍스트 자산에서 초기 준비 시 배치하고, 정상 setup/start는 기존 파일과 사용자 수정을 보존한다. 누락은 보완하지만 빈 파일·링크·충돌은 오류로 알린다. System Agent 생성 연결은 기존 `agent-state.sqlite`의 예약 생성 요청과 Paseo Agent 라벨에 저장하며 이름으로 식별하지 않는다.
+
 `worknaru-domain.sqlite`는 Worknaru 업무 구조의 원본이다. Agent 대화·파일·Paseo의 project/workspace를 복제하지 않으며 브라우저 Local Storage에도 저장하지 않는다. 소유 checkout과 `ready` 마커를 확인한 서버 플러그인만 이 경로에 DB를 연다. 처음 사용하면 빈 스키마를 생성하되 Workspace·Project 레코드는 자동 생성하지 않는다. 알 수 없는 스키마는 자동 삭제·변환하지 않고 오류로 중단한다. [도메인 저장 구현](../apps/agent-service/server/workspace-store.mjs)
 
 `module-runs.sqlite`는 내장 Module의 실행 기록을 보관한다. Module 정의는 서버 코드이며 DB에 실행 코드나 사용자 설치 패키지를 저장하지 않는다. 같은 Module을 실행한 서로 다른 업무의 입력·결과는 각각의 Run에 남는다. 목록은 정확한 실행 맥락으로 구분하며 접근 권한 경계를 뜻하지 않는다. 재시작 시 accepted/running은 uncertain으로 기록하고 자동 실행하지 않는다. 입력 원문과 결과는 전용 DB에 남으므로 사용자가 민감한 텍스트를 입력하면 그 내용도 저장된다.
@@ -99,6 +101,8 @@ D/
 ├── agents/
 │   └── <작업 폴더별 디렉터리>/
 │       └── <Agent ID>.json        # Agent 메타데이터·Provider 세션 연결 정보
+├── system-agent/                 # 앱이 관리하는 System Agent 전용 cwd
+│   └── AGENTS.md                 # 제품 배경·역할 지침, 기존 파일 보존
 ├── projects/                      # Paseo 실행 기반의 프로젝트·workspace 등록 정보
 ├── agent-state.sqlite             # 전송 설정·요청·대기열 상태
 ├── agent-state.sqlite-wal         # SQLite가 필요할 때 생성하는 부속 파일
@@ -135,6 +139,7 @@ D/
 | 대상 | 탭·터미널 종료 | 정상 `dev stop` 후 `dev start` | 전체 초기화 |
 | --- | --- | --- | --- |
 | 전용 설정·서버 ID·인증 키·Agent 등록·대기열·공유 전송 설정 | 유지 | 유지 | 삭제 후 새 setup/start에서 새로 생성 |
+| System Agent 작업 폴더·지침·생성 식별 연결 | 유지 | 같은 폴더·지침·Agent/Provider 세션 재사용 | 전용 영역과 연결 삭제, 다음 setup/start가 기본 지침 재배치 |
 | Worknaru Workspace·Project | 유지 | 같은 ID·소속·생성 시각으로 유지 | DB·부속 파일 삭제, 다음 시작 시 빈 저장소 |
 | Module Run | 유지 | 완료 기록 보존, 미완료는 uncertain으로 보존 | DB·부속 파일 삭제, 다음 시작 시 빈 저장소 |
 | 전용 로그 | 유지 | 다음 실행에서 추가·갱신 (`build.log`는 빌드 시 덮어씀) | 삭제 |

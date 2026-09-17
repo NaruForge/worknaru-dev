@@ -1,5 +1,7 @@
 # Worknaru Runtime 계약
 
+Agent 계약의 `openSystem({})`은 서버가 정한 제품 System Agent를 열고 `Agent.role: 'system'`으로 구분한다. cwd·모델·이름을 클라이언트 입력으로 받지 않으며 일반 `create`와 분리한다. 대화는 기존 `send`의 standalone target을 사용한다.
+
 Core가 실행 기반에 요청하는 기능과 반환 형식을 정의한다. `Runtime.getDaemonStatus()`, Agent 작업, Workspace·Project와 Module 계약이 있으며 외부 SDK 의존성이 없다. [ADR 0005](../../docs/adr/0005-local-development-cli-boundary.md)의 Runtime 경계를 유지한다.
 
 ## Workspace·Project

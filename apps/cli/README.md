@@ -141,6 +141,14 @@ Provider가 명시적 action을 제공하면 `--action <ID>`를 함께 쓴다. �
 
 기능 설계·검증 근거: [ADR 0006](../../docs/adr/0006-agent-lifecycle-and-durable-queue.md), [Issue #17](https://github.com/NaruForge/worknaru-dev/issues/17).
 
+### System Agent 초기 준비
+
+`pnpm exec worknaru agent setup`과 정지 상태의 `dev start`는 선택된 데이터 루트의 `system-agent/AGENTS.md`를 준비한다. 기존 설치에 setup을 다시 실행해도 누락된 파일을 보완하며, 기존 내용과 사용자 수정은 덮어쓰지 않는다. `doctor`·상태 조회는 생성하지 않는다. 빈 파일, 파일/폴더 충돌, 링크, 읽기/쓰기 실패와 기본 파일을 가리는 `AGENTS.override.md`는 오류로 안내한다. 개인 Provider 설정이나 인증 파일은 변경하지 않는다.
+
+Agent 설정과 Daemon 시작을 마친 뒤 Web의 Agent 화면에서 **System Agent 열기**를 누른다. 작업 폴더·Workspace·Project를 지정할 필요가 없다. 최초 열기에서 기본 Codex 모델로 독립 Agent를 만들고, 메시지는 직접 보낼 때만 실행한다. “WorkNaru가 무엇이고, 너는 여기서 어떤 역할을 하니?”로 제품 소개를 확인할 수 있다. Codex 설치·로그인이 필요하다.
+
+반복 열기와 정상 재시작은 같은 System Agent를 사용한다. 생성 결과가 불명확하거나 저장 식별이 충돌하면 중복 생성하지 않고 오류를 알린다. 앱의 고정 진입점이므로 개별 보관하지 않으며, 외부 클라이언트에서 보관했다면 자동 복구하거나 새 Agent로 대체하지 않는다. 전체 reset은 이 폴더·사용자 수정·식별 연결도 삭제한다. 개인 Provider 자체 기록은 기존처럼 보존한다. [저장 수명](../../docs/data-storage.md)
+
 ## 사용자 데이터 전체 초기화
 
 파일별 저장 위치와 종료·초기화 시 보존 여부는 [데이터 저장 위치](../../docs/data-storage.md#종료보관초기화-시-남는-것)에서 확인한다.

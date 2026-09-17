@@ -35,6 +35,8 @@ test('snapshot reports actual locations, presence and ownership without file con
   assert.equal(value.source, 'default'); assert.equal(value.dataRoot, f.paths.dataHome);
   assert.equal(value.items.find(x => x.id === 'config').state, 'present');
   assert.equal(value.items.find(x => x.id === 'queue').state, 'missing');
+  assert.equal(value.items.find(x => x.id === 'systemAgent').reset, true);
+  assert.equal(value.items.find(x => x.id === 'systemAgent').path, path.join(f.paths.dataHome, 'system-agent'));
   assert.equal(value.items.find(x => x.path === f.working).reset, false);
   assert.ok(!JSON.stringify(value).includes('DO-NOT-EXPOSE-SECRET'));
   await f.service.open({ id: 'config' }); assert.deepEqual(f.opened, [f.paths.dataHome]);

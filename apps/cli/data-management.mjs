@@ -31,6 +31,7 @@ export function createDataManagement({ paths, serverId, verifyOwner, listAgents,
       ['identity', '서버 ID', paths.serverId, 'file', 'Paseo', '실행 환경 식별자'],
       ['keys', 'Daemon 인증 키', path.join(paths.dataHome, 'daemon-keypair.json'), 'file', 'Paseo', '인증 키 파일의 위치만 표시'],
       ['agents', 'Agent 등록 정보', path.join(paths.dataHome, 'agents'), 'directory', 'Paseo', '이름·모델·작업 폴더·Provider 세션 연결'],
+      ['systemAgent', 'System Agent 작업 폴더', path.join(paths.dataHome, 'system-agent'), 'directory', 'Worknaru', '제품 지침·앱 전용 작업 영역. 전체 초기화 시 삭제됩니다.'],
       ['projects', 'Paseo 프로젝트 등록', path.join(paths.dataHome, 'projects'), 'directory', 'Paseo', '실행 기반의 프로젝트·workspace 등록'],
       ['queue', '메시지·대기열 DB', paths.agentState, 'file', 'Worknaru', '전송 요청·결과·공유 설정. 전체 대화 기록 DB가 아닙니다.'],
       ['wal', 'DB 변경 기록', `${paths.agentState}-wal`, 'file', 'SQLite', 'DB 부속 파일'],
@@ -48,7 +49,7 @@ export function createDataManagement({ paths, serverId, verifyOwner, listAgents,
     let projectsError = null;
     try {
       const agents = await listAgents();
-      const folders = [...new Set(agents.map(agent => agent.cwd))];
+      const folders = [...new Set(agents.map(agent => agent.cwd))].filter(cwd => !samePath(cwd, path.join(paths.dataHome, 'system-agent')));
       for (const cwd of folders) specifications.push([
         `working-${createHash('sha256').update(cwd).digest('hex').slice(0, 24)}`, 'Agent 실제 작업 폴더', cwd, 'directory', '사용자 / Agent',
         agents.filter(agent => agent.cwd === cwd).map(agent => agent.name).join(', '), containsPath(paths.dataHome, cwd),

@@ -18,6 +18,8 @@ Core는 Paseo SDK, 구체적인 Adapter, 명령행 옵션, 환경 변수와 화�
 
 `agents`는 Agent 도메인에 한정된 명시적인 메서드 집합이다. 공개 `execute(operation, input)`이나 임의 문자열 dispatcher를 제공하지 않는다. Workspace·Project와 Module은 각각 독립 도메인 API를 사용한다. 자세한 Agent 경계는 [ADR 0008](../../docs/adr/0008-native-paseo-send-settings.md)을 따른다.
 
+`agents.openSystem()`은 주입된 서버의 `systemAgent: { cwd, validate }`와 기존 생성 요청 저장을 사용해 제품 System Agent를 한 번 생성하거나 다시 연다. 파일 배치는 앱의 초기 준비가 맡고 Core는 직접 파일을 읽지 않는다. System Agent 입력·식별·standalone 경계와 동시 생성 정책은 [전용 테스트](../../apps/agent-service/test/system-agent.test.mjs)로 확인한다.
+
 Node 실행부는 별도 export `@worknaru/core/agent-service`의 `createAgentService({ driver, store, validateDirectory, resolveContext })`를 사용한다. [Agent 플러그인 앱](../../apps/agent-service/README.md)이 저장소·폴더 검증과 [실행 Driver](../paseo-adapter/src/agent-driver.mjs)를 주입한다. Core 정책은 이름·ID 해석, 생성/전송 멱등성, FIFO, 권한 대기, 실패 시 정지, 보관 영향 확인을 담당한다. 저장 파일이나 DB 구현을 직접 가져오지 않는다. 브라우저 빌드에 실행부나 SQLite를 포함하지 않는다.
 
 설정과 요청은 저장 성공 후에만 실행한다. Agent별 직렬 처리와 여러 Agent의 보관 잠금으로 동시 요청을 조정한다. 수신 확인이 불명확한 요청을 자동 재전송하지 않는다. 보관은 확인 토큰의 영향 범위와 현재 상태를 다시 대조한다. Module·Workspace·Project의 [제품 계약](../../docs/architecture.md#제품-개념과-현재-구현의-관계)을 따른다. Workspace·Project 생성·조회와 내장 Module 실행은 아래 API가 처리하며 설정 상속·수정·삭제는 후속 범위다.

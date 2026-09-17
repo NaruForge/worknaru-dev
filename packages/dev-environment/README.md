@@ -5,12 +5,15 @@ CLI와 Paseo 검증 앱이 공유하는 Node 전용 라이브러리다. 소스 `
 | 모듈 | 책임 |
 | --- | --- |
 | [paths.mjs](paths.mjs) | 외부 단일 루트·ASCII 경로·실제 부모·저장소 중첩 검사, 잠금 안에서 디렉터리 준비·쓰기 검사 |
+| [system-agent.mjs](system-agent.mjs) | 초기 준비에서 전용 cwd·[제품 지침 자산](assets/system-agent/AGENTS.md) 배치, 기존 파일 보존과 읽기 전용 실행 검증 |
 | [storage.mjs](storage.mjs) | 전용 루트 마커·저장 구조 버전·소유 checkout 검사, 공통 작업 잠금 |
 | [testing.mjs](testing.mjs) | 테스트 전용 외부 실행 디렉터리 생성 |
 | [config.mjs](config.mjs) | 고정 주소·버전·개발 설정과 읽기 전용 설정 비교 |
 | [control.mjs](control.mjs) | 기존 Windows named pipe의 요청·응답과 실행기 소유권 대조. CLI와 서버 플러그인이 공유 |
 | [daemon.mjs](daemon.mjs) | 고정 Paseo supervisor 실행, 소유권·준비 확인, 정상 종료와 자신의 자식 실패 정리 |
 | [web-files.mjs](web-files.mjs) | 공개 웹 자산만 임시 폴더에 복사하고 자신의 폴더 정리 |
+
+System Agent 기본 지침은 같은 디렉터리의 임시 파일에 기록·동기화·닫기를 마친 뒤 hard link로 최종 이름에 배치하고 임시 이름을 제거한다. 기존 최종 파일이 있으면 교체하지 않는다. 쓰기·동기화 실패 시 임시 파일을 정리하므로 다음 초기 준비가 완전한 기본 지침을 다시 배치할 수 있다.
 
 CLI 명령·출력·빌드·잠금·백그라운드 제어 채널은 [CLI 앱](../../apps/cli/README.md)이 담당한다. SDK 비교 검증과 터미널에 연결된 수동 웹 실행은 [paseo-dev 앱](../../apps/paseo-dev/README.md)이 담당한다. 이전 앱의 `paths.mjs`, `daemon.mjs`, `web-files.mjs`는 호환 re-export다.
 

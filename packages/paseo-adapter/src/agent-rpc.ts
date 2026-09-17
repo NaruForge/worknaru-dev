@@ -41,6 +41,7 @@ export function agentRpc(options: PaseoAdapterOptions): AgentAPI {
     } finally { await client.close().catch(() => {}); }
   };
   return {
+    openSystem: (input = {}) => invoke('openSystem', input),
     health: (input = {}) => invoke('health', input),
     options: input => invoke('options', input),
     directories: input => invoke('directories', input),
