@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { lstat, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { link, lstat, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import test from 'node:test';
@@ -12,6 +12,7 @@ import { resetData, resetPlan, verifyStopped } from '../data-reset.mjs';
 import { initialAgentState } from '@worknaru/core/agent-service';
 import { openStore } from '../../agent-service/server/store.mjs';
 import { registry, seedRegistry, storedState, resetService } from './reset-state-fixture.mjs';
+import { prepareSystemAgent, validateSystemAgentDirectory } from '../../../packages/dev-environment/system-agent.mjs';
 
 const exec = promisify(execFile);
 const stopped = async () => {};
@@ -36,6 +37,67 @@ test('external defaults and overrides retain conservative path rules', { skip: p
   }
   assert.throws(() => resolveDataPaths({ WORKNARU_DATA_DIR: f.repository }, f.repository), /outside/);
   assert.throws(() => resolveDataPaths({ WORKNARU_DATA_DIR: f.directory }, f.repository), /outside/);
+});
+
+test('System Agent setup repairs missing instructions, preserves edits and reset only removes owned data', async t => {
+  const f = await fixture(t);
+  const targets = [f.paths];
+  if (process.platform === 'win32') targets.push(resolveDataPaths({ LOCALAPPDATA: f.directory }, f.repository));
+  const external = path.join(f.directory, 'private-provider-note');
+  await writeFile(external, 'unchanged');
+  for (const paths of targets) {
+    await claim(paths); await prepareDataDirectories(paths);
+    const directory = path.join(paths.dataHome, 'system-agent'); const filename = path.join(directory, 'AGENTS.md');
+    const template = await readFile(filename, 'utf8');
+    assert.match(template, /WorkNaru System Agent/);
+    assert.doesNotMatch(template, /Core|Runtime|Git|Issue|Workspace|Project/);
+    await writeFile(filename, 'My customized System Agent instructions');
+    await prepareDataDirectories(paths);
+    assert.equal(await readFile(filename, 'utf8'), 'My customized System Agent instructions');
+    await rm(filename); await prepareDataDirectories(paths);
+    assert.equal(await readFile(filename, 'utf8'), template);
+    await resetData(paths, { stopped });
+    await assert.rejects(lstat(directory), { code: 'ENOENT' });
+    await claim(paths); await prepareDataDirectories(paths);
+    assert.equal(await readFile(filename, 'utf8'), template);
+  }
+  assert.equal(await readFile(external, 'utf8'), 'unchanged');
+});
+
+test('System Agent refuses empty files, wrong file types, overrides and directory links', async t => {
+  const f = await fixture(t); await claim(f.paths); await prepareDataDirectories(f.paths);
+  const directory = path.join(f.paths.dataHome, 'system-agent'); const filename = path.join(directory, 'AGENTS.md');
+  await writeFile(filename, ' \n');
+  await assert.rejects(prepareSystemAgent(f.paths), { code: 'system_agent_directory' });
+  assert.equal(await readFile(filename, 'utf8'), ' \n');
+  await rm(filename); await mkdir(filename);
+  await assert.rejects(prepareSystemAgent(f.paths), { code: 'system_agent_directory' });
+  await rm(filename, { recursive: true }); await prepareSystemAgent(f.paths);
+  await writeFile(path.join(directory, 'AGENTS.override.md'), 'override');
+  await assert.rejects(validateSystemAgentDirectory(f.paths), { code: 'system_agent_directory' });
+  await rm(directory, { recursive: true });
+  const outside = path.join(f.directory, 'outside'); await mkdir(outside);
+  await symlink(outside, directory, process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(prepareSystemAgent(f.paths), { code: 'system_agent_directory' });
+  assert.deepEqual(await readdir(outside), []);
+  await rm(directory);
+  await mkdir(directory);
+  const externalFile = path.join(outside, 'AGENTS.md'); await writeFile(externalFile, 'External instructions');
+  await link(externalFile, filename);
+  await assert.rejects(prepareSystemAgent(f.paths), { code: 'system_agent_directory' });
+  assert.equal(await readFile(externalFile, 'utf8'), 'External instructions');
+});
+
+test('System Agent instruction write failure is reported without replacing files', { skip: process.platform !== 'win32' }, async t => {
+  const f = await fixture(t); await claim(f.paths); await prepareDataDirectories(f.paths);
+  const directory = path.join(f.paths.dataHome, 'system-agent');
+  await rm(path.join(directory, 'AGENTS.md'));
+  const { stdout } = await exec('whoami', ['/user', '/fo', 'csv', '/nh'], { windowsHide: true });
+  const sid = stdout.match(/S-1-[0-9-]+/)[0];
+  await exec('icacls', [directory, '/deny', '*' + sid + ':(WD,AD)'], { windowsHide: true });
+  try { await assert.rejects(prepareSystemAgent(f.paths), { code: 'system_agent_directory' }); }
+  finally { await exec('icacls', [directory, '/remove:d', '*' + sid], { windowsHide: true }); }
+  assert.deepEqual(await readdir(directory), []);
 });
 
 test('preview of an absent root is read-only; unknown directories cannot be claimed or reset', async t => {

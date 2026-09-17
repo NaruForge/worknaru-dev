@@ -17,7 +17,7 @@ Worknaru는 누구나 자신의 업무를 AI 기반 Module로 만들고, 그것�
 | 업무 구조 | Workspace → Project 소속, 독립 Module의 참조·사용 | Workspace·Project 생성·목록·단건 조회 API, SQLite 저장과 CLI·Web 진입점 구현. 수정·삭제·이동·Module 관리는 후속 범위 |
 | Module 실행 | Standalone / Workspace / Project의 명시적 실행 맥락 | 내장 text-stats 실행·Run 저장·CLI/Web 실행·조회 구현. AI 실행·사용자 설치·패키징·버전 배포·취소/재개는 후속 범위 |
 | Agent | 직접 대화 및 Module 개발·실행에 참여할 수 있는 실행 대상 | Core는 Agent API·상태 조회와 요청별 명시적 업무 컨텍스트를 제공한다. Agent를 사용하는 Module 실행·Agent의 영구 Project 소속은 미구현 |
-| System Agent | 앱 수준의 안내·작업 진입점 | 전용 기능·cwd·세션·위임 구조는 후속 설계 |
+| System Agent | 앱 수준의 안내·작업 진입점 | 전용 cwd·제품 지침·독립 세션과 기존 Agent 화면의 열기/대화 구현. 현재는 제품 소개·요청 이해만 제공하며 Module 도구·위임은 후속 범위 |
 
 ### 업무 구조와 Project 선택
 
@@ -73,6 +73,8 @@ Module을 개발하는 Project에는 개발 자료·소스·결정을 모을 수
 Agent와 직접 대화하는 데 Module·Project·Workspace 생성을 요구하지 않는다. Agent는 Module 개발을 돕거나 실행에 참여할 수 있으며 필요한 맥락·권한은 역할과 실행마다 다를 수 있다. Module은 Agent 사용·전용 화면·한 번의 함수 호출·일회성 완료를 필수 조건으로 하지 않고, 서비스 처리와 사용자의 검수·수정을 포함할 수 있다.
 
 System Agent는 앱 수준에서 간단한 업무를 단독 실행으로 안내하고 맥락을 축적할 필요가 있을 때 Project를 제안한다. 제품 상태 변경은 제공된 Worknaru API·도구로 수행하며 앱 수준 역할을 모든 업무 자료에 대한 접근 권한으로 해석하지 않는다. 해당 도메인의 생성·실행 기능은 API가 구현된 뒤 제공할 수 있다.
+
+현재 첫 진입점은 Web의 **System Agent 열기**다. 초기 준비가 전용 데이터 루트의 `system-agent/AGENTS.md`를 배치하고, 최초 열기에서 별도 Codex Agent를 만든다. Core의 `agents.openSystem()`이 서버가 정한 cwd와 저장된 생성 식별을 사용하며 이름이나 현재 선택한 업무로 대상을 추정하지 않는다. Workspace/Project 없이 standalone으로 대화한다. 개발 Agent의 세션·대화·저장소 지침을 복사하지 않으며, 제품 소개·요청 이해 외의 제품 도구는 제공하지 않는다. 개인 Provider 전역 설정·지침은 남을 수 있으므로 OS·계정·파일 접근 sandbox의 분리를 뜻하지 않는다. [초기 준비와 사용법](../apps/cli/README.md#system-agent-초기-준비), [저장 수명](data-storage.md)을 따른다.
 
 대화 중 Project를 만들거나 선택해도 전체 Agent 이력이 자동 편입되지 않는다. 사용자가 선택한 요약·결과를 Project에 연결해 다시 찾도록 하며 원래 대화의 소속 변경·전체 이력 복제를 전제하지 않는다. Project에 남길 자료와 Agent의 다음 실행에 제공할 맥락은 별도로 식별한다. 현재 요청·이력은 Agent 기준이며 이 연결의 복사·참조·세션·API는 후속 설계다.
 

@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { prepareSystemAgent } from './system-agent.mjs';
 
 // Paseo bundles server plugins as CommonJS, where import.meta.url is absent.
 // Only that bundled context uses the owned launcher's explicit checkout.
@@ -164,4 +165,5 @@ export async function prepareDataDirectories(paths) {
       if (handle) { await handle.close(); await unlink(probe); }
     }
   }
+  await prepareSystemAgent(paths);
 }

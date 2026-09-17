@@ -56,6 +56,29 @@ export function AgentScreen({
   const [createOrigin, setCreateOrigin] = useState<string | null>(null);
   const currentView = useRef({ active, agentId: view.agentId });
   currentView.current = { active, agentId: view.agentId };
+  const [systemBusy, setSystemBusy] = useState(false);
+  const [systemError, setSystemError] = useState('');
+  const systemGuard = useRef(false);
+  async function openSystem() {
+    if (systemGuard.current) return;
+    systemGuard.current = true;
+    setSystemBusy(true);
+    setSystemError('');
+    const origin = view.agentId;
+    try {
+      const agent = await core.agents.openSystem();
+      ui.remember(agent);
+      if (currentView.current.active && currentView.current.agentId === origin) {
+        choose(agent);
+        requestAnimationFrame(() => composer.current?.focus());
+      } else void ui.refresh();
+    } catch (error) {
+      setSystemError(messageOf(error));
+    } finally {
+      systemGuard.current = false;
+      setSystemBusy(false);
+    }
+  }
   function openCreate() {
     setCreateOrigin(view.agentId);
     setDialog('create');
@@ -227,6 +250,7 @@ export function AgentScreen({
   const disableSelection = ui.archiving || archiveBusy;
   return (
     <>
+      {systemError && <Alert tone="error">{systemError}</Alert>}
       {archiveNotice && (
         <div className={styles.notice}>
           <span role="status">{archiveNotice}</span>
@@ -271,6 +295,13 @@ export function AgentScreen({
                 </Inline>
                 <Button onClick={openCreate} disabled={disableSelection}>
                   <Icon name="plus" />새 Agent
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => void openSystem()}
+                  disabled={disableSelection || systemBusy}
+                >
+                  {systemBusy ? 'System Agent 여는 중…' : 'System Agent 열기'}
                 </Button>
                 <Inline>
                   <Button
@@ -331,7 +362,7 @@ export function AgentScreen({
                       </span>
                       <span className={styles.muted}>{agentLabel(agent)}</span>
                     </Button>
-                    {!agent.archivedAt && (
+                    {!agent.archivedAt && agent.role !== 'system' && (
                       <IconButton
                         icon="archive"
                         label="Agent 보관"
@@ -393,6 +424,7 @@ export function AgentScreen({
                   </span>
                   <div className={styles.headingName}>
                     <h2>{selected.name}</h2>
+                    {selected.role === 'system' && <Badge>제품 안내</Badge>}
                     <Badge tone={selected.permissions.length ? 'warning' : 'neutral'}>
                       {agentLabel(selected)}
                     </Badge>
@@ -406,14 +438,16 @@ export function AgentScreen({
                     aria-expanded={details}
                     onClick={() => setDetails(!details)}
                   />
-                  <Button
-                    variant="ghost"
-                    disabled={!!selected.archivedAt || disableSelection}
-                    onClick={() => openArchive(selected, false)}
-                  >
-                    <Icon name="archive" />
-                    보관
-                  </Button>
+                  {selected.role !== 'system' && (
+                    <Button
+                      variant="ghost"
+                      disabled={!!selected.archivedAt || disableSelection}
+                      onClick={() => openArchive(selected, false)}
+                    >
+                      <Icon name="archive" />
+                      보관
+                    </Button>
+                  )}
                 </Inline>
               </header>
               <PanelGroup className={styles.conversationBody}>
@@ -451,7 +485,9 @@ export function AgentScreen({
                         >
                           {selected.archivedAt
                             ? '대화 기록이 없습니다.'
-                            : '할 일을 구체적으로 적어 주면 Agent가 선택한 폴더에서 작업을 시작합니다.'}
+                            : selected.role === 'system'
+                              ? 'WorkNaru 소개나 하고 싶은 일에 관해 이야기해 보세요.'
+                              : '할 일을 구체적으로 적어 주면 Agent가 선택한 폴더에서 작업을 시작합니다.'}
                         </EmptyState>
                       ) : (
                         conversationMessages(ui.history.entries)

@@ -47,6 +47,7 @@ export function createWorknaruCore({ runtime }: { readonly runtime: Runtime }): 
       getProject: async input => workspace().getProject(input),
     },
     agents: {
+      openSystem: input => agents().openSystem(input),
       health: input => agents().health(input),
       options: input => agents().options(input),
       directories: input => agents().directories(input),

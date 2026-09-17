@@ -158,6 +158,22 @@ export function createFixture(scenario: Scenario = 'conversation') {
       failure: null,
     }),
     agents: {
+      openSystem: async () => {
+        const existing = agents.find((value) => value.role === 'system');
+        if (existing) return copy(existing);
+        const value: Agent = {
+          ...agent,
+          id: 'system-agent',
+          name: 'System Agent',
+          role: 'system',
+          cwd: 'C:\\WorknaruData\\system-agent',
+          archivedAt: null,
+          permissions: [],
+        };
+        agents.push(value);
+        histories.set(value.id, { epoch: value.id, cursor: null, entries: [] });
+        return copy(value);
+      },
       health: async () => ({ ready: true, version: 1 }),
       options: async () => ({
         models: [{ id: 'codex', name: 'Codex', default: true }],

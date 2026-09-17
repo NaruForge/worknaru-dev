@@ -9,6 +9,7 @@ const agent = value => ({
   status: value.status, turnId: value.activeTurn?.turnId ?? null, archivedAt: value.archivedAt ?? null,
   parentId: value.labels?.['parent-agent-id'] ?? null,
   managed: value.labels?.['worknaru-source'] === 'agent-service', createId: value.labels?.['worknaru-create-id'] ?? null,
+  ...(value.labels?.['worknaru-role'] === 'system' ? { role: 'system' } : {}),
   permissions: (value.pendingPermissions ?? []).map(p => ({ id: p.id, kind: p.kind, title: p.title ?? p.name,
     description: p.description ?? '', input: p.input ?? {}, actions: (p.actions ?? []).map(a => ({ id: a.id, label: a.label, behavior: a.behavior })) })),
 });
@@ -56,7 +57,8 @@ export async function connectAgentDriver({ endpoint, serverId }) {
     async get(id) { const value = await safe(() => client.fetchAgent({ agentId: id })); return value ? agent(value.agent) : null; },
     async create(input) {
       const value = await safe(() => client.createAgent({ provider: 'codex', model: input.model, cwd: input.cwd, title: input.name,
-        idempotencyKey: input.id, labels: { 'worknaru-source': 'agent-service', 'worknaru-create-id': input.id },
+        idempotencyKey: input.id, labels: { 'worknaru-source': 'agent-service', 'worknaru-create-id': input.id,
+          ...(input.role === 'system' ? { 'worknaru-role': 'system' } : {}) },
         providerOptions: { sandbox_mode: 'workspace-write', approval_policy: 'on-request' } }));
       return agent(value);
     },

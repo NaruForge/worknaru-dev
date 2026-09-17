@@ -9,11 +9,29 @@ import test from 'node:test';
 import { explicitTarget } from '../entry.mjs';
 import { acquireLock, newOwner, pathsFor, readOwner, request } from '../local-support.mjs';
 import { resolveDataPaths, root } from '../../../packages/dev-environment/paths.mjs';
+import { setupAgents } from '../agent-setup.mjs';
+import { agentConfig } from '../../../packages/dev-environment/config.mjs';
+import { acquireDataLock, assertStorage } from '../../../packages/dev-environment/storage.mjs';
 
 const exec = promisify(execFile);
 import { testDirectory } from '../../../packages/dev-environment/testing.mjs';
 const testRoot = await testDirectory('cli');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^WORKNARU_/i.test(key)));
+test('already configured setup repairs System Agent instructions without rebuilding or replacing configuration', () => fixture(async directory => {
+  const paths = pathsFor(resolveDataPaths({ WORKNARU_DATA_DIR: path.join(directory, 'data') }));
+  const release = await acquireDataLock(paths);
+  try { await assertStorage(paths, { claim: true, ignoreLock: true }); } finally { await release(); }
+  const config = JSON.stringify(agentConfig(paths)); await writeFile(paths.config, config);
+  const options = { build: async () => { throw Error('Configured setup must not rebuild'); } };
+  assert.equal((await setupAgents(paths, options)).reused, true);
+  const filename = path.join(paths.dataHome, 'system-agent/AGENTS.md');
+  const template = await readFile(filename, 'utf8');
+  await rm(filename); assert.equal((await setupAgents(paths, options)).reused, true);
+  assert.equal(await readFile(filename, 'utf8'), template);
+  await writeFile(filename, 'User edits'); await setupAgents(paths, options);
+  assert.equal(await readFile(filename, 'utf8'), 'User edits');
+  assert.equal(await readFile(paths.config, 'utf8'), config);
+}));
 async function fixture(callback) {
   await mkdir(testRoot, { recursive: true });
   const directory = await mkdtemp(path.join(testRoot, 'case-'));

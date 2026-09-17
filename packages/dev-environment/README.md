@@ -5,6 +5,7 @@ CLI와 Paseo 검증 앱이 공유하는 Node 전용 라이브러리다. 소스 `
 | 모듈 | 책임 |
 | --- | --- |
 | [paths.mjs](paths.mjs) | 외부 단일 루트·ASCII 경로·실제 부모·저장소 중첩 검사, 잠금 안에서 디렉터리 준비·쓰기 검사 |
+| [system-agent.mjs](system-agent.mjs) | 초기 준비에서 전용 cwd·[제품 지침 자산](assets/system-agent/AGENTS.md) 배치, 기존 파일 보존과 읽기 전용 실행 검증 |
 | [storage.mjs](storage.mjs) | 전용 루트 마커·저장 구조 버전·소유 checkout 검사, 공통 작업 잠금 |
 | [testing.mjs](testing.mjs) | 테스트 전용 외부 실행 디렉터리 생성 |
 | [config.mjs](config.mjs) | 고정 주소·버전·개발 설정과 읽기 전용 설정 비교 |

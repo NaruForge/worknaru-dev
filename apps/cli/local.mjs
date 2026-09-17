@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveDataPaths, prepareDataDirectories, root, DataError, validateDataLocation, validateDirectory, legacyPaths } from '../../packages/dev-environment/paths.mjs';
 import { configState, agentsEnabled, endpoint, listen } from '../../packages/dev-environment/config.mjs';
+import { validateSystemAgentDirectory } from '../../packages/dev-environment/system-agent.mjs';
 import { acquireLock, buildsPresent, LocalError, newOwner, pathsFor, pnpmCommand, portOpen, readOwner, request } from './local-support.mjs';
 
 import { acquireDataLock, assertStorage, assertNoLegacy, exists } from '../../packages/dev-environment/storage.mjs';
@@ -113,7 +114,10 @@ export async function start(paths, { build = buildDevelopment, env = process.env
   await assertNoLegacy(paths);
   await validateDirectory(paths.repository, 'Development checkout');
   const previous = await localStatus(paths);
-  if (previous.state === 'running') return { ...previous, reused: true };
+  if (previous.state === 'running') {
+    await validateSystemAgentDirectory(paths);
+    return { ...previous, reused: true };
+  }
   if (previous.state !== 'stopped') throw new LocalError('operation_busy', 'Development is busy or unhealthy. Run pnpm exec worknaru doctor.');
   const checks = await prerequisites();
   const failed = checks.find(check => !check.ok);

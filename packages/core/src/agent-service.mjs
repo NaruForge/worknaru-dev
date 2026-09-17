@@ -2,6 +2,7 @@ import { AgentError, ExecutionContextError, parseExecutionTarget, parseExecution
 import { createContextResolver } from '../dist/execution-context.js';
 
 const terminal = new Set(['completed', 'failed', 'canceled', 'uncertain']);
+const systemCreateId = 'worknaru-system-agent';
 export const initialAgentState = () => ({ version: 2, settings: { sendMode: 'queue', revision: 0 }, requests: [], paused: {}, creations: {} });
 const fail = (code, message) => { throw new AgentError(code, message); };
 function text(value, label, max = 65536) {
@@ -12,7 +13,7 @@ function mode(value) { if (!['queue', 'steer'].includes(value)) fail('invalid_in
 function key(value) { const result = text(value, '요청 ID', 100); if (!/^[a-zA-Z0-9_-]+$/.test(result) || ['__proto__', 'constructor', 'prototype'].includes(result)) fail('invalid_input', '잘못된 요청 ID입니다.'); return result; }
 
 /** Platform policy; persistence and the concrete execution driver are injected. */
-export function createAgentService({ driver, store, validateDirectory, resolveContext = createContextResolver(), now = () => new Date().toISOString() }) {
+export function createAgentService({ driver, store, validateDirectory, systemAgent, resolveContext = createContextResolver(), now = () => new Date().toISOString() }) {
   const state = store.load() ?? initialAgentState();
   if (state.version !== 2) fail('storage_version', '지원하지 않는 실행 데이터 버전입니다.');
   // Reject corrupt/missing snapshots before initialization can resume any queued work.
@@ -100,6 +101,7 @@ export function createAgentService({ driver, store, validateDirectory, resolveCo
   }
   async function transmit(current, request) {
     await validateDirectory(current.cwd);
+    if (current.role === 'system') await validateSystem(current);
     request.error = null;
     await observe(current.id);
     request.state = 'sending'; save();
@@ -119,11 +121,44 @@ export function createAgentService({ driver, store, validateDirectory, resolveCo
     return all.filter(a => ids.has(a.id));
   }
   const fingerprint = agents => JSON.stringify(agents.map(a => [a.id, a.turnId, a.archivedAt, a.permissions.map(p => p.id), requests(a.id).filter(r => r.state === 'queued').map(r => r.id)]).sort());
+  async function validateSystem(agent) {
+    if (!systemAgent || !agent.managed || agent.role !== 'system' || agent.createId !== systemCreateId
+      || agent.cwd !== systemAgent.cwd || state.creations[systemCreateId]?.agentId !== agent.id) fail('system_agent_conflict', 'System Agent 식별 연결이나 작업 폴더가 다릅니다. 기존 Agent를 재사용하지 않았습니다.');
+    await systemAgent.validate();
+  }
+  async function openSystem(input) {
+    if (Reflect.ownKeys(input).length) fail('invalid_input', 'System Agent 열기에는 작업 폴더나 생성 옵션을 지정할 수 없습니다.');
+    if (!systemAgent) fail('feature_unavailable', 'System Agent를 준비해 주세요. pnpm exec worknaru agent setup');
+    await systemAgent.validate();
+    const prior = state.creations[systemCreateId];
+    const signature = JSON.stringify(['system', systemAgent.cwd]);
+    if (prior && prior.signature !== signature) fail('system_agent_conflict', 'System Agent 생성 식별자가 기존 요청과 충돌합니다.');
+    if (prior) {
+      const matches = (await driver.list()).filter(a => a.createId === systemCreateId);
+      if (matches.length !== 1 || (prior.agentId && prior.agentId !== matches[0].id)) fail('creation_uncertain', 'System Agent 생성 결과를 확정할 수 없습니다. 새 Agent를 만들지 않았습니다.');
+      const found = matches[0];
+      if (!found.managed || found.role !== 'system' || found.cwd !== systemAgent.cwd) fail('system_agent_conflict', 'System Agent 식별 연결이 일치하지 않습니다.');
+      if (!prior.agentId) { prior.agentId = found.id; save(); }
+      await validateSystem(found);
+      if (found.archivedAt) fail('archived', 'System Agent가 외부에서 보관되었습니다. 기존 기록을 확인해 주세요.');
+      return found;
+    }
+    if ((await driver.list()).some(a => a.createId === systemCreateId || a.role === 'system')) fail('system_agent_conflict', '기존 System Agent의 저장 연결을 확인할 수 없습니다.');
+    const options = await driver.options(systemAgent.cwd);
+    const model = options.models.find(m => m.default) ?? options.models[0];
+    if (!options.available || !model) fail('provider_unavailable', 'Codex 설치·로그인과 모델 사용 가능 여부를 확인한 뒤 System Agent를 다시 열어 주세요.');
+    state.creations[systemCreateId] = { signature, agentId: null }; save();
+    const created = await driver.create({ id: systemCreateId, name: 'System Agent', cwd: systemAgent.cwd, model: model.id, role: 'system' });
+    state.creations[systemCreateId].agentId = created.id; save();
+    await validateSystem(created);
+    return created;
+  }
   async function execute(operation, raw) {
     const input = raw ?? {};
     if (!input || typeof input !== 'object' || Array.isArray(input)) fail('invalid_input', '잘못된 요청입니다.');
     if (operation === 'health') return { ready: ready && !stopped && (driver.connected?.() ?? true), version: 1 };
     if (!ready || stopped) fail('not_ready', 'Agent 실행부가 준비 중입니다. 잠시 후 다시 시도해 주세요.');
+    if (operation === 'openSystem') return serial('creation', () => openSystem(input));
     if (operation === 'options') { text(input.cwd, '작업 폴더', 4096); await validateDirectory(input.cwd); return driver.options(input.cwd); }
     if (operation === 'directories') return driver.directories(text(input.query, '폴더', 4096));
     if (operation === 'settings') return { ...state.settings };
@@ -134,6 +169,7 @@ export function createAgentService({ driver, store, validateDirectory, resolveCo
     if (operation === 'list') return (await driver.list()).filter(a => a.managed && (input.archived ? !!a.archivedAt : !a.archivedAt));
     if (operation === 'create') return serial('creation', async () => {
       key(input.id); text(input.name, '이름', 120); text(input.model, '모델', 300); text(input.cwd, '작업 폴더', 4096);
+      if (input.id === systemCreateId || Object.hasOwn(input, 'role')) fail('invalid_input', 'System Agent는 전용 열기 기능을 사용해 주세요.');
       const prior = state.creations[input.id]; const signature = JSON.stringify([input.name, input.cwd, input.model]);
       if (prior && prior.signature !== signature) fail('id_conflict', '같은 요청 ID의 생성 내용이 다릅니다.');
       if (prior?.agentId) return get(prior.agentId);
@@ -171,6 +207,7 @@ export function createAgentService({ driver, store, validateDirectory, resolveCo
     if (operation === 'history') return driver.history(selected.id, input.cursor);
     if (operation === 'requests') return { requests: structuredClone(requests(selected.id)), paused: !!state.paused[selected.id] };
     if (operation === 'archivePreview') {
+      if (selected.role === 'system') fail('system_agent_archive', '앱의 System Agent는 개별 보관하지 않습니다. 대화는 그대로 유지됩니다.');
       for (const [token, preview] of previews) if (Date.now() > preview.expires) previews.delete(token);
       const agents = await subtree(selected.id); const token = crypto.randomUUID();
       previews.set(token, { root: selected.id, ids: agents.map(a => a.id), fingerprint: fingerprint(agents), expires: Date.now() + 120000 });
@@ -187,6 +224,10 @@ export function createAgentService({ driver, store, validateDirectory, resolveCo
         let target;
         try { target = parseExecutionTarget(Object.hasOwn(input, 'target') ? input.target : { type: 'standalone' }); }
         catch (error) { throw new AgentError('invalid_input', error.message); }
+        if (current.role === 'system') {
+          await validateSystem(current);
+          if (target.type !== 'standalone') fail('invalid_input', 'System Agent 대화는 standalone으로 실행합니다.');
+        }
         const prior = priorRequest(input.id, current.id, input.text, target);
         if (prior) return prior;
         let context;
@@ -239,6 +280,7 @@ export function createAgentService({ driver, store, validateDirectory, resolveCo
     });
   }
   return {
+    openSystem: input => execute('openSystem', input),
     health: input => execute('health', input),
     options: input => execute('options', input),
     directories: input => execute('directories', input),

@@ -6,6 +6,7 @@
     "./control": "./control.mjs",
     "./daemon": "./daemon.mjs",
     "./paths": "./paths.mjs",
+    "./system-agent": "./system-agent.mjs",
     "./web-files": "./web-files.mjs",
     "./storage": "./storage.mjs"
   },

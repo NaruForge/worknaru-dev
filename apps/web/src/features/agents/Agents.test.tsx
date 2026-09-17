@@ -16,6 +16,58 @@ async function opened(fixture = createFixture()) {
   await screen.findByLabelText('메시지');
   return fixture;
 }
+describe('System Agent entry', () => {
+  it('shows a readiness error when no Agent has been selected', async () => {
+    const fixture = createFixture('empty');
+    vi.spyOn(fixture.core.agents, 'openSystem').mockRejectedValue(
+      new AgentError('provider_unavailable', 'Codex 로그인을 확인해 주세요.'),
+    );
+    render(<App core={fixture.core} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'System Agent 열기' }));
+    await screen.findByRole('alert');
+    expect(screen.getByText('Codex 로그인을 확인해 주세요.')).toBeTruthy();
+  });
+  it('opens once, preserves another Agent draft and sends standalone through the usual composer', async () => {
+    const fixture = await opened();
+    fireEvent.change(screen.getByLabelText('메시지'), {
+      target: { value: 'Unsent private draft' },
+    });
+    const open = vi.spyOn(fixture.core.agents, 'openSystem');
+    const send = vi.spyOn(fixture.core.agents, 'send');
+    fireEvent.click(screen.getByRole('button', { name: 'System Agent 열기' }));
+    await screen.findByRole('heading', { name: 'System Agent' });
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: '보관' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('메시지'), {
+      target: { value: 'WorkNaru가 무엇인가요?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '보내기' }));
+    await waitFor(() => expect(send).toHaveBeenCalled());
+    expect(send.mock.calls[0]?.[0]).toMatchObject({
+      agent: 'system-agent',
+      target: { type: 'standalone' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /주간 업무 정리/ }));
+    await waitFor(() =>
+      expect((screen.getByLabelText('메시지') as HTMLTextAreaElement).value).toBe(
+        'Unsent private draft',
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'System Agent 열기' }));
+    await screen.findByRole('heading', { name: 'System Agent' });
+    expect(fixture.agents.filter((value) => value.role === 'system')).toHaveLength(1);
+  });
+  it('shows Provider readiness errors while retaining the selected Agent', async () => {
+    const fixture = await opened();
+    vi.spyOn(fixture.core.agents, 'openSystem').mockRejectedValue(
+      new AgentError('provider_unavailable', 'Codex 로그인을 확인해 주세요.'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'System Agent 열기' }));
+    await screen.findByText('Codex 로그인을 확인해 주세요.');
+    expect(screen.getByRole('heading', { name: '주간 업무 정리' })).toBeTruthy();
+  });
+});
 describe('request identity and drafts', () => {
   for (const states of [
     ['failed', 'completed'],

@@ -6,6 +6,7 @@ export interface Permission {
   input: Record<string, unknown>; actions: { id: string; label: string; behavior: 'allow' | 'deny' }[];
 }
 export interface Agent {
+  role?: 'system';
   id: string; name: string; cwd: string; model: string | null; status: string;
   turnId: string | null; archivedAt: string | null; parentId: string | null;
   permissions: Permission[];
@@ -24,6 +25,7 @@ export interface AgentOptions { models: { id: string; name: string; default: boo
 export interface ArchivePreview { token: string; agents: Agent[]; queued: AgentRequest[] }
 /** Agent-only capabilities. Transport operation names and envelopes are adapter details. */
 export interface AgentAPI {
+  openSystem(input?: Record<string, never>): Promise<Agent>;
   health(input?: Record<string, never>): Promise<{ ready: boolean; version: number }>;
   options(input: { cwd: string }): Promise<AgentOptions>;
   directories(input: { query: string }): Promise<{ paths: string[] }>;
